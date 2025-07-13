@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="permissions-title">إدارة الصلاحيات</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        crossorigin="anonymous" />
+
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/permissions.css">
+</head>
+
+<body>
+    <header class="main-header">
+        <div class="header-container">
+            <div class="system-title">
+                <img src="/frontend/images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+            <div class="hospital-logo">
+                <img src="/frontend/images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+            </div>
+        </div>
+    </header>
+    <div class="header-actions">
+        <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>            <span data-translate="back">رجوع</span>
+        </button>
+        <button class="home-btn" onclick="window.location.href='index.html'">
+            <i class="fas fa-home"></i>
+            <span data-translate="home">الرئيسية</span>
+        </button>
+    </div>
+    <main>
+        <div class="permissions-container">
+            <!-- Users Sidebar -->
+  <div class="users-sidebar">
+        <div class="search-bar">
+          <input type="text" id="user-search" data-translate-placeholder="search-user" placeholder="بحث عن مستخدم" />
+          <i class="fas fa-search search-icon"></i>
+        </div>
+        <button class="add-user-btn" id="add-user-btn"><i class="fas fa-user-plus"></i><span data-translate="add-user">إضافة مستخدم جديد</span></button>
+        <div class="user-list" id="user-list">
+          <!-- سيتم تحميل المستخدمين هنا ديناميكياً -->
+        </div>
+      </div>
+
+            <!-- Permissions Content -->
+           <div class="permissions-content">
+<!-- قبل اختيار المستخدم -->
+<div class="user-profile-header">
+  <div class="action-buttons-top">
+    <button class="btn-delete" id="btn-delete-user"><i class="fas fa-trash-alt"></i> <span data-translate="delete">حذف</span></button>
+    <button class="btn-primary" id="btn-reset-password"><i class="fas fa-key"></i> <span data-translate="reset-password">إعادة تعيين كلمة المرور</span></button>
+    <button class="btn-primary" id="btn-change-role"><i class="fas fa-users-cog"></i> <span data-translate="change-role">تغيير الدور</span></button>
+    <button class="btn-primary" id="btn-edit-user-info" style="display:none;"><i class="fas fa-user-edit"></i> <span data-translate="change-user-info">تغيير معلومات المستخدم</span></button>
+  </div>
+
+  <div class="profile-extra" id="profile-extra">
+    <h2 id="profile-name"></h2>
+    <span id="profile-status" class="status"></span>
+    <span class="badge-pill dept-badge" id="profile-department"></span>
+    <span class="badge-pill role-badge" id="profile-role"></span>
+  </div>
+</div>
+
+
+                <h3 data-translate="access-permissions">صلاحيات الوصول</h3>
+
+<div class="permission-section">
+  <!-- الأقسام -->
+     <!-- مجموعة جديدة: أجهزة التحكم العامة -->
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="general-group">عامّ</h4>
+
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="grant_permissions">منح الصلاحيات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="grant_permissions">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="disable_tickets"> اخفاء التذاكر</div>
+        </div>
+      </div>
+      <label class="switch" data-key="disable_tickets">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="disable_departments"> اخفاء الاقسام</div>
+        </div>
+      </div>
+      <label class="switch" data-key="disable_departments">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="disable_approvals">اخفاء الاعتمادات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="disable_approvals">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="disable_comittees"> اخفاء اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="disable_comittees">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_logs">عرض السجلات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_logs">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_dashboard">عرض لوحة التحكم</div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_dashboard">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+        <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_reports">عرض التقارير </div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_reports">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+
+
+
+
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="departments-group">الأقسام</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_own_department">عرض القسم الموجود</div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_own_department">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_section">إضافة قسم</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_section">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_section">تعديل قسم</div>
+        </div>
+      </div>
+      <label class="switch"data-key="edit_section">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_section">حذف قسم</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_section">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- المحتوى -->
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="folder-group">المجلد</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_folder">إضافة مجلد</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_folder">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_folder_name">إضافة اسم مجلد</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_folder_name">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_folder">تعديل مجلد</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_folder">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_folder_name">تعديل اسم مجلد</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_folder_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_folder">حذف مجلد</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_folder">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_folder_name">حذف اسم مجلد</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_folder_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="content-group">المحتوى</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_content">إضافة محتوى</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_content">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_old_content">إضافة محتوى قديم</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_old_content">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_content_name">إضافة اسم محتوى</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_content_name">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_content">تعديل  محتوى</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_content">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_content_name">تعديل اسم محتوى</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_content_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_content">حذف محتوى</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_content">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_content_name">حذف اسم محتوى</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_content_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="committees-group">اللجان</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_own_committees">عرض اللجان الحالية</div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_own_committees">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+      <div class="committees-dropdown" id="committees-dropdown" style="display: none;">
+        <button class="dropdown-btn" type="button">
+          <span data-translate="select-committees">اختر اللجان</span>
+          <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="dropdown-content">
+          <div class="search-box">
+            <input type="text" placeholder="ابحث عن لجنة..." class="committee-search">
+          </div>
+          <div class="committees-list">
+            <!-- سيتم تحميل اللجان هنا ديناميكياً -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_committee">إضافة لجنة</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_committee">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_committee">تعديل لجنة</div>
+        </div>
+      </div>
+      <label class="switch"data-key="edit_committee">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_committee">حذف لجنة</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_committee">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- المحتوى -->
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="committee-folders-group">مجلدات اللجان</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_folder_committee">إضافة مجلد اللجان</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_folder_committee">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_folder_committee_name">إضافة اسم مجلد اللجان</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_folder_committee_name">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_folder_committee">تعديل مجلد اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_folder_committee">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_folder_committee_name">تعديل اسم مجلد اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_folder_committee_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_folder_committee">حذف مجلد اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_folder_committee">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_folder_committee_name">حذف اسم مجلد اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_folder_committee_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="committee-content-group">محتوى اللجان</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_content_committee">إضافة محتوى اللجان</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_content_committee">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_content_committee_name">إضافة اسم محتوى اللجان</div>
+        </div>
+      </div>
+      <label class="switch"data-key="add_content_committee_name">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_content_committee">تعديل  محتوى اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_content_committee">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_content_committee_name">تعديل اسم محتوى اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_content_committee_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_content_committee">حذف محتوى اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_content_committee">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_content_committee_name">حذف اسم محتوى اللجان</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_content_committee_name">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- التذاكر -->
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="tickets-group">التذاكر</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_tickets">عرض كل التذاكر</div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_tickets">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="transfer_tickets">تحويل تذاكر</div>
+        </div>
+      </div>
+      <label class="switch" data-key="transfer_tickets" >
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="track_tickets">تتبع التذاكر</div>
+        </div>
+      </div>
+      <label class="switch" data-key="track_tickets">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_ticket">حذف التذاكر</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_ticket">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="edit_ticket">تعديل التذاكر</div>
+        </div>
+      </div>
+      <label class="switch" data-key="edit_ticket">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="report-group-tickets">تقارير التذاكر</h4>
+
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_reports_by_person_tickets"> عرض تقارير التذاكر للشخص</div>
+        </div>
+      </div>
+      <label class="switch"data-key="view_reports_by_person_tickets">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_all_reports_tickets">عرض كل تقارير التذاكر </div>
+        </div>
+      </div>
+      <label class="switch"data-key="view_all_reports_tickets">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="download_reports_tickets"> تحميل تقارير التذاكر</div>
+        </div>
+      </div>
+      <label class="switch" data-key="download_reports_tickets">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+  <!-- الاعتمادات -->
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="approvals-group">الاعتمادات</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_credits">عرض كل الاعتمادات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_credits" >
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="transfer_credits">تحويل اعتمادات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="transfer_credits">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="track_credits">تتبع اعتمادات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="track_credits">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+  
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="report-group-approvals">تقارير الاعتمادات</h4>
+
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_reports_by_person_approvals"> عرض تقارير الاعتمادات للشخص</div>
+        </div>
+      </div>
+      <label class="switch"data-key="view_reports_by_person_approvals">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_all_reports_approvals">عرض كل تقارير الاعتمادات </div>
+        </div>
+      </div>
+      <label class="switch"data-key="view_all_reports_approvals">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="download_reports_approvals"> تحميل تقارير الاعتمادات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="download_reports_approvals">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- التوقيع -->
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="signature-group">التوقيع</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="sign_elctronic">اعتماد الكتروني</div>
+        </div>
+      </div>
+      <label class="switch" data-key="sign">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="sign_on_behalf">توقيع بالنيابة</div>
+        </div>
+      </div>
+      <label class="switch" data-key="sign_on_behalf">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- الحسابات -->
+  <div class="permission-group">
+    <h4 class="group-title" data-translate="accounts-group">الحسابات</h4>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="add_user">إضافة مستخدم</div>
+        </div>
+      </div>
+      <label class="switch" data-key="add_user">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="change_status"> تغغير حالة المستخدم</div>
+        </div>
+      </div>
+      <label class="switch" data-key="change_status">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="change_role">تغيير الدور</div>
+        </div>
+      </div>
+      <label class="switch" data-key="change_role">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="delete_user">حذف حساب</div>
+        </div>
+      </div>
+      <label class="switch" data-key="delete_user">
+        <input type="checkbox" >
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="change_password">تغيير كلمة السر</div>
+        </div>
+      </div>
+      <label class="switch"data-key="change_password">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="change_user_info">تغيير معلومات المستخدم</div>
+        </div>
+      </div>
+      <label class="switch"data-key="change_user_info">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" data-translate="add-user-title">إضافة مستخدم جديد</h2>
+
+ <div class="modal-section">
+  <h3 data-translate="user-info">معلومات المستخدم</h3>
+
+  <div class="form-group">
+    <label for="userName" data-translate="user-name-label">اسم المستخدم</label>
+    <input type="text" id="userName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل اسم المستخدم">
+  </div>
+
+  <div class="form-group">
+    <label for="employeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
+    <input type="text" id="employeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
+  </div>
+
+  <div class="form-group">
+    <label for="department" data-translate="department-label">القسم</label>
+    <select id="department">
+      <option value="" data-translate="select-department">اختر القسم</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="email" data-translate="email-label">البريد الإلكتروني</label>
+    <input type="email" id="email" data-translate-placeholder="email-placeholder" placeholder="أدخل البريد الإلكتروني">
+  </div>
+
+  <div class="form-group">
+    <label for="password" data-translate="password-label">كلمة المرور</label>
+    <input type="password" id="password" data-translate-placeholder="password-placeholder" placeholder="أدخل كلمة المرور">
+  </div>
+</div>
+
+    <!-- Permissions section removed as per user request -->
+
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancelAddUser"><span data-translate="cancel">إلغاء</span></button>
+                <button class="btn-primary" id="saveUser"><span data-translate="save-user">حفظ المستخدم</span></button>
+            </div>
+        </div>
+    </div>
+<div id="role-popup" class="role-popup">
+  <div class="role-content">
+    <h4 data-translate="choose-role">اختر الدور</h4>
+    <select id="role-select" class="role-select"></select>
+    <div class="role-buttons">
+      <button class="btn-primary" id="btn-save-role"><span data-translate="save">حفظ</span></button>
+      <button class="btn-secondary" id="btn-cancel-role"><span data-translate="cancel">إلغاء</span></button>
+    </div>
+  </div>
+</div>
+<div id="editUserModal" class="modal">
+  <div class="modal-content">
+    <h2 class="modal-title" data-translate="change-user-info">تعديل معلومات المستخدم</h2>
+    <div class="modal-section">
+      <h3 data-translate="user-info">معلومات المستخدم</h3>
+      <div class="form-group">
+        <label for="editUserName" data-translate="user-name-label">اسم المستخدم</label>
+        <input type="text" id="editUserName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل اسم المستخدم">
+      </div>
+      <div class="form-group">
+        <label for="editEmployeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
+        <input type="text" id="editEmployeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
+      </div>
+      <div class="form-group">
+        <label for="editDepartment" data-translate="department-label">القسم</label>
+        <select id="editDepartment">
+          <option value="" data-translate="select-department">اختر القسم</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="editEmail" data-translate="email-label">البريد الإلكتروني</label>
+        <input type="email" id="editEmail" data-translate-placeholder="email-placeholder" placeholder="أدخل البريد الإلكتروني">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelEditUser"><span data-translate="cancel">إلغاء</span></button>
+      <button class="btn-primary" id="saveEditUser"><span data-translate="save-user">حفظ التعديلات</span></button>
+    </div>
+  </div>
+</div>
+        <script src="/frontend/js/language.js"></script>
+
+    <script src="../js/permissions.js"></script>
+</body>
+
+</html>

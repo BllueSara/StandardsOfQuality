@@ -1,0 +1,375 @@
+html, body {
+    font-family: 'Tajawal', Arial, sans-serif;
+    direction: rtl;
+    margin: 0;
+    background-color: #fff;
+}
+
+
+.controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Align items to the right in RTL */
+    margin-bottom: 20px;
+    gap: 15px; /* Space between elements */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    padding-right: 10px; /* Add padding to align with card grid */
+}
+
+.search-bar {
+    position: relative;
+    /* flex-grow: 1; Remove flex-grow from search bar */
+    max-width: 400px; /* Limit max width of search bar */
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 10px 40px 10px 10px; /* Adjust padding for icon */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box;
+    text-align: right; /* Align text to the right */
+}
+
+.search-bar .search-icon {
+    position: absolute;
+    left: 50px; /* Position icon on the left in RTL */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: #888;
+    pointer-events: none; /* Allow clicks to pass through to input */
+}
+
+.action-buttons-group {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between buttons */
+}
+
+/* Basic button styles (can be moved to a shared file later) */
+.btn-primary {
+    background-color: #1D4ED8;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #1a3f9a;
+}
+
+.btn-secondary ,
+.btn-danger{
+    background-color: #1D4ED8;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #d5d5d5;
+}
+
+.btn-danger {
+    background-color: #dc3545; /* Red color for danger button */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.btn-danger:hover {
+    background-color: #c82333; /* Darker red on hover */
+}
+
+/* زر الرجوع - تنسيق موحد */
+.back-button-container {
+    width: 100%;
+    text-align: left;
+    padding-left: 20px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 1em;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+.back-button:hover {
+    text-decoration: underline;
+    background: none;
+}
+
+.back-arrow-icon {
+    width: 18px;
+    height: 18px;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+main h1 {
+    text-align: center; /* Center the title */
+    font-size: 2em;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+/* --- Removed Shared styles from home.css (header) --- */
+
+main {
+    padding-top: 90px;
+    max-width: 1200px;
+    margin: auto;
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Adjust to fit cards better */
+    gap: 20px; /* Increase gap for larger cards */
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.cards-grid .card:last-child:nth-child(odd) {
+    grid-column: auto; /* Revert last child rule for auto-fit */
+    justify-self: center;
+    width: 100%;
+    max-width: 500px; /* Max width for the card */
+  }
+
+.card {
+    background-color: #fff;
+    border-radius: 12px; /* Apply border radius from design */
+    padding: 25px; /* Base padding */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* Shadow */
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+    height: 200px; /* Set fixed height from design */
+    display: flex; /* Use flexbox for content alignment inside card */
+    flex-direction: column;
+    justify-content: center; /* Center content vertically */
+    align-items: center; /* Center content horizontally */
+    position: relative; /* Needed for absolute positioning of icons */
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.card-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-icon img {
+    width: 150px;
+    height: 108px;
+}
+
+.card-title {
+    font-size: 1.3em;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.card-subtitle {
+    font-size: 0.9em;
+    color: #888;
+}
+
+.card-icons {
+    position: absolute; /* Position icons absolutely within the card */
+    top: 15px; /* Adjust vertical position from top */
+    left: 15px; /* Adjust horizontal position from left (in RTL) */
+    display: flex;
+    gap: 10px; /* Space between icons */
+}
+
+.card-icons a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; /* Icon container size */
+    height: 24px;
+    text-decoration: none; /* Remove underline from link */
+    /* Optional: Add background or border to icon container if needed */
+}
+
+.card-icons img {
+    width: 18px; /* Icon image size */
+    height: 18px;
+}
+
+/* Ensure existing card content doesn't overlap icons if necessary */
+.card .card-icon,
+.card .card-title,
+.card .card-subtitle {
+    position: relative; /* Ensure these are above icons if needed */
+    z-index: 1; 
+}
+
+/* Colors */
+.bg-purple { background-color: #e0eaff; }
+.bg-red { background-color: #ffebee; }
+.bg-lightblue { background-color: #e3f2fd; }
+.bg-green { background-color: #e8f5e9; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    nav ul {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+}
+
+/* --- Modal Styles --- */
+.modal-overlay {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto; /* Centered */
+    padding: 20px;
+    border: 1px solid #888;
+    border-radius: 10px;
+    width: 80%; /* Could be more responsive */
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    animation-name: animatetop; /* Add animation */
+    animation-duration: 0.4s;
+    position: relative; /* Ensure it respects z-index relative to overlay */
+    z-index: 1001; /* Higher than overlay */
+}
+
+.modal-content h3 {
+    text-align: right; /* Align title to the right */
+    margin-top: 0;
+    margin-bottom: 15px; /* Space below title */
+    color: #333;
+}
+
+.modal-content hr {
+    border: none;
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 15px 0;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-body .form-group {
+    margin-bottom: 15px; /* Space between form groups */
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 8px; /* Space below label */
+    font-weight: bold;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.modal-body input[type="text"],
+.modal-body input[type="file"] {
+    width: 100%;
+    padding: 10px; /* Adjust padding */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box; /* Include padding and border in element's total width */
+    text-align: right; /* Align text to the right */
+}
+
+.modal-body input[type="file"] {
+     padding-top: 8px; /* Adjust padding for file input */
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 10px; /* Space between buttons */
+}
+
+.modal-buttons .btn-primary,
+.modal-buttons .btn-secondary {
+    padding: 10px 20px; /* Button padding */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.modal-buttons .btn-primary {
+    background-color: #1D4ED8;
+    color: white;
+}
+
+.modal-buttons .btn-primary:hover {
+    background-color: #1a3f9a;
+}
+
+.modal-buttons .btn-secondary {
+    background-color: #e0e0e0; /* Grey background for secondary */
+    color: #333; /* Dark text for secondary */
+}
+
+.modal-buttons .btn-secondary:hover {
+    background-color: #d5d5d5;
+}
+
+/* Add animation for modal */
+@keyframes animatetop {
+    from {top: -300px; opacity: 0}
+    to {top: 0; opacity: 1}
+} .btn-primary,
+.btn-secondary,
+.custom-dropdown button,
+.add-folder-new {
+  font-family: inherit;
+}

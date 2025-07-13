@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-translate="notifications-title">الإشعارات</title>
+
+  <!-- خطوط وأيقونات -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" />
+
+  <!-- ملفات CSS -->
+  <link rel="stylesheet" href="../css/shared.css">
+  <link rel="stylesheet" href="../css/notifications.css">
+</head>
+
+<body>
+  <header class="main-header">
+    <div class="header-container">
+      <div class="system-title">
+        <img src="/frontend/images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+      </div>
+      <div class="hospital-logo">
+        <img src="/frontend/images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+      </div>
+    </div>
+  </header>
+
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
+
+  <main>
+    <div class="container">
+      <section class="notifications-header">
+        <h1 class="page-title" data-translate="notifications-title">الإشعارات</h1>
+        <div class="filters">
+          <div class="input-group search-input">
+            <input type="text" id="search-input" data-translate-placeholder="notifications-search" placeholder="البحث في الإشعارات...">
+          </div>
+          <div class="input-group">
+            <select id="notification-type" name="notification-type">
+              <option value="" data-translate="notification-type">نوع الإشعار</option>
+              <option value="ticket" data-translate="notification-ticket">تذكرة</option>
+              <option value="approval" data-translate="notification-approval">اعتماد</option>
+              <option value="signature" data-translate="notification-signature">توقيع</option>
+              <option value="proxy" data-translate="notification-proxy">بالنيابة</option>
+              <option value="add" data-translate="notification-add">إضافة</option>
+              <option value="update" data-translate="notification-update">تحديث</option>
+              <option value="delete" data-translate="notification-delete">حذف</option>
+              <option value="other" data-translate="notification-other">أخرى</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 🔽 هنا راح تتعبى الإشعارات ديناميكياً من notifications.js -->
+      <section class="notifications-list">
+        <!-- إشعارات يتم إنشاؤها من JS -->
+      </section>
+    </div>
+  </main>
+    <script src="../js/language.js"></script>
+
+  <script src="../js/notifications.js"></script>
+</body>
+
+</html>

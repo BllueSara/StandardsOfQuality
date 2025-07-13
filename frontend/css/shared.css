@@ -1,0 +1,705 @@
+/* Shared styles for elements used across multiple pages */
+
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #f0f0f0;
+    --text-color: #333;
+    --light-text-color: #555;
+    --border-color: #ddd;
+    --background-color: #f5f7fa;
+    --white-color: #ffffff;
+    --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.05);
+    --shadow-medium: 0 2px 10px rgba(0, 0, 0, 0.03);
+    --border-radius-small: 8px;
+    --border-radius-medium: 12px;
+    --spacing-1: 8px;
+    --spacing-2: 10px;
+    --spacing-3: 15px;
+    --spacing-4: 20px;
+    --spacing-5: 30px;
+}
+
+body {
+    font-family: 'Tajawal', sans-serif;
+    color: var(--text-color);
+    background-color: var(--background-color);
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* --- Header Styles --- */
+/* حاوية الأزرار */
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 90px;
+}
+
+/* زرّ الرجوع على أقصى يسار بلا حواف خارجية */
+.back-btn {
+  position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;      /* حجم يناسب النص */
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+  flex-direction: row-reverse;
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+header {
+    width: 100%;
+    padding: 18px var(--spacing-4); /* Increased vertical padding for taller header */
+    background-color: var(--white-color);
+    border-bottom: 1px solid var(--border-color);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    box-sizing: border-box;
+}
+
+header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* يوزّع العناصر: أول وآخر على الأطراف، والثالث يبقى في الوسط */
+  padding: 0 var(--spacing-4);
+}
+.header-left,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.hospital-logo {
+    order: 3; /* Changed to 3 to put it on the right in RTL */
+}
+
+nav {
+    order: 2;
+    flex: 1;
+    display: flex;
+    justify-content: center; /* Center the navigation items */
+}
+
+.system-title {
+    order: 1;
+}
+
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 25px;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+    position: relative;
+}
+
+nav ul li {
+    position: relative;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: var(--light-text-color);
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+}
+
+nav ul li a img {
+    width: 20px;
+    height: 20px;
+    margin-left: 8px;
+}
+
+nav ul li a.active,
+nav ul li a:hover {
+    text-decoration: underline;
+    font-weight: normal;
+}
+
+.language {
+    position: relative;
+}
+
+.language a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+
+.language .dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 8px 0;
+    min-width: 120px;
+    z-index: 1000;
+}
+
+.language .dropdown.show {
+    display: block;
+}
+
+.language .dropdown li {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.language .dropdown a {
+    display: block;
+    padding: 8px 16px;
+    color: #333;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.language .dropdown a:hover {
+    background-color: #f5f5f5;
+}
+
+/* RTL/LTR specific styles */
+[dir="rtl"] .language .dropdown {
+    right: 0;
+    left: auto;
+}
+
+[dir="ltr"] .language .dropdown {
+    left: 0;
+    right: auto;
+}
+
+/* Mobile Responsive Styles */
+@media screen and (max-width: 768px) {
+    .language {
+        margin-top: 10px;
+    }
+    
+    .language .dropdown {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        border-radius: 12px 12px 0 0;
+        padding: 16px 0;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+
+    .language .dropdown li {
+        text-align: center;
+    }
+
+    .language .dropdown a {
+        padding: 12px 16px;
+        font-size: 16px;
+    }
+}
+
+/* --- General Button Styles (kept for consistency with logs.css) --- */
+.btn-primary,
+.btn-secondary {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: var(--white-color);
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: #e0e0e0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary img, .btn-secondary img {
+    width: 20px;
+    height: 20px;
+}
+
+/* Utility classes */
+.visually-hidden {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+@media (max-width: 768px  ) {
+  header .container {
+    padding: 8px var(--spacing-2);
+    gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .hospital-logo,
+  .system-title {
+    flex: -1 1 25%;
+    min-width: 80px;
+  }
+
+  nav {
+    flex: 1 1 50%;
+    min-width: 140px;
+    overflow: hidden;
+  }
+
+  .hospital-logo img,
+  .system-title img {
+    max-height: 26px;
+    height: auto;
+    width: auto;
+    object-fit: contain;
+  }
+
+  nav ul {
+    flex-wrap: nowrap;
+    gap: 10px;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+  }
+
+  nav ul li a {
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .back-btn,
+  .home-btn {
+    font-size: 13px;
+    padding: 0 6px;
+  }
+
+  main h1 {
+    font-size: 1.2em;
+    padding: 0 10px;
+  }
+}
+@media (max-width: 1000px  ) {
+  header .container {
+    padding: 8px var(--spacing-2);
+    gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .hospital-logo,
+  .system-title {
+    flex: -1 1 25%;
+    min-width: 80px;
+  }
+
+  nav {
+    flex: 1 1 50%;
+    min-width: 140px;
+    overflow: hidden;
+  }
+
+  .hospital-logo img,
+  .system-title img {
+    max-height: 26px;
+    height: auto;
+    width: auto;
+    object-fit: contain;
+  }
+
+  nav ul {
+    flex-wrap: nowrap;
+    gap: 10px;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+  }
+
+  nav ul li a {
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .back-btn,
+  .home-btn {
+    font-size: 13px;
+    padding: 0 6px;
+  }
+
+  main h1 {
+    font-size: 1.2em;
+    padding: 0 10px;
+  }
+  
+}
+@media screen and (max-width: 1000px) {
+  .language .dropdown.show {
+    display: block;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    padding: 16px 0;
+    background: white;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  }
+}
+
+@media (max-width: 500px  ) {
+  header .container {
+    padding: 8px var(--spacing-2);
+    gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .hospital-logo,
+  .system-title {
+    flex: -1 1 25%;
+    min-width: 80px;
+  }
+
+  nav {
+    flex: 1 1 50%;
+    min-width: 140px;
+    overflow: hidden;
+  }
+
+  .hospital-logo img,
+  .system-title img {
+    max-height: 26px;
+    height: auto;
+    width: auto;
+    object-fit: contain;
+  }
+
+  nav ul {
+    flex-wrap: nowrap;
+    gap: 10px;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+  }
+
+  nav ul li a {
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .back-btn,
+  .home-btn {
+    font-size: 13px;
+    padding: 0 6px;
+  }
+
+  main h1 {
+    font-size: 1.2em;
+    padding: 0 10px;
+  }
+}
+
+
+/* Page Controls and Back Button (Moved from dashboard.css and logs.css for consistency) */
+.page-controls {
+    width: 100%;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding-inline-start: 0px; /* Adjusted for left alignment in RTL */
+    padding-inline-end: 50px; /* Adjusted for left alignment in RTL */
+    display: flex;
+    justify-content: flex-end; /* Aligns content to the left in RTL */
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background-color: transparent;
+    color: #333;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 1em;
+    font-weight: normal;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    box-shadow: none;
+    float: none;
+    margin-left: 0;
+    margin-inline-start: 0;
+    flex-direction: row; /* Ensure arrow is to the left of the text in RTL */
+}
+
+.back-button:hover {
+    background-color: transparent;
+    box-shadow: none;
+
+}
+
+.back-button img {
+    width: 20px;
+    height: 20px;
+    filter: none; /* Ensure the original color of the image is shown */
+}
+
+/* Toast Notification Styles */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    background-color: #333;
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(-20px);
+    animation: slideIn 0.5s forwards, fadeOut 0.5s forwards 2.5s;
+}
+
+.toast.success {
+    background-color: #28a745;
+}
+
+.toast.error {
+    background-color: #dc3545;
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+} 
+input,
+select {
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+::placeholder {
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px;
+  color: #aaa;
+}
+.language img {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    /* background-color: yellow; */
+}
+/* في ملف الـ CSS المشترك أو داخل <style> */
+.card-icons button {
+  border: none;        /* يشيل الحدود */
+  background: none;    /* يشيل الخلفية الافتراضية */
+  padding: 0;          /* لو حابب تصغر المساحة */
+  cursor: pointer;     /* لتغيير المؤشر على أنها زر */
+}
+
+/* وإذا تبغى تشيل خطوط الـ focus لما يضغط الكيبورد على الزر */
+.card-icons button:focus {
+  outline: none;
+}
+
+/* شيل الحدود والخلفية عن أزرار التعديل والحذف */
+.btn-edit,
+.btn-delete {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* لو ما تبي تظهر الـ outline لما يركّز الكيبورد عليهم */
+.btn-edit:focus,
+.btn-delete:focus {
+  outline: none;
+}
+/* —————— Icon positioning —————— */
+[dir="rtl"] .input-icon-wrapper .icon {
+  left: 10px;
+  right: auto;
+}
+
+[dir="ltr"] .input-icon-wrapper .icon {
+  right: 10px;
+  left: auto;
+}
+
+/* —————— Input padding & text-align —————— */
+[dir="rtl"] .input-icon-wrapper input,
+[dir="rtl"] .input-icon-wrapper select {
+  padding: 10px 10px 10px 35px;
+  text-align: right;
+}
+
+[dir="ltr"] .input-icon-wrapper input,
+[dir="ltr"] .input-icon-wrapper select {
+  padding: 10px 35px 10px 10px;
+  text-align: left;
+}
+
+/* —————— Placeholder direction & alignment —————— */
+[dir="rtl"] .input-icon-wrapper input::placeholder,
+[dir="rtl"] .input-icon-wrapper select:invalid {
+  text-align: right;
+  direction: rtl;
+}
+
+[dir="ltr"] .input-icon-wrapper input::placeholder,
+[dir="ltr"] .input-icon-wrapper select:invalid {
+  text-align: left;
+  direction: ltr;
+}
+
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
+
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
+:lang(ar) .back-btn,
+[dir="rtl"] .back-btn {
+  right: 50px;
+  left: auto;
+  flex-direction: row;
+}
+
+:lang(en) .back-btn,
+[dir="ltr"] .back-btn {
+  left: 50px;
+  right: auto;
+  flex-direction: row-reverse;
+}
+
+/* يقلب أيقونات FA داخل back-btn في الوضع LTR */
+[dir="ltr"] .back-btn .fa-arrow-right {
+  transform: scaleX(-1);
+}
+
+/* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
+[dir="ltr"] .back-btn .fa-arrow-left {
+  transform: none;
+}
+.page-title {
+  text-align: center !important;
+}

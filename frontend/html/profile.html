@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="profile-title">ملفي الشخصي - نظام إدارة الجودة والسلامة</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+      <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    crossorigin="anonymous"
+  />
+
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/profile.css">
+    <script src="../js/profile.js" defer></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+            <div class="hospital-logo">
+                <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+            </div>
+        </div>
+    </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>        <span data-translate="back">رجوع</span>
+  </button>
+  <button class="home-btn" onclick="window.location.href='index.html'">
+    <i class="fas fa-home"></i>
+    <span data-translate="home">الرئيسية</span>
+  </button>
+</div>
+    <main>
+        <div class="profile-container">
+            <h2 data-translate="profile-title">ملفي الشخصي</h2>
+            <div class="profile-info">
+                <p><strong data-translate="username-label">اسم المستخدم:</strong> <span id="profile-username"></span></p>
+                <p><strong data-translate="email-label">البريد الإلكتروني:</strong> <span id="profile-email"></span></p>
+                <p><strong data-translate="employee-number-label">الرقم الوظيفي:</strong> <span id="profile-employee-number"></span></p>
+<p><strong data-translate="department-label">القسم:</strong> <span id="profile-department"></span></p>
+
+            </div>
+            <div class="profile-actions">
+                <a href="forgot-password.html" class="btn-secondary" data-translate="reset-password">إعادة تعيين كلمة المرور</a>
+                <button id="logout-button" class="btn-primary" data-translate="logout">تسجيل الخروج</button>
+            </div>
+        </div>
+    </main>
+            <script src="/frontend/js/language.js"></script>
+                <script src="/frontend/js/check-status.js"></script>
+
+
+</body>
+</html> 

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="login">تسجيل الدخول- نظام إدارة الجودة والسلامة</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/login.css">
+    <style>
+        .language-switcher {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        [dir="ltr"] .language-switcher {
+            right: auto;
+            left: 20px;
+        }
+        .language-switcher > a {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            color: #333;
+            cursor: pointer;
+        }
+        .language-switcher .dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 5px 0;
+            min-width: 100px;
+            margin-top: 5px;
+        }
+        [dir="ltr"] .language-switcher .dropdown {
+            right: auto;
+            left: 0;
+        }
+        .language-switcher .dropdown.show {
+            display: block;
+        }
+        .language-switcher .dropdown a {
+            display: block;
+            padding: 8px 15px;
+            text-decoration: none;
+            color: #333;
+        }
+        .language-switcher .dropdown a:hover {
+            background: #f5f5f5;
+        }
+        .ltr-placeholder::placeholder { text-align: left !important; direction: ltr !important; }
+        .rtl-placeholder::placeholder { text-align: right !important; direction: rtl !important; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+            <div class="hospital-logo">
+                <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+            </div>
+        </div>
+    </header>
+
+    <div class="language-switcher">
+        <a href="#"><img src="../images/langauage.svg" alt=""> <span data-translate="language">عربي</span></a>
+        <div class="dropdown">
+            <a href="#">عربي</a>
+            <a href="#">English</a>
+        </div>
+    </div>
+
+    <main>
+        <div class="auth-container">
+            <form class="auth-form" id="loginForm">
+                <h2 data-translate="login">تسجيل الدخول</h2>
+                <p data-translate="login-description">يرجى إدخال بيانات الدخول الخاصة بك</p>
+
+                <div class="form-group">
+                    <label for="identifier" data-translate="identifier-label">اسم المستخدم / البريد / الرقم الوظيفي</label>
+                    <div class="input-icon-wrapper">
+                        <input
+                            type="text"
+                            id="identifier"
+                            name="identifier"
+                            data-placeholder="enter-username"
+                            placeholder="أدخل اسم المستخدم / البريد / الرقم الوظيفي"
+                            required
+                        >
+                        <img src="../images/person.png" class="icon">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password" data-translate="password">كلمة المرور</label>
+                    <div class="input-icon-wrapper">
+                        <input
+                            type="password"
+                            id="login-password"
+                            name="password"
+                            data-placeholder="enter-password"
+                            placeholder="أدخل كلمة المرور"
+                            required
+                        >
+                        <img src="../images/password.png" class="icon">
+                    </div>
+                    <div class="auth-links forgot-password-link">
+                        <a href="forgot-password.html" data-translate="forgot-password">
+                            نسيت كلمة المرور؟
+                        </a>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" data-translate="login">
+                    تسجيل الدخول
+                </button>
+
+                <div class="auth-links">
+                    <span data-translate="no-account">ليس لديك حساب؟</span>
+                    <a href="register.html" data-translate="register">سجل الآن</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="../js/login.js" defer></script>
+    <script src="../js/language.js"></script>
+</body>
+</html> 

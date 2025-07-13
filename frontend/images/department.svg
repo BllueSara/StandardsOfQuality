@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32" viewBox="0 0 32 32">
+	<defs>
+		<clipPath id="clipPath8852857158">
+			<path d="M0 0L32 0L32 32L0 32L0 0Z" fill-rule="nonzero" transform="matrix(1 0 0 1 0 0)"/>
+		</clipPath>
+	</defs>
+	<g clip-path="url(#clipPath8852857158)">
+		<defs>
+			<clipPath id="clipPath8626833519">
+				<path d="M0 0L32 0L32 32L0 32L0 0Z" fill-rule="nonzero" transform="matrix(1 0 0 1 -0 -0)"/>
+			</clipPath>
+		</defs>
+		<g clip-path="url(#clipPath8626833519)">
+			<path d="M2.66667 23.7151L2.66667 5.98228C2.66667 5.4216 3.01743 4.92083 3.54435 4.72923L16.4388 0.0403206C16.7848 -0.0855061 17.1673 0.0929872 17.2932 0.439014C17.3197 0.512041 17.3333 0.589147 17.3333 0.666841L17.3333 7.2706L25.7549 10.0778C26.2995 10.2593 26.6667 10.7688 26.6667 11.3427L26.6667 23.7151L29.3333 23.7151L29.3333 26.3818L0 26.3818L0 23.7151L2.66667 23.7151ZM5.33333 23.7151L14.6667 23.7151L14.6667 3.52224L5.33333 6.91619L5.33333 23.7151ZM24 23.7151L24 12.3038L17.3333 10.0815L17.3333 23.7151L24 23.7151Z" fill-rule="nonzero" transform="matrix(1 0 0 1 1.33333 1.61849)" fill="rgb(74, 108, 247)"/>
+		</g>
+	</g>
+</svg>

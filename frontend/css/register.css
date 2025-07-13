@@ -1,0 +1,288 @@
+body {
+    font-family: 'Tajawal', Arial, sans-serif;
+    direction: rtl;
+    margin: 0;
+    background-color: #fff;
+}
+/* Main content adjustment for fixed header */
+main {
+    margin-top: 80px; /* Add margin to the top of main content equal to header height */
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* Authentication container styles */
+.auth-container {
+    background-color: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+    margin-top: 100px;
+    margin-bottom: 20px;
+}
+
+.auth-form h2 {
+    margin-top: 0;
+    color: #333;
+    font-size: 1.8em;
+}
+
+.auth-form p {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 1em;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: right;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+    font-size: 0.9em;
+    text-align: right;
+}
+
+/* Language-specific label alignment */
+[dir="ltr"] .form-group label {
+    text-align: left;
+}
+
+[dir="rtl"] .form-group label {
+    text-align: right;
+}
+
+.input-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon-wrapper input,
+.input-icon-wrapper select {
+    width: 100%;
+    padding: 10px 10px 10px 35px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: none;
+    text-align: right;
+}
+
+.input-icon-wrapper .icon {
+    position: absolute;
+    left: 10px; /* Position icon on the left in RTL */
+    color: #888;
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+}
+
+/* Style for the new select arrow icon */
+.input-icon-wrapper .select-arrow-icon {
+    pointer-events: none;
+    left: 10px; /* Position arrow on the right in RTL */
+    right: auto;
+    width: 20px;
+    height: 20px;
+}
+
+/* Adjust padding for select to accommodate the right arrow */
+.input-icon-wrapper select {
+    padding: 10px 35px 10px 10px; /* Adjust padding for select with arrow on the right */
+}
+
+/* Adjust placeholder text direction if needed */
+.input-icon-wrapper input::placeholder {
+    text-align: right;
+}
+
+/* Style for the select dropdown text color */
+.input-icon-wrapper select:invalid {
+    color: #666;
+    text-align: right;
+}
+
+.input-icon-wrapper select option {
+    color: #333;
+}
+
+.auth-links {
+    margin-top: 15px;
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.auth-links.forgot-password-link {
+    margin-top: 5px;
+    text-align: left;
+}
+
+.auth-links a {
+    color: #1D4ED8;
+    text-decoration: none;
+    margin: 0 5px;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+.btn-primary {
+    background-color: #1D4ED8;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    margin-top: 25px;
+    width: 100%;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #1a3f9a;
+}
+
+/* Basic responsiveness for auth forms */
+@media (max-width: 600px) {
+    .auth-container {
+        padding: 20px;
+    }
+
+    .auth-form h2 {
+        font-size: 1.5em;
+    }
+
+    .btn-primary {
+        font-size: 1em;
+        padding: 10px;
+    }
+}
+
+/* Modal specific styles for register page */
+#addDepartmentModal {
+    display: none; /* Ensure the modal is hidden by default */
+}
+
+.modal-overlay {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 9999; /* Sit on top, very high value */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.7); /* Black w/ more opacity */
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+}
+
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto; /* Center the modal */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    text-align: right;
+}
+
+.modal-content h3 {
+    text-align: right; /* Align title to the right */
+    margin-top: 0;
+    margin-bottom: 15px; /* Space below title */
+    color: #333;
+}
+
+.modal-content hr {
+    border: none;
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 15px 0;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-body .form-group {
+    margin-bottom: 15px; /* Space between form groups */
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 8px; /* Space below label */
+    font-weight: bold;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.modal-body input[type="text"],
+.modal-body input[type="file"] {
+    width: 100%;
+    padding: 10px; /* Adjust padding */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box; /* Include padding and border in element's total width */
+    text-align: right; /* Align text to the right */
+}
+
+.modal-body input[type="file"] {
+     padding-top: 8px; /* Adjust padding for file input */
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 10px; /* Space between buttons */
+}
+
+.modal-buttons .btn-primary,
+.modal-buttons .btn-secondary {
+    padding: 10px 20px; /* Button padding */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.modal-buttons .btn-primary {
+    background-color: #1D4ED8;
+    color: white;
+}
+
+.modal-buttons .btn-primary:hover {
+    background-color: #1a3f9a;
+}
+
+.modal-buttons .btn-secondary {
+    background-color: #e0e0e0; /* Grey background for secondary */
+    color: #333; /* Dark text for secondary */
+}
+
+.modal-buttons .btn-secondary:hover {
+    background-color: #d5d5d5;
+}
+
+/* Ensure the modal overlay styles are consistent with departments.css if needed */
+/* The full modal overlay styles should ideally be in departments.css */ 

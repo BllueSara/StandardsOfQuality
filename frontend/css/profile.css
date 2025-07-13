@@ -1,0 +1,209 @@
+/* ===== استيراد خط Tajawal ===== */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+
+/* ===== إعادة تهيئة القيم الافتراضية ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Tajawal', sans-serif;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100vh; /* استخدم min-height لتجنب مشاكل المحتوى القصير */
+  background-color: #fff; /* خلفية رمادية فاتحة */
+  color: #2d2d2d;
+}
+
+body {
+  direction: rtl; /* اتجاه من اليمين إلى اليسار */
+  line-height: 1.6;
+}
+
+/* Main content adjustment for fixed header */
+main {
+    margin-top: 100px; /* Add margin to the top of main content equal to header height */
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align content to the top */
+    padding: 20px;
+}
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 90px;
+}
+
+/* زرّ الرجوع على أقصى يسار بلا حواف خارجية */
+.back-btn {
+  position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;      /* حجم يناسب النص */
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+/* Profile container styles */
+.profile-container {
+    background-color: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px; /* عرض أقصى لبطاقة الملف الشخصي */
+    text-align: right;
+    direction: rtl;
+}
+
+.profile-container h2 {
+    margin-top: 0;
+    color: #333;
+    font-size: 2em;
+    margin-bottom: 25px;
+}
+
+.profile-info p {
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    color: #555;
+    text-align: right; /* محاذاة النص لليمين */
+    direction: rtl;
+}
+
+.profile-info strong {
+    color: #333;
+    margin-left: 8px; /* مسافة بين العنوان والقيمة */
+}
+
+.profile-info span {
+    font-weight: normal;
+}
+
+.profile-actions {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column; /* الأزرار عمودياً */
+    gap: 15px;
+    direction: rtl;
+    text-align: right;
+}
+
+.btn-primary,
+.btn-secondary {
+    display: block;
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    text-decoration: none; /* لإزالة التسطير من الروابط */
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: #1D4ED8;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #1a3f9a;
+}
+
+.btn-secondary {
+    background-color: #e0e0e0;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+.btn-secondary:hover {
+    background-color: #d0d0d0;
+}
+
+/* Basic responsiveness */
+@media (max-width: 600px) {
+    main {
+        padding: 15px;
+    }
+
+    .profile-container {
+        padding: 25px;
+    }
+
+    .profile-container h2 {
+        font-size: 1.8em;
+    }
+
+    .profile-info p {
+        font-size: 1em;
+    }
+}
+
+/* Profile page language support */
+.profile-container[dir="ltr"] {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.profile-info p[dir="ltr"] {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.profile-actions[dir="ltr"] {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* Apply language-specific alignment */
+body[dir="ltr"] .profile-container,
+body[dir="ltr"] .profile-info p,
+body[dir="ltr"] .profile-actions {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+body[dir="rtl"] .profile-container,
+body[dir="rtl"] .profile-info p,
+body[dir="rtl"] .profile-actions {
+  direction: rtl !important;
+  text-align: right !important;
+} 

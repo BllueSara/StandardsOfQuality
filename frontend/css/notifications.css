@@ -1,0 +1,502 @@
+/* General styles for the notifications page */
+body {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff; 
+  color: #2d2d2d;
+}
+
+/* ===== الهيدر العلوي ===== */
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 10px;
+}
+
+/* زرّ الرجوع على أقصى يسار بلا حواف خارجية */
+.back-btn {
+  position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;      /* حجم يناسب النص */
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+.main-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: #2d2d2d;
+}
+
+.header-logo img {
+  height: 32px;
+}
+.page-controls {
+    max-width: 1200px; /* Align with the main container */
+    margin: 20px auto 20px auto; /* Center it and add vertical margins */
+    padding-inline-start: 0px;
+    padding-inline-end: 20px; /* Push button 20px from left edge (in RTL) */
+    display: flex;
+    justify-content: flex-end; /* Aligns content to the left in RTL */
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px; /* Original smaller gap */
+    padding: 6px 12px; /* Original smaller padding */
+    background: none; /* No background color */
+    border: none; /* No border */
+    color: var(--light-text-color); /* Original text color */
+    font-size: 0.95em; /* Original font size */
+    font-weight: 500; /* Original font weight */
+    text-decoration: none; /* No text decoration */
+    cursor: pointer;
+    transition: background 0.2s; /* Original transition */
+    border-radius: 8px; /* Original border radius */
+    box-shadow: none; /* Remove shadow */
+    margin-inline-start: 0; /* Remove margin-inline-start */
+}
+
+.back-button:hover {
+    background-color: var(--secondary-color); /* Original hover background */
+    text-decoration: none;
+    box-shadow: none; /* No shadow on hover */
+}
+
+.back-button img {
+    width: 16px; /* Original smaller icon size */
+    height: 16px; /* Original smaller icon size */
+    filter: none; /* Remove filter */
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0px auto; /* Adjust margin as page-controls is separate */
+    padding: 20px;
+    background-color: var(--white-color);
+    border-radius: var(--border-radius-medium);
+    box-shadow: var(--shadow-light);
+}
+
+/* Notifications Header Section */
+.notifications-header {
+    display: flex;
+    flex-direction: column; /* Stack title and filters */
+    align-items: flex-end; /* Align all to the right (RTL) */
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.notifications-header .page-title {
+    font-size: 1.8em;
+    color: var(--text-color);
+    font-weight: 700;
+    margin: 0 0 20px 0; /* Space below title */
+    order: 1; /* Keep title at the top */
+}
+
+.notifications-header .filters {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    order: 2; /* Place filters below title */
+    justify-content: flex-end; /* Align filters to the right (RTL) */
+    width: 100%; /* Take full width to align content */
+}
+
+.notifications-header .filters-container {
+    display: flex;
+    flex-direction: column; /* Stack top and bottom filters */
+    gap: 15px; /* Space between filter rows */
+    width: 100%; /* Take full width */
+}
+
+.notifications-header .top-filters {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    justify-content: flex-end; /* Align to the right in RTL */
+}
+
+.notifications-header .bottom-filters {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Align to the right in RTL */
+}
+
+.mark-all-read {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.mark-all-read:hover {
+    text-decoration: underline;
+}
+
+/* New Search Input Styling */
+.input-group.search-input {
+    flex-grow: 1;
+    max-width: 250px; /* Adjust as needed for width */
+}
+
+.input-group.search-input input {
+    padding: 10px 15px; /* Standard padding */
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-small);
+    font-size: 0.9em;
+    color: var(--text-color);
+    background-color: var(--white-color);
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('/frontend/images/seach.svg'); /* Path to your search icon */
+    background-repeat: no-repeat;
+    background-position: right 10px center; /* Position search icon on the right */
+    padding-right: 35px; /* Space for icon */
+    padding-left: 12px; /* Standard padding on the left */
+}
+
+/* Select Dropdown */
+.input-group select {
+    padding: 10px 15px; /* Adjusted padding for better look */
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-small);
+    font-size: 0.9em; /* Adjusted font size */
+    color: var(--text-color);
+    background-color: var(--white-color);
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010H7Z%22%20fill%3D%22%23666666%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 10px center; /* Position arrow on the right */
+    padding-right: 35px; /* Adjust space for the arrow */
+    padding-left: 12px;
+    width: 250px; /* Explicit width for select - increased */
+}
+
+/* Toggle Switch */
+.toggle-switch-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9em;
+    color: var(--light-text-color);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 20px; /* Make it rounded */
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px; /* Position for RTL */
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%; /* Make it circular */
+}
+
+input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--primary-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(-20px); /* Move to the left for RTL */
+}
+
+/* Notifications List */
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.notification-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background-color: var(--white-color);
+    border-radius: var(--border-radius-small);
+    padding: 15px 20px;
+    box-shadow: var(--shadow-medium);
+    transition: transform 0.2s;
+    position: relative;
+}
+
+.notification-card:hover {
+    transform: translateY(-3px);
+}
+
+.notification-icon {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notification-icon img {
+    width: 25px;
+    height: 25px;
+}
+
+/* Background colors for icons */
+.notification-icon.bg-blue { background-color: #e0f2f7; }
+.notification-icon.bg-green { background-color: #e8f5e9; }
+.notification-icon.bg-purple { background-color: #ede7f6; }
+.notification-icon.bg-orange { background-color: #fff3e0; }
+
+.notification-content {
+    flex-grow: 1;
+}
+
+.notification-user {
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.notification-title {
+    font-weight: 500;
+    color: var(--light-text-color);
+    margin-bottom: 5px;
+    font-size: 0.95em;
+}
+
+.notification-description {
+    font-size: 0.85em;
+    color: #888;
+}
+
+.notification-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    min-width: 80px; /* Ensure enough space for time and dot */
+}
+
+.notification-time {
+    font-size: 0.8em;
+    color: #999;
+    white-space: nowrap;
+}
+
+.read-indicator {
+    width: 8px;
+    height: 8px;
+    background-color: var(--primary-color); /* Blue dot for unread */
+    border-radius: 50%;
+    position: absolute;
+    top: 15px;
+    left: 15px; /* Position on the left for RTL */
+    right: auto; /* Remove right property */
+}
+
+.notification-card.read .read-indicator {
+    background-color: transparent; /* Hidden when read */
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .notifications-header {
+        flex-direction: column;
+        align-items: flex-end; /* Align title and filters to the right on small screens */
+        gap: 15px;
+    }
+
+    .notifications-header .page-title {
+        text-align: right;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    .notifications-header .filters {
+        flex-direction: column;
+        align-items: flex-end; /* Align filters to the right on small screens */
+        width: 100%;
+    }
+
+    .input-group.search-input {
+        max-width: 100%;
+    }
+
+    .input-group select {
+        width: 100%;
+    }
+
+    .read-indicator {
+        top: auto;
+        bottom: 15px;
+        left: 15px;
+        right: auto;
+    }
+} 
+.bg-teal { background-color: #20c997; }
+.bg-yellow { background-color: #ffc107; }
+.bg-red { background-color: #dc3545; }
+.bg-gray { background-color: #6c757d; }
+.notification-card {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.delete-btn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 8px;
+}
+
+.delete-btn:hover {
+  color: #c00;
+}
+
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
+
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
+:lang(ar) .back-btn,
+[dir="rtl"] .back-btn {
+  right: 50px;
+  left: auto;
+  flex-direction: row;
+}
+
+:lang(en) .back-btn,
+[dir="ltr"] .back-btn {
+  left: 50px;
+  right: auto;
+  flex-direction: row;
+}
+
+/* يقلب أيقونات FA داخل back-btn في الوضع LTR */
+[dir="ltr"] .back-btn .fa-arrow-right {
+  transform: scaleX(-1);
+}
+
+/* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
+[dir="ltr"] .back-btn .fa-arrow-left {
+  transform: none;
+}
+.page-title {
+  text-align: center !important;
+}
+.notifications-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* هذا يوسّط العناصر أفقياً */
+  gap: 16px; /* مسافة بين العنوان والفلاتر */
+}
+
+.page-title {
+  text-align: center;
+}

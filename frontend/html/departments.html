@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحة الأقسام</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/departments.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <div class="hospital-logo">
+                <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+            </div>
+            <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+            <!-- Navigation is not in departments page header based on the image -->
+           
+        </div>
+    </header>
+        <div class="header-actions">
+    <button class="back-btn" id="backBtn" onclick="window.location.href='index.html'" style="right: 50px; left: auto; display: flex; align-items: center; gap: 4px;">
+      <i class="fas fa-arrow-right" id="backIcon"></i>
+        <span id="backBtnText" data-translate="back">رجوع</span>
+    </button>
+  <button class="home-btn" onclick="window.location.href='index.html'">
+    <i class="fas fa-home"></i>
+    <span data-translate="home">الرئيسية</span>
+  </button>
+</div>
+    <main>
+
+        <div class="container">
+<!-- HTML -->
+
+
+
+            <h1 data-translate="department-list">صفحة الأقسام</h1>
+
+
+            <div class="controls-bar">
+                <div class="search-bar" id="searchBarWrapper" style="display: flex; align-items: center; position: relative;">
+                    <input type="text" placeholder="ابحث عن قسم" data-placeholder="search-department" id="searchInput" style="width: 100%;">
+                    <img src="../images/serach.svg" alt="بحث" class="search-icon" id="searchIcon" style="position: absolute; right: 10px; left: auto; top: 50%; transform: translateY(-50%);">
+                </div>
+                <button class="btn-primary" id="addDepartmentButton" data-translate="add-department">إضافة جديد</button>
+            </div>
+
+            <div class="cards-grid">
+                <!-- Department cards will go here -->
+                <!-- Example Card (from home page, adjust as needed for departments) -->
+                 <!-- هذه البطاقات سيتم إنشاؤها ديناميكياً بواسطة JavaScript -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Add New Department Modal -->
+<div id="addDepartmentModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 data-translate="add-department">إضافة قسم</h3>
+    <hr>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="departmentNameAr" data-translate="department-name-ar">اسم القسم (عربي)</label>
+        <input type="text" id="departmentNameAr"data-placeholder="enter-ar-name" placeholder="أدخل الاسم بالعربية">
+      </div>
+      <div class="form-group">
+        <label for="departmentNameEn" data-translate="department-name-en">Department Name (English)</label>
+        <input type="text" id="departmentNameEn" data-placeholder="enter-en-name" placeholder="Enter name in English">
+      </div>
+      <div class="form-group">
+        <label for="departmentImage" data-translate="department-image">مسار الصورة</label>
+        <input type="file" id="departmentImage" accept="image/*">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="saveAddDepartment" data-translate="save">حفظ</button>
+      <button class="btn-secondary" id="cancelAddDepartment" data-translate="cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+
+    <!-- Edit Department Modal -->
+<div id="editDepartmentModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 data-translate="edit-department">تعديل القسم</h3>
+    <hr>
+    <div class="modal-body">
+      <input type="hidden" id="editDepartmentId">
+      <div class="form-group">
+        <label for="editDepartmentNameAr" data-translate="department-name-ar">اسم القسم (عربي)</label>
+        <input type="text" id="editDepartmentNameAr" placeholder="أدخل الاسم بالعربية">
+      </div>
+      <div class="form-group">
+        <label for="editDepartmentNameEn" data-translate="department-name-en">Department Name (English)</label>
+        <input type="text" id="editDepartmentNameEn" placeholder="Enter name in English">
+      </div>
+      <div class="form-group">
+        <label for="editDepartmentImage" data-translate="department-image">مسار الصورة</label>
+        <input type="file" id="editDepartmentImage" accept="image/*">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="saveEditDepartment" data-translate="update">تحديث</button>
+      <button class="btn-secondary" id="cancelEditDepartment" data-translate="cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+
+    <!-- Delete Department Modal -->
+    <div id="deleteDepartmentModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3><span data-translate="delete-department-title">تأكيد حذف القسم</span> <img src="../images/warning.svg" alt="تحذير" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 10px;"></h3>
+            <hr>
+            <div class="modal-body" style="text-align: center;">
+                <p data-translate="delete-department-confirm">أنت متأكد من حذف هذا القسم؟</p>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-danger" id="confirmDeleteDepartment" data-translate="delete">حذف نهائي</button>
+                <button class="btn-secondary" id="cancelDeleteDepartment" data-translate="cancel">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+
+<script src="../js/departments.js" defer></script>
+<script src="../js/language.js"></script>
+    <script src="/frontend/js/check-status.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof setLanguage === 'function') {
+      const lang = localStorage.getItem('language') || 'ar';
+      setLanguage(lang);
+    }
+    window.addEventListener('storage', function(e) {
+      if (e.key === 'language' && typeof setLanguage === 'function') {
+        setLanguage(localStorage.getItem('language') || 'ar');
+      }
+    });
+
+    // Only swap the arrow direction for the back button, not the order
+    function updateBackBtnArrow(lang) {
+      const backIcon = document.getElementById('backIcon');
+      if (backIcon) {
+        if (lang === 'ar') {
+          backIcon.classList.remove('fa-arrow-left');
+          backIcon.classList.add('fa-arrow-right');
+        } else {
+          backIcon.classList.remove('fa-arrow-right');
+          backIcon.classList.add('fa-arrow-left');
+        }
+      }
+    }
+    // Call on load and whenever language changes
+    const lang = localStorage.getItem('language') || 'ar';
+    updateBackBtnArrow(lang);
+    window.addEventListener('storage', function(e) {
+      if (e.key === 'language') {
+        updateBackBtnArrow(localStorage.getItem('language') || 'ar');
+      }
+    });
+    // Also update after setLanguage (in case of manual switch)
+    if (typeof setLanguage === 'function') {
+      const origSetLanguage = setLanguage;
+      window.setLanguage = function(lang) {
+        origSetLanguage(lang);
+        updateBackBtnArrow(lang);
+      };
+    }
+  });
+</script>
+</html>

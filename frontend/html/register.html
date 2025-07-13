@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="register">إنشاء حساب جديد</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/register.css">
+    <style>
+        .language-switcher {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        [dir="ltr"] .language-switcher {
+            right: auto;
+            left: 20px;
+        }
+        .language-switcher a {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            color: #333;
+        }
+        .language-switcher .dropdown {
+            display: none;
+            position: absolute;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 5px 0;
+            min-width: 100px;
+        }
+        .language-switcher .dropdown.show {
+            display: block;
+        }
+        .language-switcher .dropdown a {
+            padding: 5px 10px;
+        }
+        .language-switcher .dropdown a:hover {
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+            <div class="hospital-logo">
+                <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+            </div>
+        </div>
+    </header>
+
+    <div class="language-switcher">
+        <a href="#"><img src="../images/langauage.svg" alt=""> <span data-translate="language">عربي</span></a>
+        <ul class="dropdown">
+            <li><a href="#">عربي</a></li>
+            <li><a href="#">English</a></li>
+        </ul>
+    </div>
+
+    <main>
+        <div class="auth-container">
+            <form class="auth-form" id="registerForm">
+                <h2 data-translate="register">إنشاء حساب جديد</h2>
+                <p data-translate="register-description">أدخل بياناتك لإنشاء حساب جديد</p>
+
+                <div class="form-group">
+                    <label for="reg-username" data-translate="username">اسم المستخدم</label>
+                    <div class="input-icon-wrapper">
+                        <input type="text" id="reg-username" name="username" data-placeholder="enter-username-only" placeholder="أدخل اسم المستخدم" required>
+                        <img src="../images/person.png" alt="أيقونة شخص" class="icon">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-email" data-translate="email">البريد الإلكتروني الوزاري</label>
+                    <div class="input-icon-wrapper">
+                        <input type="email" id="reg-email" name="email" data-placeholder="enter-email" placeholder="name@moh.gov.sa" required>
+                        <img src="../images/email.png" alt="أيقونة بريد إلكتروني" class="icon">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-employee" data-translate="employee-number">الرقم الوظيفي</label>
+                    <div class="input-icon-wrapper">
+                        <input
+                            type="text"
+                            id="reg-employee"
+                            name="employee_number"
+                            data-placeholder="enter-employee-number"
+                            placeholder="أدخل الرقم الوظيفي"
+                            required
+                        >
+                        <img src="../images/id-card.png" class="icon">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-password" data-translate="password">كلمة المرور</label>
+                    <div class="input-icon-wrapper">
+                        <input type="password" id="reg-password" name="password" data-placeholder="enter-password" placeholder="أدخل كلمة المرور" required>
+                        <img src="../images/password.png" alt="أيقونة قفل" class="icon">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-confirm-password" data-translate="confirm-password">تأكيد كلمة المرور</label>
+                    <div class="input-icon-wrapper">
+                        <input type="password" id="reg-confirm-password" name="confirm_password" data-placeholder="confirm-password-placeholder" placeholder="تأكيد كلمة المرور" required>
+                        <img src="../images/password.png" alt="أيقونة قفل" class="icon">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-department" data-translate="department">القسم</label>
+                    <div class="input-icon-wrapper">
+                        <select id="reg-department" name="department" required>
+                            <option value="" data-translate="select-department">اختر القسم</option>
+                            <option value="__ADD_NEW_DEPARTMENT__" data-translate="add-new-department">إضافة قسم جديد</option>
+                        </select>
+                        <img src="../images/arrwo.png" alt="أيقونة سهم" class="icon select-arrow-icon">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" data-translate="register">إنشاء حساب</button>
+
+                <div class="auth-links">
+                    <span data-translate="have-account">لديك حساب بالفعل؟</span> <a href="login.html" data-translate="login">تسجيل الدخول</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Add New Department Modal -->
+    <div id="addDepartmentModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 data-translate="add-department">إضافة قسم</h3>
+            <hr>
+            <div class="modal-body">
+<div class="form-group">
+  <label for="departmentNameAr" data-translate="department-name-ar">اسم القسم (عربي)</label>
+  <input type="text" id="departmentNameAr" placeholder="أدخل اسم القسم بالعربي">
+</div>
+<div class="form-group">
+  <label for="departmentNameEn" data-translate="department-name-en">اسم القسم (إنجليزي)</label>
+  <input type="text" id="departmentNameEn" placeholder="Enter department name in English">
+</div>
+
+                <div class="form-group">
+                    <label for="departmentImage" data-translate="department-image">مسار الصورة</label>
+                    <input type="file" id="departmentImage" accept="image/*">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-primary" id="saveAddDepartment" data-translate="save">حفظ</button>
+                <button class="btn-secondary" id="cancelAddDepartment" data-translate="cancel">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/register.js"></script>
+    <script src="../js/language.js"></script>
+</body>
+</html> 

@@ -1,0 +1,968 @@
+body {
+    background-color: #ffffff;
+    margin: 0;
+    direction: rtl;
+    text-align: right;
+}
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
+
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
+select:lang(ar) {
+  direction: rtl;
+  text-align: right;
+}
+
+select:lang(en) {
+  direction: ltr;
+  text-align: left;
+}
+
+main {
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 20px auto; /* Center the main content */
+}
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 10px;
+}
+
+/* زرّ الرجوع على أقصى يسار بلا حواف خارجية */
+.back-btn {
+  position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;      /* حجم يناسب النص */
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+.main-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 15px 30px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #2d2d2d;
+}
+
+.header-logo img {
+  height: 30px;
+}
+.permissions-container {
+    display: flex;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+/* Users Sidebar */
+.users-sidebar {
+    width: 300px;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 12px 0 0 12px;
+    border-left: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.search-bar {
+    position: relative;
+    margin-bottom: 15px;
+    width: 250px; /* Reduced width for search input */
+}
+
+.search-bar input {
+    width: 80%;
+    padding: 8px 12px 8px 35px; /* Adjust padding for icon on left, reduced vertical padding */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9em; /* Smaller font size */
+    color: #333;
+}
+
+.search-bar img {
+    position: absolute;
+    top: 50%;
+   left: 10px;
+    transform: translateY(-60%);
+    width: 18px;
+    height: 18px;
+}
+
+.add-user-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.add-user-btn:hover {
+    background-color: #0056b3;
+}
+
+.add-user-btn img {
+    width: 18px;
+    height: 18px;
+    filter: brightness(0) invert(1); /* For white icon */
+}
+
+.user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.user-item:hover {
+    background-color: #f0f0f0;
+}
+
+.user-item.active {
+    background-color: #e6f2ff; /* Light blue for active user */
+}
+
+.user-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    margin-left: 15px; /* Space between avatar and info in RTL */
+    object-fit: cover;
+}
+
+.user-info {
+    flex-grow: 1;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.user-email {
+    font-size: 0.85em;
+    color: #666;
+}
+
+.user-status {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ccc; /* Grey for inactive */
+}
+
+.user-status.active {
+    background-color: #28a745; /* Green for active */
+}
+
+.user-status.inactive {
+    background-color: #dc3545;
+}
+
+/* Permissions Content */
+.permissions-content {
+    flex-grow: 1;
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 0 12px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.user-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+.user-profile-header h2 {
+    margin-top: 20px;
+    font-size: 2em;
+    color: #333;
+}
+
+.user-profile-header .status {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 500;
+    background-color: #e0ffe0; /* Light green */
+    color: #28a745; /* Green */
+}
+
+.action-buttons-top {
+    display: flex;
+    gap: 10px;
+    margin-right: auto; /* Push buttons to the left in RTL */
+}
+
+.permissions-content h3 {
+    font-size: 1.5em;
+    color: #333;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.permission-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.permission-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fdfdfd;
+    padding: 15px 20px;
+    border-radius: 10px;
+    border: 1px solid #eee;
+    transition: border-color 0.2s;
+}
+
+.permission-item:hover {
+    border-color: #007bff;
+}
+
+.permission-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.text-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.permission-title {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.permission-description {
+    font-size: 0.85em;
+    color: #777;
+}
+
+/* Toggle Switch Styles */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+    margin-left: 10px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: 0.4s;
+}
+
+input:checked + .slider {
+    background-color: #007bff;
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px #007bff;
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px); /* Moves to the right in LTR, so to the left in RTL */
+}
+
+/* Rounded sliders */
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Bottom Action Buttons */
+.bottom-action-buttons {
+    display: flex;
+    justify-content: flex-start; /* Align to the right in RTL */
+    gap: 10px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    margin-top: auto; /* Push to the bottom */
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: #999;
+  opacity: 1;
+}
+
+.btn-delete img {
+    width: 18px;
+    height: 18px;
+    filter: brightness(0) invert(1); /* For white icon */
+}
+
+/* General button styles for btn-primary and btn-secondary are in shared.css */
+/* Ensure the correct image filters for these buttons if they have icons */
+.btn-primary img,
+.btn-secondary img {
+    filter: brightness(0) invert(1); /* Example for white icons on colored buttons */
+}
+
+/* Adjust filter for specific icons if needed */
+.btn-primary img[alt="تغيير الدور"], /* Assuming users.svg */
+.btn-primary img[alt="تصدير إلى Excel"], /* Assuming excel.svg */
+.btn-primary img[alt="تصدير إلى PDF"] /* Assuming pdf.svg */
+{
+    filter: brightness(0) invert(1);
+}
+
+.btn-secondary img[alt="تعديل"] /* Assuming settings.svg */
+{
+    filter: brightness(0) invert(20%) sepia(0%) saturate(0%) hue-rotate(18deg) brightness(97%) contrast(92%); /* Dark grey filter */
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+    main {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .permissions-container {
+        flex-direction: column;
+        width: 100%;
+        border-radius: 12px;
+    }
+
+    .users-sidebar {
+        width: 100%;
+        border-radius: 12px 12px 0 0;
+        border-bottom: 1px solid #eee;
+        border-left: none;
+    }
+
+    .permissions-content {
+        border-radius: 0 0 12px 12px;
+        padding: 20px;
+    }
+
+    .user-profile-header {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .action-buttons-top {
+        margin-right: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .permissions-content h2 {
+        width: 100%;
+        text-align: center;
+    }
+
+    .bottom-action-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* Add User Modal Styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 25px; /* Reduced padding */
+    border-radius: 12px;
+    width: 90%;
+    max-width: 750px; /* Reduced max-width for a more compact look */
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 25px; /* Reduced gap */
+    justify-content: space-between;
+}
+
+.modal-title {
+    font-size: 1.6em; /* Slightly smaller font size */
+    color: #333;
+    margin-bottom: 15px; /* Reduced margin */
+    text-align: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px; /* Reduced padding */
+    width: 100%;
+}
+
+.modal-section {
+    flex: 1;
+    min-width: 300px; /* Adjusted min-width for sections */
+    margin-bottom: 15px; /* Reduced margin */
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Reduced spacing within sections */
+}
+
+.modal-section h3 {
+    font-size: 1.2em; /* Slightly smaller font size */
+    color: #333;
+    margin-bottom: 12px; /* Reduced margin */
+    padding-bottom: 8px; /* Reduced padding */
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.form-group {
+    margin-bottom: 12px; /* Reduced margin */
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px; /* Reduced margin */
+    font-weight: 500;
+    color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group select {
+    width: 100%;
+    padding: 10px 12px; /* Reduced padding */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95em; /* Slightly smaller font size */
+    color: #333;
+}
+
+.form-group select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="#000000" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    background-repeat: no-repeat;
+    background-position: left 15px top 50%;
+    background-size: 18px;
+}
+
+.modal .permission-item {
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    background-color: #fdfdfd; /* Ensure background color for permission items */
+    border: 1px solid #eee;
+    border-radius: 10px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    padding-top: 15px; /* Reduced padding */
+    border-top: 1px solid #eee;
+    margin-top: auto;
+    width: 100%;
+}
+
+/* Override specific styles for the modal's input fields to match the image */
+.modal .form-group input,
+.modal .form-group select {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 8px 10px; /* Further reduced padding */
+    font-size: 0.9em; /* Further reduced font size */
+    border-radius: 6px;
+    box-sizing: border-box; /* Ensure consistent sizing */
+}
+
+.modal .form-group input::placeholder {
+    color: #bbb;
+}
+
+.modal .form-group label {
+    font-weight: normal;
+    color: #666;
+} 
+.search-bar {
+  position: relative;
+  margin-bottom: 15px;
+  width: 100%;
+}
+.search-bar input {
+  padding: 8px 12px 8px 35px;
+}
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 1.1em;
+}
+.add-user-btn i {
+  font-size: 1.2em;
+}
+.user-avatar-icon {
+  font-size: 2.2em;
+  color: #999;
+  margin-left: 15px;
+}
+
+.permission-group {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+.group-title {
+  margin-bottom: 0.5rem;
+  font-size: 1.2em;
+  color: #333;
+}
+
+/* خلفية شفافة تغطي الشاشة */
+/* صندوق الحوار مخفي بشكل افتراضي */
+#role-popup {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+/* عند إضافة الكلاس show يصبح مرئياً */
+#role-popup.show {
+  display: flex;
+}
+
+
+/* صندوق الحوار */
+#role-popup .role-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  width: 320px;
+  max-width: 90%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  text-align: center;
+}
+
+/* عنوان الصندوق */
+#role-popup .role-content h4 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.2em;
+  color: #333;
+}
+
+/* قائمة الأدوار */
+.role-select {
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1em;
+  box-sizing: border-box;
+}
+
+/* أزرار الحفظ والإلغاء */
+.role-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.role-buttons .btn-primary,
+.role-buttons .btn-secondary {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 1em;
+}
+
+.user-meta {
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 4px;
+}
+.user-dept {
+  margin-right: 8px;
+}
+.user-role {
+  font-weight: 500;
+}
+/* الإخفاء والظهور */
+/* 1) حاوية header تصبح فليكس */
+.user-profile-header {
+  display: flex;
+    flex-direction: column;  /* صفين عمودياً */
+
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap; /* يسمح بالالتفاف على الشاشات الضيقة */
+}
+
+/* 2) الشارات (status + القسم + الرول) */
+.user-profile-header .status,
+#profile-department,
+#profile-role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* width: 80px; */
+  height: 32px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0 16px;
+  margin-right: 12px;
+  margin-top: 30px;
+}
+
+
+/* 3) ألوان مخصصة لكل badge */
+.user-profile-header .status.active {
+  background-color: #43a047; /* أخضر للحالة النشطة */
+}
+.user-profile-header .status:not(.active) {
+  background-color: #888;    /* رمادي للحالة غير النشطة */
+}
+#profile-department {
+  background-color: #1e88e5; /* أزرق للقسم */
+}
+#profile-role {
+  background-color: #43a047; /* أخضر للرول */
+}
+
+/* 4) تأكد من ظهور هذه الشارات فقط عند اختيار مستخدم */
+#profile-extra { 
+  display: none; 
+  margin-left: auto;
+  margin-top: 50px;
+}
+.user-profile-header.active #profile-extra {
+  display: flex;
+}
+
+/* عند اختيار مستخدم، اضف الكلاس active للحاوية */
+/* في اللغة العربية نحتفظ بالتباعد الأصلي */
+:lang(ar) .add-user-btn {
+  gap: 8px; /* كما لديك حالياً */
+}
+:lang(ar) .user-item {
+  /* نستخدم الهامش على اليسار للـ RTL */
+  gap: 0;          /* نلغي أي gap عام */
+}
+:lang(ar) .user-avatar,
+:lang(ar) .user-avatar-icon {
+  margin-left: 15px;
+  margin-right: 0;
+}
+
+/* في اللغة الإنجليزية نزيد التباعد */
+:lang(en) .add-user-btn {
+  gap: 12px;       /* مسافة أكبر بين الأيقونة والكلام */
+}
+:lang(en) .user-item {
+  gap: 12px;       /* مسافة ثابتة بين الأفاتار والنص */
+}
+/* بنفس الإسلوب نعكس الهامش للأفاتار */
+:lang(en) .user-avatar,
+:lang(en) .user-avatar-icon {
+  margin-right: 15px;
+  margin-left: 0;
+}
+
+
+/* 3) لو كانت الصفحة بالإنجليزي، نزيد المسافة */
+:lang(en) .user-profile-header.active #profile-extra {
+  gap: 15px;          /* زيّد المسافة هنا كيف ما تحب */
+}
+.user-status {
+  cursor: pointer;
+}
+.user-status.active {
+  background-color: green;
+}
+.user-status.inactive {
+  background-color: red;
+}
+
+/* Committees Dropdown Styles */
+.committees-dropdown {
+    position: relative;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.dropdown-btn {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #333;
+    transition: all 0.2s;
+}
+
+.dropdown-btn:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.dropdown-btn i {
+    transition: transform 0.2s;
+}
+
+.dropdown-btn.active i {
+    transform: rotate(180deg);
+}
+
+.dropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.dropdown-content.show {
+    display: block;
+}
+
+.search-box {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.committee-search {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.committees-list {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.committee-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.committee-item:hover {
+    background-color: #f8f9fa;
+}
+
+.committee-item.selected {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.committee-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.committee-item label {
+    cursor: pointer;
+    margin: 0;
+    flex: 1;
+}
+
+/* RTL Support for dropdown */
+:lang(ar) .dropdown-btn {
+    text-align: right;
+}
+
+:lang(ar) .committee-item {
+    text-align: right;
+}
+
+:lang(en) .dropdown-btn {
+    text-align: left;
+}
+
+:lang(en) .committee-item {
+    text-align: left;
+}
