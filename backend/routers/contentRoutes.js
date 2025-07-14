@@ -49,17 +49,40 @@ router.get('/track/:contentId', async (req, res) => {
   try {
     const { contentId } = req.params;
 
-    const [contentRows] = await db.execute('SELECT * FROM contents WHERE id = ?', [contentId]);
+    // جلب تفاصيل المحتوى مع اسم منشئه
+    const [contentRows] = await db.execute(`
+      SELECT c.*, u.username AS created_by_username
+      FROM contents c
+      LEFT JOIN users u ON c.created_by = u.id
+      WHERE c.id = ?
+    `, [contentId]);
     if (contentRows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Content not found.' });
     }
     const content = contentRows[0];
 
-    // ✅ استعلام سجل الموافقات
+    // جلب كل الملفات في نفس المجموعة (رئيسي أو فرعي)
+    let groupId = null;
+    if (content.parent_content_id) {
+      groupId = content.parent_content_id;
+    } else if (content.related_content_id) {
+      groupId = content.related_content_id;
+    } else {
+      groupId = content.id;
+    }
+    const [relatedRows] = await db.execute(
+      'SELECT id, title, file_path, created_at FROM contents WHERE parent_content_id = ? OR id = ? ORDER BY created_at ASC',
+      [groupId, groupId]
+    );
+    // استثناء الملف الحالي من قائمة attachments
+    const attachments = relatedRows.filter(row => row.id !== content.id);
+
+    // ✅ استعلام سجل الموافقات مع الإيميل
     const [timelineRows] = await db.execute(`
       SELECT 
         al.status, al.comments, al.created_at, 
         u.username AS approver, 
+        u.email,
         d.name AS department
       FROM approval_logs al
       JOIN users u ON al.approver_id = u.id
@@ -74,6 +97,8 @@ router.get('/track/:contentId', async (req, res) => {
     const [pendingApproversRows] = await db.execute(`
       SELECT 
         u.username AS approver, 
+        u.email,
+        u.role AS position,
         d.name AS department
       FROM content_approvers ca
       JOIN users u ON ca.user_id = u.id
@@ -94,7 +119,8 @@ router.get('/track/:contentId', async (req, res) => {
       status: 'success',
       content,
       timeline: timelineRows,
-      pending: pendingApproversRows
+      pending: pendingApproversRows,
+      attachments
     });
   } catch (err) {
     console.error('❌ Error fetching track info:', err);

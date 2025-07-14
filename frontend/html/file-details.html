@@ -58,30 +58,30 @@
                 <div class="reviewer-grid">
                     <div>
                         <div class="info-label">الاسم</div>
-                        <div class="info-value">أحمد محمد</div>
+                        <div class="info-value" id="reviewer-name">أحمد محمد</div>
                     </div>
                     <div>
                         <div class="info-label">المنصب</div>
-                        <div class="info-value">مدير المبيعات</div>
+                        <div class="info-value" id="reviewer-position">مدير المبيعات</div>
                     </div>
                     <div>
                         <div class="info-label">القسم</div>
-                        <div class="info-value">قسم المبيعات</div>
+                        <div class="info-value" id="reviewer-department">قسم المبيعات</div>
                     </div>
                     <div>
                         <div class="info-label">البريد الإلكتروني</div>
-                        <div class="info-value">ahmed.me@company.com</div>
+                        <div class="info-value" id="reviewer-email">ahmed.me@company.com</div>
                     </div>
                 </div>
             </div>
             <div class="card transfer-card">
                 <div class="card-title"><i class="fa-regular fa-paper-plane"></i> تحويل الملف</div>
                 <div class="transfer-row">
-                    <select>
+                    <select class="department-select">
+                        <option>اختر القسم</option>
+                    </select>
+                    <select class="user-select">
                         <option>اختر الموظف المطلوب</option>
-                        <option>محمد عبدالله</option>
-                        <option>منى علي</option>
-                        <option>سارة خالد</option>
                     </select>
                     <button class="transfer-btn"><i class="fa-regular fa-paper-plane"></i> تحويل</button>
                 </div>
@@ -146,5 +146,6 @@
             <div class="footer-copy">جميع الحقوق محفوظة &copy; 2024</div>
         </div>
     </footer>
+    <script src="../js/file-details.js"></script>
 </body>
 </html> 

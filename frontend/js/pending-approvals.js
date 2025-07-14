@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnSendReason.addEventListener('click', async () => {
       const reason = document.getElementById('rejectReason').value.trim();
       if (!reason) return alert(getTranslation('please-enter-reason'));
-      const type     = document.querySelector(`tr[data-id="${selectedContentId}"]`).dataset.type;
+      const type     = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
       const endpoint = type === 'committee' ? 'committee-approvals' : 'approvals';
       try {
         await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/approve`, {
@@ -404,7 +404,7 @@ else {
 document.getElementById('btnElectronicApprove')?.addEventListener('click', async () => {
   if (!selectedContentId) return alert(getTranslation('please-select-user'));
 
-  const contentType = document.querySelector(`tr[data-id="${selectedContentId}"]`).dataset.type;
+  const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
   const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
 
   try {
@@ -518,7 +518,7 @@ function setupSignatureModal() {
 
   document.getElementById('btnConfirmSignature').addEventListener('click', async () => {
     const base64Signature = canvas.toDataURL('image/png');
-    const contentType = document.querySelector(`tr[data-id="${selectedContentId}"]`).dataset.type;
+    const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
     const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
 
     try {
@@ -606,7 +606,7 @@ document.getElementById('btnDelegateConfirm').addEventListener('click', async ()
 
   if (!userId) return alert(getTranslation('please-select-user'));
 
-  const contentType = document.querySelector(`tr[data-id="${selectedContentId}"]`).dataset.type;
+  const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
   const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
 
   try {
@@ -627,9 +627,9 @@ document.getElementById('btnDelegateConfirm').addEventListener('click', async ()
 });
 
 function disableActionsFor(contentId) {
-  const row = document.querySelector(`tr[data-id="${contentId}"]`);
+  const row = document.querySelector(`.approval-card[data-id="${contentId}"]`);
   if (!row) return;
-  const actionsCell = row.querySelector('.col-actions');
+  const actionsCell = row.querySelector('.actions');
   if (actionsCell) actionsCell.innerHTML = '';
 }
 

@@ -120,9 +120,10 @@ const getContentsByFolderId = async (req, res) => {
         let params = [folderId];
 
         // إذا لم يكن المستخدم مسؤول، أظهر فقط المعتمدة أو المرفوعة منه
-        if (decodedToken.role !== 'admin') {
-            query += ' AND c.is_approved = 1 AND c.approval_status = "approved"';
-        }
+        // تم حذف الشرط بناءً على طلب العميل ليظهر كل الملفات للجميع
+        // if (decodedToken.role !== 'admin') {
+        //     query += ' AND c.is_approved = 1 AND c.approval_status = "approved"';
+        // }
         
         query += ' ORDER BY c.created_at DESC';
 

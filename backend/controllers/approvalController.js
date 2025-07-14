@@ -437,7 +437,7 @@ const getAssignedApprovals = async (req, res) => {
         JOIN users u          ON c.created_by = u.id
         LEFT JOIN content_approvers ca ON ca.content_id = c.id
         LEFT JOIN users u2     ON ca.user_id = u2.id
-        WHERE c.approval_status = 'pending'
+        WHERE c.approval_status IN ('pending', 'approved', 'rejected')
         GROUP BY c.id
       `
       : `
@@ -460,7 +460,7 @@ const getAssignedApprovals = async (req, res) => {
         -- هنا نضمن أن الصف موجود فقط لو هو من المعينين أو منشئه
         JOIN content_approvers ca ON ca.content_id = c.id AND ca.user_id = ?
         LEFT JOIN users u2     ON ca.user_id = u2.id
-        WHERE c.approval_status = 'pending'
+        WHERE c.approval_status IN ('pending', 'approved', 'rejected')
           OR c.created_by = ?
         GROUP BY c.id
       `;

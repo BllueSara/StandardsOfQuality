@@ -43,8 +43,7 @@ function renderApprovals() {
       <td><span class="status ${item.approval_status}">${statusLabel(item.approval_status)}</span></td>
       <td>
         <button class="track-btn" data-id="${item.id}">تتبع الطلب</button>
-        <i class="fa-regular fa-eye fa-blue action-icon" title="عرض" data-id="${item.id}"></i>
-        <img src="../images/delet.svg" alt="حذف" class="action-icon" data-id="${item.id}">
+        <i class="fa-regular fa-eye fa-blue action-icon" title="عرض" data-id="${item.id}" data-file="${item.file_path}"></i>
       </td>
     `;
     tableBody.appendChild(tr);
@@ -100,5 +99,22 @@ function applyFilters() {
 // Event listeners
 searchInput.addEventListener('input', applyFilters);
 statusFilter.addEventListener('change', applyFilters);
+
+tableBody.addEventListener('click', function(e) {
+  if (e.target.classList.contains('track-btn')) {
+    const id = e.target.getAttribute('data-id');
+    if (id) {
+      const numericId = id.replace(/\D/g, ''); // استخراج الرقم فقط
+      window.location.href = `../html/track-request.html?id=${numericId}`;
+    }
+  }
+  if (e.target.classList.contains('fa-eye')) {
+    const id = e.target.getAttribute('data-id');
+    if (id) {
+      const numericId = id.replace(/\D/g, '');
+      window.location.href = `../html/file-details.html?id=${numericId}`;
+    }
+  }
+});
 
 document.addEventListener('DOMContentLoaded', fetchApprovals); 
