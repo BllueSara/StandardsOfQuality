@@ -387,7 +387,7 @@ const translations = {
         'home': 'الرئيسية',
         'my-requests': 'طلباتي',
         'search': 'بحث...',
-
+'regected-files': 'الملفات  المرفوضة',
         // Track Request Page Translations
         'track-request-title': 'تتبع الطلب - نظام إدارة الجودة والسلامة',
         'track-request': 'تتبع الطلب',
@@ -1261,7 +1261,7 @@ const translations = {
 "sent": "Sent",
 "closed": "Closed",
 'old-content': 'Old',
-
+'regected-files': 'Regected Files',
         // Approvals page specific translations
         'all-departments-committees': 'All Departments/Committees',
         'department': 'Department',

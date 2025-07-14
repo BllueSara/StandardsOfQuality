@@ -40,7 +40,7 @@ document.querySelectorAll('nav [data-permission], nav [data-role]').forEach(el =
   el.style.display = (hasPerm || hasRole) ? '' : 'none';
 });
 
-const toggleable = ['tickets','departments','approvals','comittees'];
+const toggleable = ['departments','approvals','regected-files'];
 
 document.querySelectorAll('.cards-grid .card').forEach(card => {
   const titleEl = card.querySelector('[data-translate]');
