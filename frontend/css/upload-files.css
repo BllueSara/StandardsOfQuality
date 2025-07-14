@@ -112,13 +112,66 @@ main {
     background: #fff;
     border-radius: 18px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    padding: 32px 28px 18px 28px;
-    max-width: 480px;
+    padding: 48px 38px 28px 38px;
+    max-width: 700px;
     width: 100%;
-    margin: 40px auto;
+    margin: 60px auto;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 32px;
+}
+
+/* كارد رفع الملف الرئيسي */
+.main-upload-drop {
+    border: 2px dashed #2563eb;
+    border-radius: 16px;
+    background: #f0f6ff;
+    padding: 44px 10px 40px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.main-upload-drop .upload-icon {
+    font-size: 3.2rem;
+    color: #1746a2;
+    margin-bottom: 8px;
+}
+.main-upload-drop .main-upload-btn {
+    background: #1746a2;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 36px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.2s;
+}
+.main-upload-drop .main-upload-btn:hover {
+    background: #2563eb;
+}
+.main-file-list {
+    margin-top: 10px;
+    color: #2563eb;
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+/* تكبير كارد الملفات الفرعية أيضًا */
+.upload-drop {
+    border: 2px dashed #bdbdbd;
+    border-radius: 14px;
+    background: #fafbfc;
+    padding: 44px 10px 40px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
 }
 .main-file-label {
     color: #222;
@@ -133,17 +186,6 @@ main {
     align-items: center;
     gap: 6px;
     margin-bottom: 8px;
-}
-.upload-drop {
-    border: 2px dashed #bdbdbd;
-    border-radius: 14px;
-    background: #fafbfc;
-    padding: 36px 10px 32px 10px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
 }
 .upload-icon {
     font-size: 2.8rem;

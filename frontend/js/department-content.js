@@ -942,7 +942,8 @@ async function fetchFolders(departmentId) {
 
     // دالة لجلب محتويات المجلد بناءً على folderId
     async function fetchFolderContents(folderId) {
-        currentFolderId = folderId; // حفظ معرف المجلد الحالي
+          selectedFolderId = folderId; // أضف هذا السطر في أول الدالة
+    currentFolderId = folderId; // حفظ معرف المجلد الحالي
         const addContentBtn = document.getElementById('addContentBtn');
         if (addContentBtn) {
             addContentBtn.dataset.folderId = folderId;
@@ -983,112 +984,146 @@ async function fetchFolders(departmentId) {
                 currentFolderName = displayFolderName; // حفظ اسم المجلد الحالي
 
                 if (data.data && data.data.length > 0) {
-                    data.data.forEach(content => {
-const key = content.is_approved
-  ? 'status-approved'
-  : 'status-awaiting';
-const approvalStatus = getTranslation(key);
-                        const approvalClass = content.is_approved ? 'approved' : 'pending';
-                        
-                        // عرض العنوان حسب اللغة المختارة
-                        let displayTitle;
-                        try {
-                          const parsedTitle = JSON.parse(content.title);
-                          const lang = localStorage.getItem('language') || 'ar';
-                          displayTitle = parsedTitle[lang] || parsedTitle.ar || content.title;
-                        } catch (e) {
-                          displayTitle = content.title; // Fallback for old data
-                        }
-                        
-                        // 1) بنية الأيقونات حسب الصلاحيات
-                                let expiredBadge = '';
-        // --- بادج برتقالي إذا باقي شهر أو أقل ---
-        let soonExpireBadge = '';
-if (content.end_date) {
-  const now = new Date();
-  const endDate = new Date(content.end_date);
-  const diffMs = endDate.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  console.log(`🎯 ${content.title} → diffDays=${diffDays} expired=${content.extra?.expired}`);
-
-  // 🔥 برتقالي يظهر دائمًا إذا باقي 0-30
-  if (diffDays <= 30 && diffDays >= 0) {
-    soonExpireBadge = `<span class="soon-expire-badge" style="color: #fff; background: orange; border-radius: 4px; padding: 2px 8px; margin-right: 8px; font-size: 12px;">${getTranslation('soon-expire') || 'اقترب انتهاء الصلاحية'}</span>`;
-      console.log("🟠 showing soonExpireBadge for:", displayTitle);
-
-  }
-
-  // 🔥 أحمر يظهر فقط لو extra.expired = true (يرجعه السيرفر للأدمن فقط)
-  if (content.extra && content.extra.expired) {
-    expiredBadge = `<span class="expired-badge" style="color: #fff; background: #d9534f; border-radius: 4px; padding: 2px 8px; margin-right: 8px; font-size: 12px;">${getTranslation('expired-content') || 'منتهي الصلاحية'}</span>`;
-  }
-}
-
-let icons = '<div class="item-icons">';
-icons += expiredBadge + soonExpireBadge;
-
-if (permissions.canEditContent) {
-  icons += `<a href="#" class="edit-icon" data-id="${content.id}">
-              <img src="../images/edit.svg" alt="تعديل">
-            </a>`;
-}
-if (permissions.canDeleteContent) {
-  icons += `<a href="#" class="delete-icon" data-id="${content.id}">
-              <img src="../images/delet.svg" alt="حذف">
-            </a>`;
-}
-icons += '</div>';
-        
-
-        // 2) أنشئ العنصر
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-
-          const rawDate = content.end_date;              // "2025-06-30T21:00:00.000Z"
-  const displayDate = rawDate.split('T')[0];     // "2025-06-30"
-        fileItem.innerHTML = `
-          ${icons}
-          <img src="../images/pdf.svg" alt="ملف PDF">
-          <div class="file-info">
-            <div class="file-name">${displayTitle}</div>
-            <div class="approval-status ${approvalClass}">${approvalStatus}</div>
-            <div class="file-date">${displayDate}</div>
-          </div>
-        `;
-        filesList.appendChild(fileItem);
-
-        // 3) اربط الـ listeners فقط إذا الأيقونات موجودة
-        if (permissions.canEditContent) {
-          const btn = fileItem.querySelector('.edit-icon');
-          btn && btn.addEventListener('click', e => {
-            e.preventDefault(); e.stopPropagation();
-            openEditContentModal(content.id);
-          });
-        }
-        if (permissions.canDeleteContent) {
-          const btn = fileItem.querySelector('.delete-icon');
-          btn && btn.addEventListener('click', e => {
-            e.preventDefault(); e.stopPropagation();
-            openDeleteContentModal(content.id);
-          });
-        }
-
-                        // عند النقر على الملف، افتح المحتوى مباشرة
-                        fileItem.addEventListener('click', function(e) {
-                            if (!e.target.closest('.edit-icon') && !e.target.closest('.delete-icon')) {
-                                if (content.fileUrl) {
-                                    // تسجيل عرض المحتوى في اللوقز
-                                    logContentView(content.id, displayTitle, currentFolderName, currentDepartmentName);
-                                    
-                                    const fullFileUrl = `http://localhost:3006/uploads/${content.fileUrl}`;
-                                    window.open(fullFileUrl, '_blank');
-                                } else {
-                                    showToast(getTranslation('pdf-only'), 'error'); 
-                                }
-                            }
-                        });
+                    // --- تصنيف الملفات وتجميعها للعرض بستايل الكروت القديم مع تمييز المجموعات ---
+                    const allContents = data.data;
+                    console.log('allContents:', allContents); // لمساعدتك في الديباغ
+                    // الملفات الرئيسية: لها parent_content_id وليس لها related_content_id
+                    const mainFiles = allContents.filter(item => Number(item.parent_content_id) && !Number(item.related_content_id));
+                    // الملفات الفرعية: لها related_content_id وليس لها parent_content_id
+                    const subFilesMap = {};
+                    allContents.forEach(item => {
+                      if (Number(item.related_content_id) && !Number(item.parent_content_id)) {
+                        const key = Number(item.related_content_id);
+                        if (!subFilesMap[key]) subFilesMap[key] = [];
+                        subFilesMap[key].push(item);
+                      }
                     });
+                    // الملفات العادية: ليس لها parent_content_id ولا related_content_id
+                    const normalFiles = allContents.filter(item => !Number(item.parent_content_id) && !Number(item.related_content_id));
+
+                    filesList.innerHTML = '';
+
+                    // عرض المجموعات (ملف رئيسي + فرعية)
+                    mainFiles.forEach(mainFile => {
+                      const groupBox = document.createElement('div');
+                      groupBox.className = 'file-group-box'; // ستايل خاص للمجموعة
+
+                      // --- ملف رئيسي ---
+                      const mainCard = createFileCard(mainFile, true); // true = ملف رئيسي
+                      groupBox.appendChild(mainCard);
+
+                      // --- الملفات الفرعية ---
+                      const subFiles = subFilesMap[Number(mainFile.parent_content_id)] || [];
+                      subFiles.forEach((subFile, idx) => {
+                        const subCard = createFileCard(subFile, false, idx + 1); // رقم الفرعي
+                        subCard.classList.add('sub-file-card'); // ستايل خاص للفرعي
+                        groupBox.appendChild(subCard);
+                      });
+
+                      filesList.appendChild(groupBox);
+                    });
+
+                    // عرض الملفات العادية
+                    normalFiles.forEach(file => {
+                      const fileCard = createFileCard(file, false);
+                      filesList.appendChild(fileCard);
+                    });
+
+                    // --- دالة إنشاء كارت الملف بنفس ستايلك القديم مع تمييز الرئيسي والفرعي ---
+                    function createFileCard(file, isMain = false, subIndex = null) {
+                      const card = document.createElement('div');
+                      card.className = 'file-item';
+
+                      // حالة الاعتماد
+                      const key = file.is_approved ? 'status-approved' : 'status-awaiting';
+                      const approvalStatus = getTranslation(key);
+                      const approvalClass = file.is_approved ? 'approved' : 'pending';
+
+                      // اسم الملف حسب اللغة
+                      let displayTitle;
+                      try {
+                        const parsedTitle = JSON.parse(file.title);
+                        const lang = localStorage.getItem('language') || 'ar';
+                        displayTitle = parsedTitle[lang] || parsedTitle.ar || file.title;
+                      } catch (e) {
+                        displayTitle = file.title;
+                      }
+
+                      // بادج رئيسي أو رقم فرعي
+                      let badge = '';
+                      if (isMain) {
+                        badge = `<span class="main-label" style="color:#fff;background:#1D4ED8;padding:2px 8px;border-radius:4px;margin-left:8px;">ملف رئيسي</span>`;
+                      } else if (subIndex) {
+                        badge = `<span class="sub-index" style="color:#fff;background:#1D4ED8;padding:2px 8px;border-radius:4px;margin-left:8px;">${subIndex}</span>`;
+                      }
+
+                      // الأزرار
+                      let icons = '<div class="item-icons">';
+                      // if (permissions.canEditContent) {
+                      //   icons += `<a href="#" class="edit-icon" data-id="${file.id}">
+                      //               <img src="../images/edit.svg" alt="تعديل">
+                      //             </a>`;
+                      // }
+                      if (permissions.canDeleteContent) {
+                        icons += `<a href="#" class="delete-icon" data-id="${file.id}">
+                                    <img src="../images/delet.svg" alt="حذف">
+                                  </a>`;
+                      }
+               if (isMain) {
+  icons += `<button class="add-subfile-btn" title="إضافة ملف فرعي" style="margin-right:6px;">
+              <i class="fa fa-plus"></i>
+            </button>`;
+}       
+                      icons += '</div>';
+
+                      card.innerHTML = `
+                        ${icons}
+                        <img src="../images/pdf.svg" alt="ملف PDF">
+                        <div class="file-info">
+                          <div class="file-name">${badge} ${displayTitle}</div>
+                          <div class="approval-status ${approvalClass}">${approvalStatus}</div>
+                        </div>
+                      `;
+if (isMain) {
+  const addSubBtn = card.querySelector('.add-subfile-btn');
+  if (addSubBtn) {
+    addSubBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      addSubFile(file.id, currentFolderId);
+    });
+  }
+}
+                      // ربط الأزرار
+                      if (permissions.canEditContent) {
+                        const btn = card.querySelector('.edit-icon');
+                        btn && btn.addEventListener('click', e => {
+                          e.preventDefault(); e.stopPropagation();
+                          openEditContentModal(file.id);
+                        });
+                      }
+                      if (permissions.canDeleteContent) {
+                        const btn = card.querySelector('.delete-icon');
+                        btn && btn.addEventListener('click', e => {
+                          e.preventDefault(); e.stopPropagation();
+                          openDeleteContentModal(file.id);
+                        });
+                      }
+
+                      // فتح الملف عند الضغط
+                      card.addEventListener('click', function(e) {
+                        if (!e.target.closest('.edit-icon') && !e.target.closest('.delete-icon')) {
+                          if (file.fileUrl) {
+                            logContentView(file.id, displayTitle, currentFolderName, currentDepartmentName);
+                            const fullFileUrl = `http://localhost:3006/uploads/${file.fileUrl}`;
+                            window.open(fullFileUrl, '_blank');
+                          } else {
+                            showToast(getTranslation('pdf-only'), 'error');
+                          }
+                        }
+                      });
+
+                      return card;
+                    }
                 } else {
                     filesList.innerHTML = `<div class="no-content" data-translate="no-contents">${getTranslation('no-contents')}</div>`;
                 }
@@ -1277,8 +1312,8 @@ async function handleCreateContent() {
   const contentFile      = document.getElementById('contentFile')?.files[0];
   const selectedContentName = document.getElementById('selectedContentNameId')?.value;
   // 🟢 حقول التواريخ
-  const startDate = document.getElementById('contentStartDate')?.value;
-  const endDate   = document.getElementById('contentEndDate')?.value;
+  // const startDate = document.getElementById('contentStartDate')?.value;
+  // const endDate   = document.getElementById('contentEndDate')?.value;
 
   if (!folderIdToUpload || !selectedContentName || !contentFile || selectedContentName === getTranslation('choose-name')) {
     showToast(getTranslation('select-content'), 'error');
@@ -1312,8 +1347,8 @@ async function handleCreateContent() {
   formData.append('file', contentFile);
     if (isOldContentMode) formData.append('is_old_content', 'true');
   // 🟢 أضف التواريخ
-  if (startDate) formData.append('start_date', startDate);
-  if (endDate)   formData.append('end_date', endDate);
+  // if (startDate) formData.append('start_date', startDate);
+  // if (endDate)   formData.append('end_date', endDate);
   
 
   try {
@@ -1523,12 +1558,16 @@ document.getElementById('updateFolderBtn')
     const cancelDeleteFolderBtn = document.getElementById('cancelDeleteFolderBtn');
     const confirmDeleteFolderBtn = document.getElementById('confirmDeleteFolderBtn');
     const deleteFolderIdInput = document.getElementById('deleteFolderId');
+    const deleteFolderNameInput = document.getElementById('deleteFolderName');
+    const deleteFolderFileInput = document.getElementById('deleteFolderFile');
 
 
     function openDeleteFolderModal(folderId) {
          console.log('Opening delete modal for folder:', folderId);
          if (deleteFolderModal) {
              deleteFolderIdInput.value = folderId; // Store folder ID
+             deleteFolderNameInput.value = deleteFolderNameInput.value; // Store folder name
+             deleteFolderFileInput.value = deleteFolderFileInput.value; // Store folder file
              deleteFolderModal.style.display = 'flex';
          }
     }
@@ -1537,6 +1576,8 @@ document.getElementById('updateFolderBtn')
         if (deleteFolderModal) {
             deleteFolderModal.style.display = 'none';
             deleteFolderIdInput.value = ''; // Clear ID
+            deleteFolderNameInput.value = ''; // Clear folder name
+            deleteFolderFileInput.value = ''; // Clear folder file
         }
     }
 
@@ -1780,8 +1821,8 @@ document.getElementById('updateFolderBtn')
                      // عرض المودال
                      editContentModal.style.display = 'flex';
                      // 🟢 عيّن التواريخ في الحقول
-                     document.getElementById('editContentStartDate').value = data.data.start_date ? data.data.start_date.split('T')[0] : '';
-                     document.getElementById('editContentEndDate').value   = data.data.end_date   ? data.data.end_date.split('T')[0]   : '';
+                     // document.getElementById('editContentStartDate').value = data.data.start_date ? data.data.start_date.split('T')[0] : '';
+                     // document.getElementById('editContentEndDate').value   = data.data.end_date   ? data.data.end_date.split('T')[0]   : '';
 
                  } else {
                      showToast(data.message || 'فشل جلب بيانات المحتوى.', 'error');
@@ -1826,8 +1867,8 @@ function closeEditContentModal() {
         const contentTitle = document.getElementById('editSelectedContentNameId').value.trim();
         const contentFile = document.getElementById('editContentFile').files[0];
         // 🟢 حقول التواريخ
-        const startDate = document.getElementById('editContentStartDate')?.value;
-        const endDate   = document.getElementById('editContentEndDate')?.value;
+        // const startDate = document.getElementById('editContentStartDate')?.value;
+        // const endDate   = document.getElementById('editContentEndDate')?.value;
         contentId = contentId.replace(/[^\d]/g, '');
         if (!contentId || !contentTitle) {
           showToast(getTranslation('content-title-required'), 'error');
@@ -1857,8 +1898,8 @@ function closeEditContentModal() {
         formData.append('title', JSON.stringify(titlePayload));
         if (contentFile) formData.append('file', contentFile);
         // 🟢 أضف التواريخ
-        if (startDate) formData.append('start_date', startDate);
-        if (endDate)   formData.append('end_date', endDate);
+        // if (startDate) formData.append('start_date', startDate);
+        // if (endDate)   formData.append('end_date', endDate);
         try {
           const response = await fetch(`${apiBase}/contents/${contentId}`, {
             method: 'PUT',
@@ -2384,11 +2425,18 @@ if (departmentIdFromUrl && isInitialFetch) {
 
     // Redirect logic for the new buttons
     addContentBtnDynamic.addEventListener('click', function() {
-            window.location.href = 'upload-main-file.html';
-
+            if (!selectedFolderId) {
+                showToast('يرجى اختيار مجلد أولاً', 'error');
+                return;
+            }
+            window.location.href = 'upload-main-file.html?folderId=' + selectedFolderId;
     });
     addSubContentBtnDynamic.addEventListener('click', function() {
-      window.location.href = 'upload-files.html';
+      if (!selectedFolderId) {
+          showToast('يرجى اختيار مجلد أولاً', 'error');
+          return;
+      }
+      window.location.href = 'upload-files.html?folderId=' + selectedFolderId;
     });
 
 }); // End of DOMContentLoaded 
@@ -2542,8 +2590,9 @@ async function handleCreateContent() {
   const folderIdToUpload = document.getElementById('addContentFolderId')?.value;
   const contentFile      = document.getElementById('contentFile')?.files[0];
   const selectedContentName = document.getElementById('selectedContentNameId')?.value;
-  const startDate = document.getElementById('contentStartDate')?.value;
-  const endDate   = document.getElementById('contentEndDate')?.value;
+  // 🟢 حقول التواريخ
+  // const startDate = document.getElementById('contentStartDate')?.value;
+  // const endDate   = document.getElementById('contentEndDate')?.value;
 
   if (!folderIdToUpload || !selectedContentName || !contentFile || selectedContentName === getTranslation('choose-name')) {
     showToast(getTranslation('select-content'), 'error');
@@ -2575,8 +2624,9 @@ async function handleCreateContent() {
   const formData = new FormData();
   formData.append('title', JSON.stringify(titlePayload));
   formData.append('file', contentFile);
-  if (startDate) formData.append('start_date', startDate);
-  if (endDate)   formData.append('end_date', endDate);
+  // 🟢 أضف التواريخ
+  // if (startDate) formData.append('start_date', startDate);
+  // if (endDate)   formData.append('end_date', endDate);
   // 🟢 أضف is_old_content إذا كان الوضع قديم
   if (isOldContentMode) formData.append('is_old_content', 'true');
 
@@ -2659,6 +2709,8 @@ document.addEventListener('DOMContentLoaded', function() {
           foldersList.appendChild(card);
           card.addEventListener('click', e => {
             if (!e.target.closest('.edit-icon') && !e.target.closest('.delete-icon')) {
+                  selectedFolderId = folder.id; // <--- أضف هذا السطر
+
               fetchFolderContents(folder.id);
             }
           });
@@ -2732,7 +2784,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="file-info">
               <div class="file-name">${displayTitle}</div>
               <div class="approval-status ${approvalClass}">${approvalStatus}</div>
-              <div class="file-date">${displayDate}</div>
             </div>
           `;
           filesList.appendChild(fileItem);
@@ -2777,3 +2828,39 @@ window.translations = window.translations || {};
     window.translations[lang]['soon-expire'] = lang === 'ar' ? 'اقترب انتهاء الصلاحية' : 'Expiring soon';
   }
 });
+
+// --- أضف دالة مساعدة لرفع ملف فرعي جديد لمجموعة ---
+async function addSubFile(mainFileId, folderId) {
+    const token = localStorage.getItem('token');
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    fileInput.addEventListener('change', async function handler(e) {
+        const file = fileInput.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('notes', '');
+        formData.append('title', file.name);
+        formData.append('related_content_id', mainFileId);
+        try {
+            const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            const data = await response.json();
+            if (response.ok) {
+                alert('تم إضافة الملف الفرعي بنجاح!');
+                fetchFolderContents(); // أعد تحميل الملفات
+            } else {
+                alert(data.message || 'حدث خطأ أثناء رفع الملف الفرعي');
+            }
+        } catch (err) {
+        }
+        fileInput.remove();
+    }, { once: true });
+}

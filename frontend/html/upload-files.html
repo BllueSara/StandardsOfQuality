@@ -33,42 +33,27 @@
   </div>
     <main>
         <div class="upload-container">
-            <div class="main-file">
-                <div class="main-file-label">الملف الرئيسي</div>
-                <div class="main-file-name"><i class="fa-regular fa-file-lines"></i> تقرير المبيعات السنوي.pdf</div>
+            <!-- كارد رفع الملف الرئيسي -->
+                     <h1 style="text-align:center; font-size:2rem; font-weight:bold; margin-bottom:24px; color:#1746a2;">رفع عدة الملفات</h1>
+
+            <div class="main-upload-drop">
+                <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <div class="upload-title">قم بإضافة الملف الرئيسي</div>
+                <div class="upload-desc">اسحب وأفلت الملف هنا أو انقر للتصفح</div>
+                <button class="main-upload-btn">تصفح الملف الرئيسي</button>
+                <div class="main-file-list"></div>
             </div>
+            <!-- كارد رفع الملفات الفرعية -->
             <div class="upload-drop">
                 <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                 <div class="upload-title">قم بإضافة ملفات فرعية</div>
                 <div class="upload-desc">اسحب وأفلت الملفات هنا أو انقر للتصفح</div>
                 <button class="upload-btn">تصفح الملفات</button>
+                <div class="files-list"></div>
+                <div class="files-count"></div>
             </div>
-            <div class="section-select">
-                <select>
-                    <option>اختر القسم</option>
-                    <option>قسم المالية</option>
-                    <option>قسم الجودة</option>
-                    <option>قسم التسويق</option>
-                </select>
-            </div>
-            <div class="files-list">
-                <div class="file-row">
-                    <i class="fa-regular fa-file-excel file-icon"></i>
-                    <span>ملف تفصيلي 1.xlsx</span>
-                    <button class="delete-btn"><i class="fa-regular fa-trash-can"></i></button>
-                </div>
-                <div class="file-row">
-                    <i class="fa-regular fa-file-pdf file-icon"></i>
-                    <span>جدول البيانات.pdf</span>
-                    <button class="delete-btn"><i class="fa-regular fa-trash-can"></i></button>
-                </div>
-                <div class="file-row">
-                    <i class="fa-regular fa-file-word file-icon"></i>
-                    <span>المرفقات التوضيحية.docx</span>
-                    <button class="delete-btn"><i class="fa-regular fa-trash-can"></i></button>
-                </div>
-            </div>
-            <div class="files-count">تم رفع 3 ملفات</div>
+            <!-- زر رفع جميع الملفات مكان اختيار القسم -->
+            <button class="upload-all-btn" style="margin: 18px auto 0 auto; display: block; padding: 14px 48px; font-size: 1.18rem; font-weight: bold; background: #2563eb; color: #fff; border: none; border-radius: 12px; cursor: pointer;">رفع جميع الملفات</button>
         </div>
     </main>
     <script src="../js/upload-files.js"></script>

@@ -108,6 +108,8 @@ const getContentsByFolderId = async (req, res) => {
                 c.approvers_required,
                 c.created_at,
                 c.updated_at,
+                    c.parent_content_id,         -- أضف هذا السطر
+    c.related_content_id,        -- وأضف هذا السطر
                 u.username as created_by_username,
                 a.username as approved_by_username
             FROM contents c
@@ -206,9 +208,8 @@ const addContent = async (req, res) => {
       }
   
       const folderId = req.params.folderId;
-      const { title, notes, approvers_required } = req.body;
+      const { title, notes, approvers_required, parent_content_id, related_content_id, is_main_file } = req.body;
       const filePath = req.file ? path.posix.join('content_files', req.file.filename) : null;
-      // 🟢 دعم محتوى قديم
       const approvalStatus = 'pending';
       const isApproved = 0;
       const approvedBy = null;
@@ -242,53 +243,144 @@ const addContent = async (req, res) => {
       if (folder[0].department_id) {
         const [deptRows] = await connection.execute('SELECT name FROM departments WHERE id = ?', [folder[0].department_id]);
         if (deptRows.length > 0) {
-          departmentName = deptRows[0].name; // استخدام النص الأصلي من قاعدة البيانات
+          departmentName = deptRows[0].name;
         }
       }
-  
-      // 1) إضافة المحتوى
-      const [result] = await connection.execute(
-        `INSERT INTO contents (
-          title, 
-          file_path, 
-          notes,
-          folder_id, 
-          approval_status,
-          is_approved,
-          created_by,
-          approvers_required,
-          approvals_log,
-          created_at,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        [
-          title, 
-          filePath, 
-          notes || null,
-          folderId, 
-          approvalStatus,
-          isApproved,
-          decodedToken.id,
-          approvers_required ? JSON.stringify(approvers_required) : null,
-          JSON.stringify([]),
-        ]
-      );
-  
-      const contentId = result.insertId;
-  
+
+      // منطق ربط الملفات الرئيسية والفرعية
+      // إذا كان الملف الرئيسي: parent_content_id = رقم المجموعة (مثلاً: id نفسه لاحقاً)، related_content_id = NULL
+      // إذا كان ملف فرعي: parent_content_id = NULL، related_content_id = رقم المجموعة
+      // إذا ملف عادي: كلاهما NULL
+      let parentIdToInsert = null;
+      let relatedIdToInsert = null;
+      let insertedContentId = null;
+
+      // إذا كان الملف الرئيسي (is_main_file = true)
+      if (is_main_file) {
+        // أضف الملف أولاً بدون parent_content_id
+        const [result] = await connection.execute(
+          `INSERT INTO contents (
+            title, 
+            file_path, 
+            notes,
+            folder_id, 
+            approval_status,
+            is_approved,
+            created_by,
+            approvers_required,
+            approvals_log,
+            parent_content_id,
+            related_content_id,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [
+            title, 
+            filePath, 
+            notes || null,
+            folderId, 
+            approvalStatus,
+            isApproved,
+            decodedToken.id,
+            approvers_required ? JSON.stringify(approvers_required) : null,
+            JSON.stringify([]),
+            null, // parent_content_id مؤقتاً
+            null  // related_content_id
+          ]
+        );
+        insertedContentId = result.insertId;
+        // بعد الإدراج، حدّث السجل ليأخذ parent_content_id = id نفسه
+        await connection.execute(
+          'UPDATE contents SET parent_content_id = ? WHERE id = ?',
+          [insertedContentId, insertedContentId]
+        );
+        parentIdToInsert = insertedContentId;
+        relatedIdToInsert = null;
+      } else if (related_content_id) {
+        // ملف فرعي مرتبط
+        parentIdToInsert = null;
+        relatedIdToInsert = related_content_id;
+        const [result] = await connection.execute(
+          `INSERT INTO contents (
+            title, 
+            file_path, 
+            notes,
+            folder_id, 
+            approval_status,
+            is_approved,
+            created_by,
+            approvers_required,
+            approvals_log,
+            parent_content_id,
+            related_content_id,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [
+            title, 
+            filePath, 
+            notes || null,
+            folderId, 
+            approvalStatus,
+            isApproved,
+            decodedToken.id,
+            approvers_required ? JSON.stringify(approvers_required) : null,
+            JSON.stringify([]),
+            null, // parent_content_id
+            related_content_id
+          ]
+        );
+        insertedContentId = result.insertId;
+      } else {
+        // ملف عادي
+        parentIdToInsert = null;
+        relatedIdToInsert = null;
+        const [result] = await connection.execute(
+          `INSERT INTO contents (
+            title, 
+            file_path, 
+            notes,
+            folder_id, 
+            approval_status,
+            is_approved,
+            created_by,
+            approvers_required,
+            approvals_log,
+            parent_content_id,
+            related_content_id,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [
+            title, 
+            filePath, 
+            notes || null,
+            folderId, 
+            approvalStatus,
+            isApproved,
+            decodedToken.id,
+            approvers_required ? JSON.stringify(approvers_required) : null,
+            JSON.stringify([]),
+            null, // parent_content_id
+            null  // related_content_id
+          ]
+        );
+        insertedContentId = result.insertId;
+      }
+
       // 2) إضافة الـ approvers وربطهم
       if (Array.isArray(approvers_required)) {
         for (const userId of approvers_required) {
           await connection.execute(
             `INSERT INTO content_approvers (content_id, user_id, assigned_at)
              VALUES (?, ?, NOW())`,
-            [contentId, userId]
+            [insertedContentId, userId]
           );
   
           await connection.execute(
             `INSERT INTO approval_logs (content_id, approver_id)
              VALUES (?, ?)`,
-            [contentId, userId]
+            [insertedContentId, userId]
           );
         }
       }
@@ -296,19 +388,16 @@ const addContent = async (req, res) => {
       // ✅ تسجيل اللوق بعد نجاح إضافة المحتوى
       try {
         const userLanguage = getUserLanguageFromToken(token);
-        
-        // إنشاء النص ثنائي اللغة
         const logDescription = {
             ar: `تم إضافة محتوى: ${getContentNameByLanguage(title, 'ar')} في : ${getDepartmentNameByLanguage(departmentName, 'ar')}`,
             en: `Added content: ${getContentNameByLanguage(title, 'en')} in : ${getDepartmentNameByLanguage(departmentName, 'en')}`
         };
-        
         await logAction(
             decodedToken.id,
             'add_content',
             JSON.stringify(logDescription),
             'content',
-            contentId
+            insertedContentId
         );
       } catch (logErr) {
         console.error('logAction error:', logErr);
@@ -319,11 +408,14 @@ const addContent = async (req, res) => {
       res.status(201).json({
         status: 'success',
         message: 'تم رفع المحتوى بنجاح وهو في انتظار الاعتمادات اللازمة',
-        contentId: contentId,
+        contentId: insertedContentId,
         isApproved: !!isApproved,
-        status: approvalStatus
+        status: approvalStatus,
+        parent_content_id: parentIdToInsert,
+        related_content_id: relatedIdToInsert
       });
     } catch (error) {
+      console.error('Error adding content:', error);
       res.status(500).json({ message: 'خطأ في إضافة المحتوى' });
     }
   };
