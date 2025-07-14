@@ -20,7 +20,9 @@ const translations = {
         'permissions': 'الصلاحيات',
         'comittees': 'اللجان والواجهات',
         'click-to-enter': 'اضغط للدخول',
-        
+        'internal-transfer': 'التحويل الداخلي',
+        'internal-transfer-desc': 'قراءة التحويلات الداخلية',
+
         // System title
         'system-title': 'نظام إدارة الجودة والسلامة',
 'dashboard-overview': 'لوحة المعاينة',
@@ -1287,7 +1289,8 @@ const translations = {
         'home': 'Home',
         'my-requests': 'My Requests',
         'search': 'Search...',
-
+'internal-transfer-desc':'read internal transfer',
+'internal-transfer':'internal transfer',
         // Track Request Page Translations
         'track-request-title': 'Track Request - Quality and Safety Management System',
         'track-request': 'Track Request',

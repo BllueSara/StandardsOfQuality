@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-translate="approvals-title">الاعتمادات</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/shared.css"/>
+  <link rel="stylesheet" href="../css/approvals-types.css"/>
+</head>
+<body>
+  <header class="main-header">
+    <div class="header-container">
+      <div class="hospital-logo">
+        <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
+      </div>
+  <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+    </div>
+  </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
+  <main class="content-wrapper">
+    <div class="page-header">
+      <h1 class="page-title" data-translate="approvals-title">الاعتمادات</h1>
+      <p class="page-subtitle" data-translate="approvals-subtitle">إدارة الاعتمادات الخاصة بك</p>
+    </div>
+
+    <div class="cards-container">
+      <a href="approvals.html" class="ticket-card">
+        <div class="card-icon">
+          <img src="../images/e3tmad.svg" alt="" class="icon-img"/>
+        </div>
+        <h2 class="card-title" data-translate="my-requests">طلباتي</h2>
+        <p class="card-desc" data-translate="my-requests-desc">عرض طلبات الاعتماد التي تقدمت بها</p>
+      </a>
+
+      <a href="transfer.html" class="ticket-card">
+        <div class="card-icon">
+          <img src="../images/internal.png" alt="" class="icon-img" onerror="this.style.display='none';this.parentNode.innerHTML='📥';"/>
+        </div>
+        <h2 class="card-title" data-translate="internal-transfer">التحويل الداخلي </h2>
+        <p class="card-desc" data-translate="internal-transfer-desc">   قراءة التحويلات الداخلية</p>
+      </a>
+
+
+      <a href="pending-approvals.html" class="ticket-card admin-only">
+        <div class="card-icon">
+          <i class="fas fa-user-shield" style="font-size:2.5rem;color:#2563eb;"></i>
+        </div>
+        <h2 class="card-title" data-translate="approval-files">ملفات الاعتمادات</h2>
+        <p class="card-desc" data-translate="approval-files-desc">قراءة ملفات الاعتمادات</p>
+      </a>
+    </div>
+  </main>
+
+  <!-- Font Awesome -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
+  <script src="../js/language.js"></script>
+  <script>
+  (async () => {
+    const apiBase = 'http://localhost:3006/api';
+    const token   = localStorage.getItem('token');
+    if (!token) return;
+
+    // استخرج الدور و الـ userId
+    let payload = {};
+    try {
+      payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+    } catch {
+      return;
+    }
+    const { role, id: userId } = payload;
+
+    // إذا أدمن، نعطي كل الصلاحيات
+    let perms = [];
+    if (role !== 'admin') {
+      try {
+        const res = await fetch(`${apiBase}/users/${userId}/permissions`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          perms = json.data.map(p => (typeof p === 'string' ? p : (p.permission || p.permission_key)));
+        }
+      } catch (e) {
+        // console.error('Failed to load permissions', e);
+      }
+    } else {
+      perms = ['*'];
+    }
+
+    // صلاحية عرض الاعتمادات
+    const canViewCredits = perms.includes('*') || perms.includes('transfer_credits');
+
+    // أخفِ أو أظهر البطاقات
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.style.display = canViewCredits ? '' : 'none';
+    });
+  })();
+  </script>
+      <script src="/frontend/js/check-status.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,551 @@
+* {
+    font-family: 'Tajawal', Arial, sans-serif;
+    background: #ffffff;
+    margin: 0;
+    direction: rtl;
+}
+
+.main-header {
+    background-color: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 16px 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.hospital-logo {
+    order: 3; /* Changed to 3 to put it on the right in RTL */
+}
+/* Overlay */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.2);
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 2000;
+}
+
+/* صندوق المودال */
+.modal {
+  background-color: #ffffff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+/* رأس المودال */
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px 0;
+}
+.modal-close {
+  background: none; border: none;
+  font-size: 1.25rem; color: #6b7280;
+  cursor: pointer;
+}
+.modal-close:hover { color: #374151; }
+.modal-title {
+  margin: 0; font-size: 1.2rem; font-weight: 600;
+  color: #1f2937;
+}
+
+/* جسم المودال */
+.modal-body {
+  padding: 16px 24px;
+}
+.canvas-wrapper {
+  width: 100%; height: 200px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+.canvas-wrapper canvas {
+  width: 100%; height: 100%;
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* تذييل المودال */
+.modal-footer {
+  display: flex; justify-content: flex-start;
+  gap: 12px; padding: 0 24px 24px;
+}
+.btn-confirm {
+  padding: 10px 20px;
+  background-color: #2563eb; color: #ffffff;
+  border: none; border-radius: 6px;
+  font-size: 0.95rem; font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-confirm:hover {
+  background-color: #1e40af;
+}
+.btn-cancel {
+  padding: 10px 20px;
+  background-color: #ffffff; color: #374151;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 0.95rem; font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.btn-cancel:hover {
+  background-color: #f9fafb;
+  border-color: #cbd5e1;
+}
+/* ===== إصلاح التفاعلية على المودال والكانفاس ===== */
+
+#rejectModal .modal {
+  max-width: 480px;
+}
+
+#rejectModal .modal-header,
+#rejectModal .modal-footer,
+#rejectModal .modal-body {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+#rejectModal .modal-body {
+  padding-top: 8px;
+}
+
+#rejectModal .body-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1rem;
+  color: #374151;
+}
+
+#rejectModal .body-textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.95rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* override footer gap for symmetry */
+#rejectModal .modal-footer {
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+/* زر إرسال السبب: نفس btn-confirm */
+#rejectModal .btn-confirm {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+/* زر إلغاء: نفس btn-cancel */
+#rejectModal .btn-cancel {
+  background-color: #ffffff;
+  color: #374151;
+}
+/* ===== ستايل مودال QR Code ===== */
+#qrModal .modal {
+  max-width: 480px;
+}
+
+/* تخصيص مساحة الكانفاس */
+.qr-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+#qrCanvas {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+/* جملة التعليمات */
+.qr-instruction {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0 24px 16px;
+}
+#btnElectronicApprove {
+  background-color: #10b981; /* أخضر متوسط */
+}
+#btnElectronicApprove:hover {
+  background-color: #059669;
+}
+.qr-success {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 1rem;
+  color: #10b981; /* أخضر مريح */
+  font-weight: 500;
+}
+/* ===== مودال التوقيع بالنيابة عن ===== */
+#delegateModal .modal {
+  max-width: 480px;
+}
+
+/* استخدم نفس البادينغ والزوايا من المودالات الأخرى */
+#delegateModal .modal-header,
+#delegateModal .modal-footer,
+#delegateModal .modal-body {
+  padding: 16px 24px;
+}
+
+#delegateModal .modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* تنسيق الحقول */
+#delegateModal .form-group {
+  margin-bottom: 16px;
+}
+
+#delegateModal .form-group label {
+  display: block;
+  font-size: 0.95rem;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+#delegateModal .form-group input,
+#delegateModal .form-group select,
+#delegateModal .form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #1f2937;
+  transition: border-color 0.2s;
+}
+
+#delegateModal .form-group input:focus,
+#delegateModal .form-group select:focus,
+#delegateModal .form-group textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* أزرار المودال */
+#delegateModal .modal-footer {
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+#btnDelegateConfirm {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+#btnDelegateConfirm:hover {
+  background-color: #1e40af;
+}
+
+
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+.header-actions {
+    position: relative;
+    height: 50px;
+    margin-bottom: 16px;
+    width: 100%;
+    top: 10px;
+}
+.back-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #2563eb;
+    cursor: pointer;
+    padding: 0 12px;
+    font-family: inherit;
+}
+:lang(ar) .back-btn,
+[dir="rtl"] .back-btn {
+    right: 50px;
+    left: auto;
+    flex-direction: row;
+}
+:lang(en) .back-btn,
+[dir="ltr"] .back-btn {
+    left: 50px;
+    right: auto;
+    flex-direction: row;
+}
+[dir="ltr"] .back-btn .fa-arrow-right {
+    transform: scaleX(-1);
+}
+[dir="ltr"] .back-btn .fa-arrow-left {
+    transform: none;
+}
+.home-btn {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #2563eb;
+    cursor: pointer;
+    padding: 0 12px;
+    font-family: inherit;
+}
+.back-btn:hover,
+.home-btn:hover {
+    opacity: 0.7;
+}
+main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px 40px 16px;
+}
+.page-header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.pending-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #222;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.pending-count {
+    background: #2563eb;
+    color: #fff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+}
+.filters-bar {
+    display: flex;
+    gap: 56px;
+    margin-bottom: 32px;
+    align-items: center;
+}
+.search-box {
+    position: relative;
+    flex: 1;
+    max-width: 320px;
+}
+.search-box .fa-search {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #bdbdbd;
+    font-size: 1.1rem;
+}
+.search-input {
+    width: 100%;
+    padding: 10px 36px 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fff;
+    outline: none;
+}
+.filter-btn, .filter-select {
+    padding: 10px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fff;
+    color: #444;
+    min-width: 120px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.filter-btn i {
+    color: #2563eb;
+    font-size: 1.1rem;
+}
+.approvals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+.approval-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 20px 24px 18px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.card-header {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 8px;
+}
+.card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+}
+.user-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e0e0e0;
+}
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.user-name {
+    font-weight: 600;
+    color: #222;
+    font-size: 1.05rem;
+}
+.user-meta {
+    color: #888;
+    font-size: 0.98rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+.btn {
+    border: none;
+    border-radius: 8px;
+    padding: 7px 18px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-blue {
+    background: #2563eb;
+    color: #fff;
+}
+.btn-blue:hover {
+    background: #1746a2;
+}
+.btn-green {
+    background: #22c55e;
+    color: #fff;
+}
+.btn-green:hover {
+    background: #15803d;
+}
+.btn-red {
+    background: #ef4444;
+    color: #fff;
+}
+.btn-red:hover {
+    background: #b91c1c;
+}
+.status {
+    display: inline-block;
+    padding: 5px 18px;
+    border-radius: 16px;
+    font-size: 0.98rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+.status.approved {
+    background: #d1fae5;
+    color: #059669;
+}
+.status.rejected {
+    background: #fee2e2;
+    color: #ef4444;
+}
+.status-info {
+    font-size: 0.98rem;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.status-info.approved {
+    color: #059669;
+}
+.status-info.rejected {
+    color: #ef4444;
+}
+.status-info .fa-check-circle {
+    color: #059669;
+}
+.status-info .fa-times-circle {
+    color: #ef4444;
+}
+@media (max-width: 700px) {
+    main {
+        padding: 12px 2vw 24px 2vw;
+    }
+    .approval-card {
+        padding: 12px 6px 10px 6px;
+    }
+    .header-container {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .filters-bar {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    .actions {
+        flex-direction: column;
+        gap: 6px;
+    }
+} 

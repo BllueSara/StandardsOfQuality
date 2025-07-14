@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محتويات القسم</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/department-content.css">
+  
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <div class="hospital-logo">
+                <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+            </div>
+            <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+           
+        </div>
+    </header>
+        <div class="header-actions">
+  <button class="home-btn" onclick="window.location.href='index.html'">
+    <i class="fas fa-home"></i>
+    <span data-translate="home">الرئيسية</span>
+  </button>
+</div>
+    <main>
+        <div class="container">
+            <h1 data-translate="department-content-title"></h1>
+
+            <!-- زر رجوع واحد فقط في الأعلى -->
+            <div class="back-button-container" id="mainBackBtnContainer">
+                <button class="back-button" id="mainBackBtn">
+                    <span id="mainBackBtnText" data-translate="back">رجوع</span>
+                    <i class="fas fa-arrow-right" id="mainBackBtnIcon"></i>
+                </button>
+            </div>
+
+            <!-- Containers for conditional back buttons (initially hidden) -->
+            <div id="backToFilesContainer" class="back-button-container" style="display: none;">
+                <button class="back-button" id="backToFilesBtn">
+                    <img src="../images/Back.png" alt="رجوع" class="back-arrow-icon">
+                    العودة للملفات
+                </button>
+            </div>
+
+            <!-- Section for Folders -->
+            <div class="folders-section">
+                <!-- Folder Controls Bar -->
+                <div class="folder-controls-bar">
+                    <div class="search-bar">
+                        <input type="text" placeholder="ابحث عن مجلد" data-placeholder="search-folder">
+                        <img src="../images/serach.svg" alt="بحث" class="search-icon">
+                    </div>
+                    <button class="btn-primary" id="addFolderBtn" data-translate="add-folder">إضافة مجلد +</button>
+                </div>
+                <!-- Container for Folder Cards -->
+                <div class="folders-list">
+                     <!-- Folder cards will be dynamically loaded here by JavaScript -->
+                </div>
+                <!-- Add more folder cards as needed -->
+            </div>
+
+            <!-- Section for Folder Contents (Files) - Initially Hidden -->
+            <div class="folder-contents-section" style="display: none;">
+                 <h2 class="folder-content-title" data-translate="folder-content-title"></h2>
+                 <!-- File Controls Bar -->
+                 <div class="file-controls-bar">
+                     <div class="search-bar">
+                         <input type="text" placeholder="ابحث عن محتوى" data-placeholder="search-content">
+                         <img src="../images/serach.svg" alt="بحث" class="search-icon">
+                     </div>
+                      <button class="btn-primary" id="addContentBtn" data-translate="add-content">إضافة محتوى +</button>
+                 </div>
+                 <!-- Container for File List -->
+                 <div class="files-list">
+                 <!-- File list will be dynamically loaded here by JavaScript -->
+                 </div>
+            </div>
+
+        </div>
+    </main>
+
+<!-- Add Folder Modal -->
+<div id="addFolderModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 data-translate="add-folder">إضافة مجلد</h3>
+    </div>
+    <hr>
+    <div class="modal-body">
+      <!-- Dropdown container -->
+      <div class="form-group">
+        <label data-translate="choose-folder-name">اختر اسم المجلد</label>
+        <div id="folderNameDropdown" class="custom-dropdown">
+          <button id="folderNameToggle" class="dropdown-toggle" type="button">
+            <span data-translate="choose-from-list">اختر من القائمة</span> <span class="arrow">▾</span>
+          </button>
+          <div id="folderNameMenu" class="dropdown-menu hidden">
+            <!-- 1) صندوق البحث -->
+            <input type="text" id="folderNameSearch" class="dropdown-search hidden" data-placeholder="search-folder" placeholder="ابحث...">
+
+            <!-- 2) رابط إضافة جديد -->
+            <div id="addNewFolderNameLink" class="add-folder-new hidden" data-translate="add-folder">إضافة مجلد+</div>
+
+            <!-- 3) حاوية العناصر -->
+            <div id="folderNamesContainer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="createFolderBtn" data-translate="create">إنشاء</button>
+      <button class="btn-secondary" id="cancelFolderBtn" data-translate="cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+    <!-- Add Content Modal -->
+<div id="addContentModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 data-translate="add-content">إضافة محتوى للمجلد</h3>
+    </div>
+
+    <hr />
+
+    <div id="addContentFormElement">
+      <div class="modal-body">
+        <input type="hidden" id="addContentFolderId" />
+
+        <!-- ✅ اسم المحتوى Dropdown -->
+        <div class="form-group">
+          <label data-translate="content-name">اسم المحتوى</label>
+          <div class="custom-dropdown" id="contentNameDropdown">
+            <button type="button" id="contentNameToggle" class="dropdown-toggle">
+              <span data-translate="choose-name">اختر اسماً…</span> <span class="arrow">▾</span>
+            </button>
+            <div id="contentNameMenu" class="dropdown-menu hidden">
+              <input
+                type="text"
+                id="contentNameSearch"
+                class="dropdown-search"
+                data-placeholder="search-content-name"
+                placeholder="ابحث عن اسم…"
+              />
+              <div id="addNewContentNameLink" class="add-folder-new" data-translate="add-content-name">
+                + إضافة اسم جديد
+              </div>
+              <div id="contentNamesContainer" class="dropdown-list"></div>
+            </div>
+          </div>
+          <input type="hidden" id="selectedContentNameId" />
+        </div>
+        <!-- ✅ تاريخ البداية -->
+        <div class="form-group">
+          <label for="contentStartDate" data-translate="start-date">تاريخ البداية</label>
+          <input type="date" id="contentStartDate" />
+        </div>
+        <!-- ✅ تاريخ النهاية -->
+        <div class="form-group">
+          <label for="contentEndDate" data-translate="end-date">تاريخ النهاية</label>
+          <input type="date" id="contentEndDate" />
+        </div>
+
+        <!-- ✅ اختيار الملف -->
+        <div class="form-group">
+          <label data-translate="choose-file">اختر ملف لإرفاقه</label>
+          <div class="file-drop-area">
+            <img src="../images/attach.svg" alt="أيقونة رفع" class="attach-icon" />
+            <input type="file" id="contentFile" accept="application/pdf" required />
+            <div class="file-upload-text">
+              <span class="supported-files" data-translate="pdf-only">ملفات PDF فقط</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-primary" id="createContentBtn" type="button" data-translate="add">إضافة</button>
+        <button class="btn-secondary" id="cancelContentBtn" type="button" data-translate="cancel">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- You might have other modals here like Add Folder Modal -->
+
+    <!-- Modals for Edit Folder and Add Content will be added later -->
+
+    <div id="toast-container"></div>
+    <script src="../js/language.js"></script>
+    <script src="../js/department-content.js"></script>
+    <script src="/frontend/js/check-status.js"></script>
+
+</body>
+
+<!-- Edit Folder Modal -->
+<div id="editFolderModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>
+        <img src="../images/folders.svg" alt="أيقونة مجلد"
+             style="width: 24px; height: 24px; vertical-align: middle; margin-left: 10px;">
+        <span data-translate="edit-folder-title"></span>
+      </h3>
+    </div>
+    <hr>
+    <div class="modal-body">
+      <!-- حقل مخفي للايدي -->
+      <input type="hidden" id="editFolderId">
+      <!-- حقل مخفي للاسم المختار -->
+      <input type="hidden" id="editSelectedFolderNameId">
+      <!-- بدل إدخال نص عادي، نعوّضه بالدروبدَاون -->
+      <div class="form-group">
+        <label data-translate="choose-folder-name"></label>
+        <div id="editFolderDropdown" class="custom-dropdown">
+          <button id="editFolderToggle" class="dropdown-toggle" type="button" data-translate="choose-from-list">
+            <span data-translate="choose-from-list"></span> <span class="arrow">▾</span>
+          </button>
+          <div id="editFolderMenu" class="dropdown-menu hidden">
+            <input id="editFolderSearch" class="dropdown-search hidden" data-placeholder="search-folder">
+            <div id="editAddNewLink" class="add-folder-new hidden" data-translate="add-folder"></div>
+            <div id="editFolderNamesContainer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="updateFolderBtn" data-translate="update"></button>
+      <button class="btn-secondary" id="cancelEditFolderBtn" data-translate="cancel"></button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Edit Content Modal -->
+<div id="editContentModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 data-translate="edit-content-title"></h3>
+      <span class="close-button">&times;</span>
+    </div>
+
+    <hr>
+
+    <div class="modal-body">
+      <input type="hidden" id="editContentId" />
+      <input type="hidden" id="editSelectedContentNameId" />
+
+      <!-- ✅ اسم المحتوى Dropdown -->
+      <div class="form-group">
+        <label data-translate="content-name"><span class="required">*</span></label>
+        <div class="custom-dropdown" id="editContentNameDropdown">
+          <button type="button" id="editContentNameToggle" class="dropdown-toggle" data-translate="choose-from-list">
+            <span data-translate="choose-from-list"></span> <span class="arrow">▾</span>
+          </button>
+          <div id="editContentNameMenu" class="dropdown-menu hidden">
+            <input
+              type="text"
+              id="editContentNameSearch"
+              class="dropdown-search"
+              data-placeholder="search-content-name"
+            />
+            <div id="editAddNewContentNameLink" class="add-folder-new" data-translate="add-content-name"></div>
+            <div id="editContentNamesContainer" class="dropdown-list"></div>
+          </div>
+        </div>
+      </div>
+      <!-- ✅ تاريخ البداية (تعديل) -->
+      <div class="form-group">
+        <label for="editContentStartDate" data-translate="start-date">تاريخ البداية</label>
+        <input type="date" id="editContentStartDate" />
+      </div>
+      <!-- ✅ تاريخ النهاية (تعديل) -->
+      <div class="form-group">
+        <label for="editContentEndDate" data-translate="end-date">تاريخ النهاية</label>
+        <input type="date" id="editContentEndDate" />
+      </div>
+
+      <!-- ✅ اختيار الملف -->
+      <div class="form-group">
+        <label for="editContentFile" data-translate="choose-file"><span class="required">*</span></label>
+        <div class="file-drop-area">
+          <img src="../images/attach.svg" alt="أيقونة رفع" class="attach-icon">
+          <input type="file" id="editContentFile" accept="application/pdf" required>
+          <div class="file-upload-text">
+            <span data-translate="pdf-only"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-buttons">
+      <button class="btn-primary" id="updateContentBtn" data-translate="update"></button>
+      <button class="btn-secondary" id="cancelEditContentBtn" data-translate="cancel"></button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Delete Folder Modal -->
+<div id="deleteFolderModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 data-translate="delete-folder-title"></h3>
+        </div>
+        <hr>
+        <div class="modal-body">
+            <input type="hidden" id="deleteFolderId">
+            <p data-translate="delete-folder-confirm"></p>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-danger" id="confirmDeleteFolderBtn" data-translate="delete"></button>
+            <button class="btn-secondary" id="cancelDeleteFolderBtn" data-translate="cancel"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Content Modal -->
+<div id="deleteContentModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 data-translate="delete-content-title"></h3>
+            <span class="close-button">&times;</span>
+        </div>
+        <hr>
+        <div class="modal-body">
+            <input type="hidden" id="deleteContentId">
+            <p data-translate="delete-content-confirm"></p>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-danger" id="confirmDeleteContentBtn" data-translate="delete"></button>
+            <button class="btn-secondary" id="cancelDeleteContentBtn" data-translate="cancel"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Folder Name Modal -->
+<div id="addFolderNameModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 data-translate="add-folder-name">إضافة اسم مجلد</h3>
+    </div>
+    <hr>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="folderNameAr" data-translate="folder-name-ar">اسم المجلد (عربي)</label>
+        <input type="text" id="folderNameAr" data-placeholder="enter-ar-name" placeholder="أدخل الاسم بالعربية">
+      </div>
+      <div class="form-group">
+        <label for="folderNameEn" data-translate="folder-name-en">اسم المجلد (إنجليزي)</label>
+        <input type="text" id="folderNameEn" data-placeholder="enter-en-name" placeholder="Enter name in English">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="saveAddFolderName" data-translate="save">حفظ</button>
+      <button class="btn-secondary" id="cancelAddFolderName" data-translate="cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Folder Name Modal -->
+<div id="editFolderNameModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 data-translate="edit-folder-name">تعديل اسم المجلد</h3>
+    </div>
+    <hr>
+    <div class="modal-body">
+      <input type="hidden" id="editFolderNameId">
+      <div class="form-group">
+        <label for="editFolderNameAr" data-translate="folder-name-ar">اسم المجلد (عربي)</label>
+        <input type="text" id="editFolderNameAr" data-translate-placeholder="enter-arabic-name" placeholder="أدخل الاسم بالعربية">
+      </div>
+      <div class="form-group">
+        <label for="editFolderNameEn" data-translate="folder-name-en">اسم المجلد (إنجليزي)</label>
+        <input type="text" id="editFolderNameEn" data-translate-placeholder="enter-english-name" placeholder="Enter name in English">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="saveEditFolderName" data-translate="update">تحديث</button>
+      <button class="btn-secondary" id="cancelEditFolderName" data-translate="cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Folder Name Modal -->
+<div id="deleteFolderNameModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 data-translate="delete-folder-name-title">تأكيد حذف اسم المجلد</h3>
+        </div>
+        <hr>
+        <div class="modal-body">
+            <input type="hidden" id="deleteFolderNameId">
+            <p data-translate="delete-folder-name-confirm">هل أنت متأكد من حذف اسم هذا المجلد؟ سيؤدي هذا إلى إزالة الاسم من القائمة فقط ولن يؤثر على المجلدات الموجودة التي تستخدم هذا الاسم.</p>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-danger" id="confirmDeleteFolderNameBtn" data-translate="delete">حذف</button>
+            <button class="btn-secondary" id="cancelDeleteFolderNameBtn" data-translate="cancel">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Content Name Modal -->
+<div id="addContentNameModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 data-translate="add-content-name">إضافة اسم محتوى</h3>
+    </div>
+    <hr>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="contentNameAr" data-translate="content-name-ar">اسم المحتوى (عربي)</label>
+        <input type="text" id="contentNameAr" data-placeholder="enter-ar-name" placeholder="أدخل الاسم بالعربية">
+      </div>
+      <div class="form-group">
+        <label for="contentNameEn" data-translate="content-name-en">اسم المحتوى (إنجليزي)</label>
+        <input type="text" id="contentNameEn" data-placeholder="enter-en-name" placeholder="Enter name in English">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="saveAddContentName" data-translate="save">حفظ</button>
+      <button class="btn-secondary" id="cancelAddContentName" data-translate="cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Content Name Modal -->
+<div id="editContentNameModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 data-translate="edit-content-name">تعديل اسم المحتوى</h3>
+    </div>
+    <hr>
+    <div class="modal-body">
+      <input type="hidden" id="editContentNameId">
+      <div class="form-group">
+        <label for="editContentNameAr" data-translate="content-name-ar">اسم المحتوى (عربي)</label>
+        <input type="text" id="editContentNameAr" data-translate-placeholder="enter-arabic-name" placeholder="أدخل الاسم بالعربية">
+      </div>
+      <div class="form-group">
+        <label for="editContentNameEn" data-translate="content-name-en">اسم المحتوى (إنجليزي)</label>
+        <input type="text" id="editContentNameEn" data-translate-placeholder="enter-english-name" placeholder="Enter name in English">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="saveEditContentName" data-translate="update">تحديث</button>
+      <button class="btn-secondary" id="cancelEditContentName" data-translate="cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Content Name Modal -->
+<div id="deleteContentNameModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 data-translate="delete-content-name-title">تأكيد حذف اسم المحتوى</h3>
+        </div>
+        <hr>
+        <div class="modal-body">
+            <input type="hidden" id="deleteContentNameId">
+            <p data-translate="delete-content-name-confirm">هل أنت متأكد من حذف اسم هذا المحتوى؟ سيؤدي هذا إلى إزالة الاسم من القائمة فقط ولن يؤثر على المحتويات الموجودة التي تستخدم هذا الاسم.</p>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-danger" id="confirmDeleteContentNameBtn" data-translate="delete">حذف</button>
+            <button class="btn-secondary" id="cancelDeleteContentNameBtn" data-translate="cancel">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+</html> 

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تتبع الطلب</title>
+    <link rel="stylesheet" href="../css/track-request.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+      <header class="main-header">
+    <div class="header-container">
+      <div class="hospital-logo">
+        <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
+      </div>
+  <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+    </div>
+  </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
+    <main>
+        <h1 class="page-title">تتبع الطلب</h1>
+        <div class="request-info">
+            <div class="info-row">
+                <div class="info-item">
+                    <div class="info-label">رقم الطلب</div>
+                    <div class="info-value"><i class="fa-regular fa-file-lines"></i> #2023-4891</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">نوع الطلب</div>
+                    <div class="info-value">طلب موافقة إدارية</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">تاريخ تقديم الطلب</div>
+                    <div class="info-value"><i class="fa-regular fa-calendar"></i> 2023/12/15</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">مقدم الطلب</div>
+                    <div class="info-value"><i class="fa-regular fa-user"></i> أحمد محمد علي</div>
+                </div>
+            </div>
+        </div>
+        <div class="track-container">
+            <div class="track-list">
+                <!-- المرحلة 1 -->
+                <div class="track-card approved">
+                    <div class="track-content">
+                        <div class="track-title">قسم الاستقبال</div>
+                        <div class="track-user">سارة أحمد</div>
+                        <div class="track-date"><i class="fa-regular fa-calendar"></i> 2023/12/15</div>
+                    </div>
+                    <div class="track-status approved">تمت الموافقة</div>
+                </div>
+                <!-- المرحلة 2 -->
+                <div class="track-card approved">
+                    <div class="track-content">
+                        <div class="track-title">الإدارة القانونية</div>
+                        <div class="track-user">محمد خالد</div>
+                        <div class="track-date"><i class="fa-regular fa-calendar"></i> 2023/12/16</div>
+                    </div>
+                    <div class="track-status approved">تمت الموافقة</div>
+                </div>
+                <!-- المرحلة 3 -->
+                <div class="track-card pending">
+                    <div class="track-content">
+                        <div class="track-title">مكتب المدير العام</div>
+                        <div class="track-user">د. عبدالله العمري</div>
+                        <div class="track-date"><i class="fa-regular fa-calendar"></i> -</div>
+                    </div>
+                    <div class="track-status pending">قيد المراجعة</div>
+                </div>
+            </div>
+            <div class="track-timeline">
+                <div class="timeline-step approved"><i class="fa fa-check"></i></div>
+                <div class="timeline-line"></div>
+                <div class="timeline-step approved"><i class="fa fa-check"></i></div>
+                <div class="timeline-line"></div>
+                <div class="timeline-step pending"><i class="fa fa-clock"></i></div>
+            </div>
+        </div>
+        <div class="footer-info">
+            <div class="footer-row">
+                <div>زمن المعالجة المتوقع <span>2023/12/16 - 14:30</span></div>
+                <div>03 أيام عمل</div>
+            </div>
+            <div class="footer-update">آخر تحديث</div>
+        </div>
+    </main>
+</body>
+</html> 

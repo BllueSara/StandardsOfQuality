@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل الملف</title>
+    <link rel="stylesheet" href="../css/file-details.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+       <header class="main-header">
+    <div class="header-container">
+      <div class="hospital-logo">
+        <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
+      </div>
+  <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+    </div>
+  </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
+    <main>
+        <div class="container">
+            <div class="card file-info">
+                <div class="card-title"><i class="fa-regular fa-file-lines"></i> معلومات الملف</div>
+                <div class="file-info-grid">
+                    <div>
+                        <div class="info-label">اسم الملف</div>
+                        <div class="info-value">تقرير المبيعات الشهري.pdf</div>
+                    </div>
+                    <div>
+                        <div class="info-label">حجم الملف</div>
+                        <div class="info-value">2.5 ميجابايت</div>
+                    </div>
+                    <div>
+                        <div class="info-label">تاريخ الرفع</div>
+                        <div class="info-value">15 يناير 2024</div>
+                    </div>
+                    <div>
+                        <div class="info-label">حالة الملف</div>
+                        <div class="info-value status pending"><i class="fa-solid fa-circle-exclamation"></i> قيد المراجعة</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card reviewer-info">
+                <div class="card-title"><i class="fa-regular fa-user"></i> المراجع الحالي</div>
+                <div class="reviewer-grid">
+                    <div>
+                        <div class="info-label">الاسم</div>
+                        <div class="info-value">أحمد محمد</div>
+                    </div>
+                    <div>
+                        <div class="info-label">المنصب</div>
+                        <div class="info-value">مدير المبيعات</div>
+                    </div>
+                    <div>
+                        <div class="info-label">القسم</div>
+                        <div class="info-value">قسم المبيعات</div>
+                    </div>
+                    <div>
+                        <div class="info-label">البريد الإلكتروني</div>
+                        <div class="info-value">ahmed.me@company.com</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card transfer-card">
+                <div class="card-title"><i class="fa-regular fa-paper-plane"></i> تحويل الملف</div>
+                <div class="transfer-row">
+                    <select>
+                        <option>اختر الموظف المطلوب</option>
+                        <option>محمد عبدالله</option>
+                        <option>منى علي</option>
+                        <option>سارة خالد</option>
+                    </select>
+                    <button class="transfer-btn"><i class="fa-regular fa-paper-plane"></i> تحويل</button>
+                </div>
+            </div>
+            <div class="card history-card">
+                <div class="card-title"><i class="fa-regular fa-calendar"></i> تاريخ المراجعات</div>
+                <div class="history-table-wrapper">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>التعليقات</th>
+                                <th>الإجراء</th>
+                                <th>المراجع</th>
+                                <th>التاريخ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>تم التحقق من جميع البيانات</td>
+                                <td>تمت المراجعة</td>
+                                <td>محمد أحمد</td>
+                                <td>14 يناير 2024</td>
+                            </tr>
+                            <tr>
+                                <td>يجرى مراجعة الأرقام النهائية</td>
+                                <td>تم التحويل</td>
+                                <td>سارة خالد</td>
+                                <td>13 يناير 2024</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card attachments-card">
+                <div class="card-title"><i class="fa-regular fa-folder"></i> الملفات المرتبطة</div>
+                <div class="attachments-list">
+                    <div class="attachment-item">
+                        <i class="fa-regular fa-file-lines"></i>
+                        <div>
+                            <div class="attachment-name">ملخص المبيعات.pdf</div>
+                            <div class="attachment-size">1.2 ميجابايت</div>
+                        </div>
+                    </div>
+                    <div class="attachment-item">
+                        <i class="fa-regular fa-file-lines"></i>
+                        <div>
+                            <div class="attachment-name">كشف تقرير الأداء</div>
+                            <div class="attachment-size">960 كيلوبايت</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer class="footer-bar">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="#">الرئيسية</a>
+                <a href="#">اتصل بنا</a>
+                <a href="#">المساعدة</a>
+            </div>
+            <div class="footer-copy">جميع الحقوق محفوظة &copy; 2024</div>
+        </div>
+    </footer>
+</body>
+</html> 

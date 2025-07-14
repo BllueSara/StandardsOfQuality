@@ -1,0 +1,319 @@
+body {
+    font-family: 'Tajawal', Arial, sans-serif;
+    background: #ffffff;
+    margin: 0;
+    direction: rtl;
+}
+
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 10px;
+}
+
+/* زرّ الرجوع */
+.back-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* اتجاه زر الرجوع حسب اللغة */
+:lang(ar) .back-btn,
+[dir="rtl"] .back-btn {
+  right: 50px;
+  left: auto;
+  flex-direction: row;
+}
+
+:lang(en) .back-btn,
+[dir="ltr"] .back-btn {
+  left: 50px;
+  right: auto;
+  flex-direction: row;
+}
+
+/* يقلب أيقونات FA داخل back-btn في الوضع LTR */
+[dir="ltr"] .back-btn .fa-arrow-right {
+  transform: scaleX(-1);
+}
+
+/* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
+[dir="ltr"] .back-btn .fa-arrow-left {
+  transform: none;
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+
+.main-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hospital-logo {
+    order: 3; /* Changed to 3 to put it on the right in RTL */
+}
+
+
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+
+main {
+    max-width: 700px;
+    margin: 40px auto 0 auto;
+    padding: 0 16px 40px 16px;
+}
+.page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 1.5rem;
+    text-align: right;
+}
+.request-info {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 24px 18px 10px 18px;
+    margin-bottom: 32px;
+}
+.info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 32px;
+    justify-content: flex-start;
+}
+.info-item {
+    min-width: 180px;
+    margin-bottom: 12px;
+}
+.info-label {
+    color: #888;
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+.info-value {
+    color: #222;
+    font-weight: 600;
+    font-size: 1.08rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.track-container {
+    display: flex;
+    flex-direction: row;
+    gap: 32px;
+    align-items: flex-start;
+    margin-bottom: 32px;
+}
+.track-list {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+.track-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 22px 18px 18px 18px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-height: 90px;
+    position: relative;
+}
+.track-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.track-title {
+    font-weight: 700;
+    color: #222;
+    font-size: 1.13rem;
+    margin-bottom: 2px;
+}
+.track-user {
+    color: #444;
+    font-size: 1.05rem;
+    margin-bottom: 2px;
+}
+.track-date {
+    color: #888;
+    font-size: 0.98rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.track-status {
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 6px 18px;
+    margin-right: 12px;
+    margin-top: 2px;
+    min-width: 110px;
+    text-align: center;
+}
+.track-status.approved {
+    background: #d1fae5;
+    color: #22c55e;
+}
+.track-status.pending {
+    background: #f3f4f6;
+    color: #888;
+}
+.track-timeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin-top: 8px;
+    min-width: 48px;
+}
+.timeline-step {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #bdbdbd;
+    border: 2px solid #f3f4f6;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 2;
+}
+.timeline-step.approved {
+    background: #22c55e;
+    color: #fff;
+    border: 2px solid #22c55e;
+}
+.timeline-step.pending {
+    background: #f3f4f6;
+    color: #bdbdbd;
+    border: 2px solid #bdbdbd;
+}
+.timeline-line {
+    width: 4px;
+    height: 60px;
+    background: repeating-linear-gradient(
+        to bottom,
+        #bdbdbd,
+        #bdbdbd 8px,
+        transparent 8px,
+        transparent 16px
+    );
+    margin: 0 auto;
+    z-index: 1;
+}
+.footer-info {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 18px 18px 10px 18px;
+    margin-bottom: 32px;
+    margin-top: 32px;
+}
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.08rem;
+    color: #444;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.footer-row span {
+    color: #888;
+    font-weight: 400;
+    font-size: 1rem;
+    margin-right: 8px;
+}
+.footer-update {
+    color: #bdbdbd;
+    font-size: 0.95rem;
+    text-align: left;
+}
+@media (max-width: 700px) {
+    main {
+        padding: 0 2vw 24px 2vw;
+    }
+    .track-container {
+        flex-direction: column;
+        gap: 0;
+    }
+    .track-timeline {
+        flex-direction: row;
+        min-width: 0;
+        margin: 24px 0 0 0;
+        gap: 0;
+        justify-content: center;
+    }
+    .timeline-line {
+        width: 60px;
+        height: 4px;
+        background: repeating-linear-gradient(
+            to right,
+            #bdbdbd,
+            #bdbdbd 8px,
+            transparent 8px,
+            transparent 16px
+        );
+        margin: 0 0 0 0;
+    }
+    .track-list {
+        gap: 18px;
+    }
+} 

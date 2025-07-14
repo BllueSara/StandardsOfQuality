@@ -1,0 +1,248 @@
+* {
+    font-family: 'Tajawal', Arial, sans-serif;
+    background: #ffffff;
+    margin: 0;
+    direction: rtl;
+}
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 10px;
+}
+
+/* زرّ الرجوع */
+.back-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* اتجاه زر الرجوع حسب اللغة */
+:lang(ar) .back-btn,
+[dir="rtl"] .back-btn {
+  right: 50px;
+  left: auto;
+  flex-direction: row;
+}
+
+:lang(en) .back-btn,
+[dir="ltr"] .back-btn {
+  left: 50px;
+  right: auto;
+  flex-direction: row;
+}
+
+/* يقلب أيقونات FA داخل back-btn في الوضع LTR */
+[dir="ltr"] .back-btn .fa-arrow-right {
+  transform: scaleX(-1);
+}
+
+/* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
+[dir="ltr"] .back-btn .fa-arrow-left {
+  transform: none;
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+
+.main-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hospital-logo {
+    order: 3; /* Changed to 3 to put it on the right in RTL */
+}
+
+
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+main {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.upload-container {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 32px 28px 18px 28px;
+    max-width: 480px;
+    width: 100%;
+    margin: 40px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.main-file-label {
+    color: #222;
+    font-weight: 700;
+    font-size: 1.13rem;
+    margin-bottom: 2px;
+}
+.main-file-name {
+    color: #444;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.upload-drop {
+    border: 2px dashed #bdbdbd;
+    border-radius: 14px;
+    background: #fafbfc;
+    padding: 36px 10px 32px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.upload-icon {
+    font-size: 2.8rem;
+    color: #2563eb;
+    margin-bottom: 6px;
+}
+.upload-title {
+    font-size: 1.13rem;
+    font-weight: 600;
+    color: #222;
+}
+.upload-desc {
+    color: #888;
+    font-size: 1.01rem;
+    margin-bottom: 8px;
+}
+.upload-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 32px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.2s;
+}
+.upload-btn:hover {
+    background: #1746a2;
+}
+.section-select {
+    margin-bottom: 2px;
+}
+.section-select select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fafbfc;
+    color: #444;
+    outline: none;
+    transition: border 0.2s;
+}
+.section-select select:focus {
+    border-color: #2563eb;
+}
+.files-list {
+    background: #fafbfc;
+    border-radius: 10px;
+    padding: 8px 0 2px 0;
+    margin-bottom: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 6px;
+    font-size: 1.05rem;
+    color: #222;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    position: relative;
+}
+.file-icon {
+    font-size: 1.3rem;
+    color: #2563eb;
+}
+.delete-btn {
+    background: none;
+    border: none;
+    color: #bdbdbd;
+    font-size: 1.1rem;
+    cursor: pointer;
+    margin-right: auto;
+    transition: color 0.2s;
+}
+.delete-btn:hover {
+    color: #ef4444;
+}
+.files-count {
+    text-align: center;
+    color: #888;
+    font-size: 1.05rem;
+    margin-top: 8px;
+    margin-bottom: 2px;
+}
+@media (max-width: 600px) {
+    .upload-container {
+        padding: 12px 2vw 8px 2vw;
+        max-width: 98vw;
+    }
+    .upload-drop {
+        padding: 18px 2px 16px 2px;
+    }
+} 

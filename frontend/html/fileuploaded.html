@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ملفاتي المرفوعة</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #fff;
+      color: #333;
+    }
+    h2 {
+      text-align: center;
+      margin-top: 2rem;
+      font-weight: bold;
+    }
+    .subheading {
+      font-size: 18px;
+      color: #666;
+      margin-bottom: 1rem;
+      text-align: right;
+    }
+    .page {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .add-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-right: auto;
+      align-items: flex-start;
+    }
+    .add-buttons button {
+      background-color: #1769ff;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      width: 180px;
+      transition: transform 0.2s;
+    }
+    .add-buttons button:hover {
+      transform: scale(1.05);
+    }
+    .top-controls {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+      gap: 1rem;
+    }
+    .search-box {
+      flex: 1;
+      order: 2;
+    }
+    .filter-box {
+      display: flex;
+      gap: 0.5rem;
+      order: 1;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    .filter-box select,
+    .filter-box button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background-color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .file-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .file-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-direction: row-reverse;
+    }
+    .file-details {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      direction: rtl;
+    }
+    .file-details img {
+      width: 24px;
+      height: 24px;
+      order: 2;
+    }
+    .file-text {
+      text-align: right;
+    }
+    .file-name {
+      font-weight: bold;
+      font-size: 15px;
+    }
+    .file-date {
+      font-size: 13px;
+      color: #666;
+    }
+    .status {
+      font-size: 13px;
+      font-weight: bold;
+      padding: 5px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .status.approved {
+      background-color: #e6f4ea;
+      color: #2e7d32;
+    }
+    .status.review {
+      background-color: #fff8e1;
+      color: #f9a825;
+    }
+    .status.rejected {
+      background-color: #fdecea;
+      color: #c62828;
+    }
+    .rejection-reason {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 14px;
+      color: #555;
+      text-align: right;
+    }
+    .count {
+      text-align: center;
+      font-size: 14px;
+      color: #777;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>ملفاتي المرفوعة</h2>
+  <div class="page">
+    <div class="top-bar">
+      <div class="add-buttons">
+        <div class="subheading">تتبع حالة المستندات</div>
+        <button onclick="alert('إضافة ملف')">➕ إضافة ملف</button>
+        <button onclick="alert('إضافة ملفات مرتبطة')">➕ إضافة ملفات مرتبطة</button>
+      </div>
+      <div class="top-controls">
+        <div class="filter-box">
+          <select id="statusFilter">
+            <option value="all">جميع الملفات</option>
+            <option value="approved">معتمد</option>
+            <option value="review">قيد المراجعة</option>
+            <option value="rejected">مرفوض</option>
+          </select>
+          <button>ترتيب حسب ▾</button>
+        </div>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="البحث عن الملفات...">
+        </div>
+      </div>
+    </div>
+
+    <div class="count" id="fileCount">عرض 3 من 3 ملفات</div>
+
+    <div class="file-card approved">
+      <div class="file-main">
+        <div class="file-details">
+          <img src="pdf-icon.png" alt="PDF">
+          <div class="file-text">
+            <div class="file-name">طلب إجازة.pdf</div>
+            <div class="file-date">٣ يناير ٢٠٢٤</div>
+          </div>
+        </div>
+        <div class="status approved">معتمد</div>
+      </div>
+      <hr>
+      <div class="file-main">
+        <div class="file-details">
+          <img src="word-icon.png" alt="Word">
+          <div class="file-text">
+            <div class="file-name">عقد العمل.docx</div>
+            <div class="file-date">٣ يناير ٢٠٢٤</div>
+          </div>
+        </div>
+        <div class="status review">قيد المراجعة</div>
+      </div>
+    </div>
+
+    <div class="file-card rejected">
+      <div class="file-main">
+        <div class="file-details">
+          <img src="pdf-icon.png" alt="PDF">
+          <div class="file-text">
+            <div class="file-name">تقرير الأداء.pdf</div>
+            <div class="file-date">٢٠ يناير ٢٠٢٤</div>
+          </div>
+        </div>
+        <div class="status rejected">مرفوض</div>
+      </div>
+      <div class="rejection-reason">
+        <strong>بسبب الرفض:</strong><br>
+        يرجى إضافة توقيع المدير المباشر
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const fileCards = document.querySelectorAll('.file-card');
+    const countEl = document.getElementById('fileCount');
+
+    function updateVisibleFiles() {
+      const keyword = searchInput.value.toLowerCase();
+      const status = statusFilter.value;
+      let visible = 0;
+
+      fileCards.forEach(card => {
+        const name = card.querySelector('.file-name').textContent.toLowerCase();
+        const matchesName = name.includes(keyword);
+        const matchesStatus = status === 'all' || card.classList.contains(status);
+
+        if (matchesName && matchesStatus) {
+          card.style.display = 'flex';
+          visible++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+    }
+
+    searchInput.addEventListener('input', updateVisibleFiles);
+    statusFilter.addEventListener('change', updateVisibleFiles);
+    window.addEventListener('load', updateVisibleFiles);
+  </script>
+</body>
+</html>

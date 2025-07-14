@@ -1,0 +1,226 @@
+* {
+    font-family: 'Tajawal', Arial, sans-serif;
+    background: #fff;
+    margin: 0;
+    direction: rtl;
+}
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 10px;
+}
+
+/* زرّ الرجوع */
+.back-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* اتجاه زر الرجوع حسب اللغة */
+:lang(ar) .back-btn,
+[dir="rtl"] .back-btn {
+  right: 50px;
+  left: auto;
+  flex-direction: row;
+}
+
+:lang(en) .back-btn,
+[dir="ltr"] .back-btn {
+  left: 50px;
+  right: auto;
+  flex-direction: row;
+}
+
+/* يقلب أيقونات FA داخل back-btn في الوضع LTR */
+[dir="ltr"] .back-btn .fa-arrow-right {
+  transform: scaleX(-1);
+}
+
+/* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
+[dir="ltr"] .back-btn .fa-arrow-left {
+  transform: none;
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+
+.main-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hospital-logo {
+    order: 3; /* Changed to 3 to put it on the right in RTL */
+}
+
+
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+main {
+    max-width: 700px;
+    margin: 40px auto 0 auto;
+    padding: 0 16px 40px 16px;
+}
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 24px;
+    margin-top: 0;
+}
+.search-bar {
+    position: relative;
+    margin-bottom: 28px;
+}
+.search-bar input {
+    width: 100%;
+    padding: 12px 40px 12px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 1rem;
+    background: #fafbfc;
+    color: #444;
+    outline: none;
+}
+.search-bar .fa-search {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #bdbdbd;
+    font-size: 1.1rem;
+}
+.rejected-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.rejected-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 22px 18px 18px 18px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-height: 90px;
+    position: relative;
+    gap: 18px;
+}
+.rejected-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.file-title {
+    font-weight: 700;
+    color: #222;
+    font-size: 1.13rem;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.file-meta {
+    color: #888;
+    font-size: 1.01rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.file-status-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 2px;
+}
+.status.rejected {
+    background: #fee2e2;
+    color: #ef4444;
+    border-radius: 8px;
+    padding: 2px 14px;
+    font-size: 0.98rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.file-date {
+    color: #888;
+    font-size: 0.98rem;
+}
+.details-btn {
+    background: #f6f8ff;
+    color: #2563eb;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 22px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    transition: background 0.2s, color 0.2s;
+}
+.details-btn:hover {
+    background: #2563eb;
+    color: #fff;
+}
+@media (max-width: 600px) {
+    main {
+        padding: 0 2vw 24px 2vw;
+    }
+    .rejected-card {
+        padding: 12px 6px 10px 6px;
+        gap: 8px;
+    }
+} 

@@ -1,0 +1,320 @@
+body {
+    font-family: 'Tajawal', Arial, sans-serif;
+    background: #fff;
+    margin: 0;
+    direction: rtl;
+}
+
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 10px;
+}
+
+/* زرّ الرجوع */
+.back-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* اتجاه زر الرجوع حسب اللغة */
+:lang(ar) .back-btn,
+[dir="rtl"] .back-btn {
+  right: 50px;
+  left: auto;
+  flex-direction: row;
+}
+
+:lang(en) .back-btn,
+[dir="ltr"] .back-btn {
+  left: 50px;
+  right: auto;
+  flex-direction: row;
+}
+
+/* يقلب أيقونات FA داخل back-btn في الوضع LTR */
+[dir="ltr"] .back-btn .fa-arrow-right {
+  transform: scaleX(-1);
+}
+
+/* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
+[dir="ltr"] .back-btn .fa-arrow-left {
+  transform: none;
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+
+.main-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hospital-logo {
+    order: 3; /* Changed to 3 to put it on the right in RTL */
+}
+
+
+
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+.content-wrapper {
+  padding-top: 10px;
+  max-width: 100%;
+  margin: auto;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.page-title {
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.page-subtitle {
+  font-size: 1.1rem;
+  color: #4b5563;
+}
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 32px 40px 0 40px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.logo {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-left: 24px;
+}
+
+.nav-link {
+    color: #888;
+    text-decoration: none;
+    font-size: 1.1rem;
+    margin-left: 16px;
+    transition: color 0.2s;
+}
+
+.nav-link:hover {
+    color: #1a1a1a;
+}
+
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.icon {
+    width: 24px;
+    height: 24px;
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+.username {
+    font-size: 1rem;
+    color: #444;
+    margin-right: 8px;
+}
+
+main {
+    padding: 32px 40px;
+}
+
+.filters-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fafbfc;
+}
+
+.status-filter {
+    padding: 10px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fafbfc;
+    min-width: 150px;
+}
+
+.table-container {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    overflow-x: auto;
+}
+
+.files-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 900px;
+}
+
+.files-table th, .files-table td {
+    padding: 18px 16px;
+    text-align: center;
+    font-size: 1.05rem;
+}
+
+.files-table thead th {
+    background: #fafbfc;
+    color: #888;
+    font-weight: 700;
+    border-bottom: 1px solid #eee;
+}
+
+.files-table tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.files-table tbody tr:hover {
+    background: #f9f9f9;
+}
+
+.status {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 16px;
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+.status.pending {
+    background: #ffe082;
+    color: #a67c00;
+}
+.status.approved {
+    background: #2979ff;
+    color: #fff;
+}
+.status.rejected {
+    background: #ef5350;
+    color: #fff;
+}
+
+.track-btn {
+    border: 1.5px solid #2979ff;
+    background: #fff;
+    color: #2979ff;
+    border-radius: 8px;
+    padding: 6px 18px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: background 0.2s, color 0.2s;
+}
+.track-btn:hover {
+    background: #2979ff;
+    color: #fff;
+}
+
+.action-icon {
+    width: 22px;
+    height: 22px;
+    margin: 0 4px;
+    vertical-align: middle;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.2s;
+}
+/* أيقونات زرقاء لعرض وتحميل */
+.action-icon[alt="عرض"],
+.action-icon[alt="تحميل"] {
+    filter: invert(34%) sepia(98%) saturate(7476%) hue-rotate(203deg) brightness(97%) contrast(101%);
+}
+.action-icon:hover {
+    opacity: 1;
+}
+
+.fa-blue {
+    color: #2979ff !important;
+}
+
+@media (max-width: 900px) {
+    main {
+        padding: 16px 4vw;
+    }
+    .table-container {
+        border-radius: 8px;
+    }
+    .files-table {
+        min-width: 600px;
+    }
+    .navbar {
+        flex-direction: column;
+        gap: 12px;
+        padding: 24px 8px 0 8px;
+    }
+} 

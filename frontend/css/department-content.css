@@ -1,0 +1,768 @@
+html,body {
+    font-family: 'Tajawal', Arial, sans-serif;
+    direction: rtl;
+    margin: 0;
+    background-color: #ffffff; /* Light grey background based on design */
+}
+
+main {
+    padding-top: 90px; /* To prevent content from being hidden by fixed header */
+    max-width: 1200px;
+    margin: auto;
+    padding: 90px 20px 20px 20px; /* Add padding to sides and bottom */
+}
+
+main h1 {
+    text-align: center; /* Center the main title */
+    font-size: 2em;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+/* --- Folders Section --- */
+.folders-section {
+    margin-bottom: 40px; /* Space below the folders section */
+}
+
+.folder-controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Align items to the right in RTL */
+    margin-bottom: 20px; /* Space below the controls bar */
+    gap: 15px; /* Space between elements */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    /* Add padding or margin to align with folder-cards-grid if needed */
+}
+
+.folder-controls-bar .search-bar {
+     position: relative;
+    max-width: 400px; /* Limit max width of search bar */
+}
+
+.folder-controls-bar .search-bar input {
+    width: 100%;
+    padding: 10px 40px 10px 10px; /* Adjust padding for icon */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box;
+    text-align: right; /* Align text to the right */
+}
+
+.folder-controls-bar .search-bar .search-icon {
+    position: absolute;
+    left: 10px; /* Position icon on the left in RTL */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: #888;
+    pointer-events: none; /* Allow clicks to pass through to input */
+}
+
+.folder-controls-bar .btn-primary {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+.folders-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Changed to display 3 folders per row */
+    gap: 20px; /* Space between folder cards */
+    justify-content: center; /* Center the grid items */
+}
+
+.folder-card {
+    display: flex; /* Arrange icon and info horizontally */
+    align-items: center; /* Align items vertically in the center */
+    gap: 15px; /* Space between icon and text */
+    background-color: #fff;
+    padding: 15px 20px;
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    flex-grow: 1; /* Allow cards to grow and fill space */
+    min-width: 200px; /* Minimum width for cards */
+    position: relative; /* Needed for absolute positioning of icons */
+}
+
+.folder-card:hover {
+    transform: translateY(-3px); /* Slight lift on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.folder-card img {
+    width: 40px; /* Size of the folder icon */
+    height: 40px;
+    flex-shrink: 0; /* Prevent icon from shrinking */
+}
+
+.folder-info {
+    display: flex;
+    flex-direction: column;
+    text-align: right; /* Align text to the right */
+    position: relative; /* Ensure info is above icons if needed */
+    z-index: 1;
+}
+
+.folder-name {
+    font-size: 1.1em;
+    color: #333;
+    font-weight: bold;
+}
+
+.file-count {
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* Styles for icons within folder cards */
+/* افتراضي (RTL): الأيقونات على يسار الكرت بمسافة 15px */
+.folder-card .item-icons {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+/* إذا كان الاتجاه LTR: حط الأيقونات على أقصى اليمين */
+[dir="ltr"] .folder-card .item-icons {
+    right: 15px;
+    left: auto;
+}
+
+
+.folder-card .item-icons a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; /* Icon container size */
+    height: 24px;
+    text-decoration: none; /* Remove underline from link */
+}
+
+.folder-card .item-icons img {
+    width: 18px; /* Icon image size */
+    height: 18px;
+}
+
+
+
+/* زر الرجوع - تنسيق موحد */
+.back-button-container {
+    width: 100%;
+    padding-left: 20px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 1em;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+    flex-direction: row-reverse;
+}
+
+.back-button:hover {
+    text-decoration: underline;
+    background: none;
+}
+
+.back-arrow-icon {
+    width: 18px;
+    height: 18px;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+.folder-content-title {
+    font-size: 1.5em;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: right; /* Align title to the right */
+}
+
+.file-controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Align items to the right in RTL */
+    margin-bottom: 20px; /* Space below the controls bar */
+    gap: 15px; /* Space between elements */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    /* Add padding or margin to align with files-list if needed */
+}
+
+.file-controls-bar .search-bar {
+     position: relative;
+    max-width: 400px; /* Limit max width of search bar */
+}
+
+.file-controls-bar .search-bar input {
+    width: 100%;
+    padding: 10px 40px 10px 10px; /* Adjust padding for icon */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box;
+    text-align: right; /* Align text to the right */
+}
+
+.file-controls-bar .search-bar .search-icon {
+    position: absolute;
+    left: 10px; /* Position icon on the left in RTL */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: #888;
+    pointer-events: none; /* Allow clicks to pass through to input */
+}
+
+.file-controls-bar .btn-primary {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+.files-list {
+    display: flex;
+    flex-direction: column; /* Stack file items vertically */
+    gap: 10px; /* Space between file items */
+}
+
+.files-section .btn-primary {
+   /* This selector might need adjustment as the button is now inside .folder-contents-section */
+   align-self: flex-end; /* Align button to the right */
+   margin-bottom: 20px; /* Space below the add content button */
+   margin-top: 0;
+   flex-shrink: 0;
+}
+
+.file-item {
+    display: flex; /* Arrange icon and info horizontally */
+    align-items: center; /* Align items vertically in the center */
+    gap: 15px; /* Space between icon and text */
+    background-color: #fff;
+    padding: 15px 20px;
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative; /* Needed for absolute positioning of icons */
+}
+
+.file-item:hover {
+    background-color: #f9f9f9; /* Subtle hover effect */
+}
+
+.file-item img {
+    width: 30px; /* Size of the file icon */
+    height: 30px;
+    flex-shrink: 0; /* Prevent icon from shrinking */
+}
+
+.file-info {
+    display: flex;
+    flex-direction: column;
+    text-align: right; /* Align text to the right */
+    position: relative;
+    z-index: 0; /* Ensure info is behind icons if needed */
+}
+
+.file-name {
+    font-size: 1em;
+    color: #333;
+    font-weight: normal; /* File name not bold in design */
+}
+
+.file-date {
+    font-size: 0.8em;
+    color: #888;
+}
+
+/* Styles for icons within file items */
+/* افتراضي (RTL): الأيقونات على يسار العنصر */
+.file-item .item-icons {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 1;
+}
+
+/* عند LTR: حط الأيقونات على أقصى اليمين */
+[dir="ltr"] .file-item .item-icons {
+    right: 15px;
+    left: auto;
+}
+
+
+.file-item .item-icons a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; /* Icon container size */
+    height: 20px;
+    text-decoration: none;
+}
+
+.file-item .item-icons img {
+     width: 16px; /* Icon image size */
+    height: 16px;
+}
+
+/* Basic button styles (should be in a shared component file ideally) */
+.btn-primary {
+    background-color: #1D4ED8;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #1a3f9a;
+}
+
+/* --- Modal Styles --- */
+.modal-overlay {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto; /* Center the modal */
+    padding: 30px; /* Adjust padding */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* Shadow */
+    width: 90%; /* Responsive width */
+    max-width: 400px; /* Max width similar to design */
+    position: relative; /* Needed for absolute positioning if any */
+    text-align: right; /* Align text to the right for RTL */
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.modal-header h3 {
+    margin: 0; /* Remove default margin */
+    color: #333;
+    font-size: 1.5em; /* Slightly smaller title for modal */
+    display: flex;
+    align-items: center;
+}
+
+.modal-header .close-button {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal-header .close-button:hover,
+.modal-header .close-button:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.modal-content hr {
+    border: none;
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 15px 0;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-body .form-group {
+    margin-bottom: 15px; /* Space between form groups */
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 8px; /* Space below label */
+    font-weight: bold;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.modal-body input[type="text"],
+.modal-body select {
+    width: 100%;
+    padding: 10px; /* Adjust padding */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box; /* Include padding and border in element's total width */
+    text-align: right; /* Align text to the right */
+    -webkit-appearance: none; /* Remove default browser styling */
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none; /* Remove default arrow */
+}
+
+/* Style for the file drop area */
+.file-drop-area {
+    border: 2px dashed #ccc; /* Dashed border */
+    border-radius: 5px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    position: relative; /* Needed for positioning input and icon */
+    background-color: #f9f9f9; /* Light background */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-drop-area input[type="file"] {
+    position: absolute; /* Cover the area */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0; /* Hide the actual input */
+    cursor: pointer;
+}
+
+.file-drop-area .attach-icon {
+    width: 40px; /* Size of attach icon */
+    height: 40px;
+    color: #888;
+    margin-bottom: 10px;
+}
+
+.file-drop-area .file-upload-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.file-drop-area .choose-file-button {
+    color: #1D4ED8; /* Blue color */
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.file-drop-area .supported-files {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 10px; /* Space between buttons */
+}
+
+.modal-buttons .btn-primary,
+.modal-buttons .btn-secondary {
+    padding: 10px 20px; /* Button padding */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.modal-buttons .btn-primary {
+    background-color: #1D4ED8;
+    color: white;
+}
+
+.modal-buttons .btn-primary:hover {
+    background-color: #1a3f9a;
+}
+
+.modal-buttons .btn-secondary {
+    background-color: #e0e0e0; /* Grey background for secondary */
+    color: #333; /* Dark text for secondary */
+}
+
+.modal-buttons .btn-secondary:hover {
+    background-color: #d5d5d5;
+}
+
+/* Styles for Add Content Modal (assuming HTML structure is added) */
+
+/* Reuse existing .modal-overlay, .modal-content, .modal-header, .modal-body, .modal-buttons styles */
+
+/* Specific styles for the Add Content modal form */
+
+.modal-body textarea {
+    width: 100%;
+    padding: 10px; /* Adjust padding */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box; /* Include padding and border in element's total width */
+    text-align: right; /* Align text to the right */
+    resize: vertical; /* Allow vertical resizing */
+}
+
+/* Reuse .file-drop-area, .file-drop-area input[type="file"], .attach-icon, .file-upload-text styles */
+
+/* Adjust supported files text for Add Content modal if needed */
+/* .file-drop-area .supported-files { ... } */
+
+/* Delete Content Modal Styles */
+#deleteContentModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+#deleteContentModal .modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+}
+
+#deleteContentModal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+#deleteContentModal .modal-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+#deleteContentModal .close-button {
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+#deleteContentModal .modal-body {
+    margin-bottom: 20px;
+}
+
+#deleteContentModal .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+#deleteContentModal .btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#deleteContentModal .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+} 
+.custom-dropdown {
+  position: relative;
+  width: 100%;
+  font-family: 'Tajawal', sans-serif;
+}
+
+.dropdown-toggle {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: none;
+  border-radius: 10px;
+  background: #f8f9fa;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.arrow {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  z-index: 20;
+  max-height: 300px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  padding: 6px 0;
+}
+
+.dropdown-search {
+  padding: 10px;
+  font-size: 14px;
+  outline: none;
+  width: calc(100% - 24px);
+  margin: 0 auto 10px;
+  background: #f2f2f2;
+  border: none;
+  border-radius: 8px;
+}
+
+.dropdown-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 220px;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+  padding: 0 8px;
+}
+
+.dropdown-list::-webkit-scrollbar {
+  width: 5px;
+}
+.dropdown-list::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.folder-item:hover {
+  background-color: #f1f1f1;
+}
+
+.folder-item .label {
+  flex-grow: 1;
+}
+
+.folder-item .actions {
+  display: flex;
+  gap: 6px;
+  margin-right: auto; /* ← هذا يحرك الأزرار لأقصى اليسار */
+}
+
+.folder-item .actions button {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s;
+}
+.folder-item .actions button:hover {
+  color: #dc3545;
+}
+
+.add-folder-new {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #007bff;
+  cursor: pointer;
+  text-align: center;
+  border-top: 1px solid #eee;
+}
+.add-folder-new:hover {
+  background-color: #f0f0f0;
+}
+
+.hidden {
+  display: none;
+}
+/* للمتصفحات الحديثة */
+.dropdown-search::placeholder {
+  font-family: 'Tajawal', sans-serif;
+  color: #666;        /* إذا حابّ تغير لونه */
+  opacity: 1;         /* حتى يظهر بشكل عادي */
+}
+
+/* WebKit browsers */
+.dropdown-search::-webkit-input-placeholder {
+  font-family: 'Tajawal', sans-serif;
+}
+
+/* Firefox */
+.dropdown-search::-moz-placeholder {
+  font-family: 'Tajawal', sans-serif;
+}
+
+/* IE */
+.dropdown-search:-ms-input-placeholder {
+  font-family: 'Tajawal', sans-serif;
+}
+
+/* Edge */
+.dropdown-search::-ms-input-placeholder {
+  font-family: 'Tajawal', sans-serif;
+}
+.btn-primary,
+.btn-secondary,
+.custom-dropdown button,
+.add-folder-new {
+  font-family: inherit;
+}
+
+#folderNameMenu,
+#editFolderMenu {
+  max-height: 200px;      /* أو أي ارتفاع يناسبك */
+  overflow-y: auto;
+}

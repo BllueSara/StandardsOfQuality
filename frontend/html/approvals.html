@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اعتماداتي</title>
+      <link rel="stylesheet" href="../css/shared.css"/>
+
+    <link rel="stylesheet" href="../css/approvals.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+</head>
+<body>
+      <header class="main-header">
+    <div class="header-container">
+      <div class="hospital-logo">
+        <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
+      </div>
+  <div class="system-title">
+                <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+            </div>
+    </div>
+  </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
+    <main>
+                <h1>اعتماداتي</h1>
+
+        <div class="filters-bar">
+            <input type="text" class="search-input" placeholder="...البحث عن ملف">
+            <select class="status-filter">
+                <option>جميع الحالات</option>
+            </select>
+        </div>
+        <div class="table-container">
+            <table class="files-table">
+                <thead>
+                    <tr>
+                        <th>اسم الملف</th>
+                        <th>تاريخ الرفع</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>تقرير المبيعات الشهري.pdf</td>
+                        <td>2023/12/15</td>
+                        <td><span class="status pending">قيد الاعتماد</span></td>
+                        <td>
+                            <button class="track-btn">تتبع الطلب</button>
+                            <i class="fa-regular fa-eye fa-blue action-icon" title="عرض"></i>
+                            <img src="../images/delet.svg" alt="حذف" class="action-icon">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>عقد الموظف - أحمد.docx</td>
+                        <td>2023/12/14</td>
+                        <td><span class="status approved">معتمد</span></td>
+                        <td>
+                            <button class="track-btn">تتبع الطلب</button>
+                            <i class="fa-regular fa-eye fa-blue action-icon" title="عرض"></i>
+                            <img src="../images/delet.svg" alt="حذف" class="action-icon">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>طلب إجازة.pdf</td>
+                        <td>2023/12/13</td>
+                        <td><span class="status rejected">مرفوض</span></td>
+                        <td>
+                            <button class="track-btn">تتبع الطلب</button>
+                            <i class="fa-regular fa-eye fa-blue action-icon" title="عرض"></i>
+                            <img src="../images/delet.svg" alt="حذف" class="action-icon">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>تقرير الأداء - الربع الرابع.xlsx</td>
+                        <td>2023/12/12</td>
+                        <td><span class="status approved">معتمد</span></td>
+                        <td>
+                            <button class="track-btn">تتبع الطلب</button>
+                            <i class="fa-regular fa-eye fa-blue action-icon" title="عرض"></i>
+                            <img src="../images/delet.svg" alt="حذف" class="action-icon">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>خطة المشروع.pdf</td>
+                        <td>2023/12/11</td>
+                        <td><span class="status pending">قيد الاعتماد</span></td>
+                        <td>
+                            <button class="track-btn">تتبع الطلب</button>
+                            <i class="fa-regular fa-eye fa-blue action-icon" title="عرض"></i>
+                            <img src="../images/delet.svg" alt="حذف" class="action-icon">
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+
+</body>
+</html> 
