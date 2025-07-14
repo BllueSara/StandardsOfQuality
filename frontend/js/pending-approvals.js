@@ -76,10 +76,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     const deptResp      = await fetchJSON(`${apiBase}/approvals/assigned-to-me`);
-    const combined      = [...(deptResp.data||[]), ...(commResp.data||[])];
-    const uniqueMap     = new Map();
-    combined.forEach(item => uniqueMap.set(item.id, item));
-    allItems = Array.from(uniqueMap.values());
+    const combined      = deptResp.data || [];
+    allItems = combined;
     filteredItems = allItems;
 
     await setupFilters(allItems);
@@ -88,20 +86,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error("Error loading approvals:", err);
     alert(getTranslation('error-loading'));
   }
-document.getElementById("prevPage").addEventListener("click", () => {
-  if (currentPage > 1) {
-    currentPage--;
-    renderApprovals(filteredItems);
-  }
-});
-
-document.getElementById("nextPage").addEventListener("click", () => {
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-  if (currentPage < totalPages) {
-    currentPage++;
-    renderApprovals(filteredItems);
-  }
-});
   setupSignatureModal();
   setupCloseButtons();
 
@@ -249,12 +233,12 @@ function renderApprovals(items) {
 
     let actions = '';
     if (item.approval_status === 'pending') {
-      actions += `<button class="btn-sign"><i class="fas fa-user-check"></i> ${getTranslation('sign')}</button>`;
-      actions += `<button class="btn-delegate"><i class="fas fa-user-friends"></i> ${getTranslation('delegate')}</button>`;
-      actions += `<button class="btn-qr"><i class="fas fa-qrcode"></i> ${getTranslation('electronic')}</button>`;
-      actions += `<button class="btn-reject"><i class="fas fa-times"></i> ${getTranslation('reject')}</button>`;
-      actions += `<button class="btn-preview"><i class="fas fa-eye"></i> ${getTranslation('preview')}</button>`;
-      actions += `<button class="btn-transfer-file"><i class="fas fa-exchange-alt"></i> ${getTranslation('transfer-file')}</button>`;
+      actions += `<button class="btn-sign">${getTranslation('sign')}</button>`;
+      actions += `<button class="btn-delegate">${getTranslation('delegate')}</button>`;
+      actions += `<button class="btn-qr">${getTranslation('electronic')}</button>`;
+      actions += `<button class="btn-reject">${getTranslation('reject')}</button>`;
+      actions += `<button class="btn-preview">${getTranslation('preview')}</button>`;
+      actions += `<button class="btn-transfer-file">${getTranslation('transfer-file')}</button>`;
     }
 
     const contentType = item.type === 'committee'
@@ -284,9 +268,6 @@ function renderApprovals(items) {
   // 4) حدّث الباجينج
   renderPagination(totalItems);
 
-  // 5) حدّث نص العدّادة
-  updateRecordsInfo(totalItems, startIdx, endIdx);
-
   // 6) أربط الأزرار
   initActions();
 }
@@ -298,23 +279,9 @@ function updateApprovalStatusInUI(id, newStatus) {
   applyFilters();
 }
 
+// تم حذف الباجينشن بالكامل بناءً على طلب المستخدم
 function renderPagination(totalItems) {
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  document.getElementById("prevPage").disabled = currentPage === 1;
-  document.getElementById("nextPage").disabled = currentPage === totalPages;
-
-  const container = document.getElementById("pageNumbers");
-  container.innerHTML = "";
-  for (let i = 1; i <= totalPages; i++) {
-    const span = document.createElement("span");
-    span.textContent = i;
-    span.className   = "page-number" + (i === currentPage ? " active" : "");
-    span.addEventListener("click", () => {
-      currentPage = i;
-      renderApprovals(filteredItems);
-    });
-    container.appendChild(span);
-  }
+  // لا شيء
 }
 
 function statusLabel(status) {
@@ -665,11 +632,6 @@ function disableActionsFor(contentId) {
   const actionsCell = row.querySelector('.col-actions');
   if (actionsCell) actionsCell.innerHTML = '';
 }
-function updateRecordsInfo(totalItems, startIdx, endIdx) {
-  document.getElementById('startRecord').textContent = totalItems === 0 ? 0 : startIdx + 1;
-  document.getElementById('endRecord').textContent   = endIdx;
-  document.getElementById('totalCount').textContent  = totalItems;
-}
 
 // === File Transfer Modal Logic ===
 function openFileTransferModal() {
@@ -758,3 +720,32 @@ document.getElementById('btnTransferConfirm').addEventListener('click', function
 
 // Example: Add event listener to open modal from a button (replace selector as needed)
 // This block is now moved inside initActions()
+
+// دالة ترجمة مؤقتة لتفادي الخطأ
+function getTranslation(key) {
+  const translations = {
+    'please-login': 'الرجاء تسجيل الدخول',
+    'error-loading': 'حدث خطأ أثناء التحميل',
+    'success-rejected': 'تم الرفض بنجاح',
+    'please-enter-reason': 'يرجى إدخال سبب الرفض',
+    'success-approved': 'تم الاعتماد بنجاح',
+    'success-sent': 'تم الإرسال بنجاح',
+    'error-sending': 'حدث خطأ أثناء الإرسال',
+    'sign': 'اعتماد',
+    'delegate': 'تفويض',
+    'electronic': 'اعتماد إلكتروني',
+    'reject': 'رفض',
+    'preview': 'عرض',
+    'transfer-file': 'تحويل الملف',
+    'committee-file': 'ملف لجنة',
+    'department-report': 'تقرير قسم',
+    'approved': 'معتمد',
+    'rejected': 'مرفوض',
+    'pending': 'قيد الاعتماد',
+    'no-content': 'لا يوجد محتوى',
+    'select-department': 'اختر القسم',
+    'select-user': 'اختر المستخدم',
+    'success-delegated': 'تم التفويض بنجاح',
+  };
+  return translations[key] || key;
+}

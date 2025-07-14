@@ -30,6 +30,8 @@ const permsRouter            = require('./routers/permissions.routes');
 const folderRouter           = require('./routers/folder.Routes');
 const folderContentRouter    = require('./routers/folderContentRoutes');
 const contentRouter          = require('./routers/contentRoutes');
+const approvalRouter         = require('./routers/approvalRoutes');
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -51,10 +53,11 @@ app.use('/api/folders', folderRouter);
 app.use('/api/folders', folderContentRouter);
 
 
-
-
 // global content endpoints (my-uploads)
 app.use('/api/contents', contentRouter);
+
+// approval
+app.use('/api/approvals', approvalRouter);
 // اختبار الاتصال
 db.connect((err) => {
   if (err) {
