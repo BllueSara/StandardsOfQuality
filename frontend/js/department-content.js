@@ -2353,48 +2353,43 @@ if (departmentIdFromUrl && isInitialFetch) {
 
     let isOldContentMode = false;
 
-    // 2) إضافة زر "إضافة محتوى قديم" بجانب زر إضافة محتوى عادي
-    const addOldContentBtn = document.createElement('button');
-    addOldContentBtn.className = 'btn-primary';
-    addOldContentBtn.id = 'addOldContentBtn';
-    addOldContentBtn.type = 'button';
-addOldContentBtn.innerHTML =
-  `<span data-translate="add-old-content">${getTranslation('add-old-content')}</span>`;
-      addOldContentBtn.style.marginRight = '8px';
-    
-    // أضف الزر بجانب زر إضافة محتوى إذا كان للمستخدم الصلاحية
+    // Remove old content mode and modal logic for add content/add old content
+    // Create new buttons for Add Content and Add Sub Content
+    const addContentBtnDynamic = document.createElement('button');
+    addContentBtnDynamic.className = 'btn-primary';
+    addContentBtnDynamic.id = 'addContentBtnDynamic';
+    addContentBtnDynamic.type = 'button';
+    addContentBtnDynamic.innerHTML = `<span data-translate="add-content">إضافة محتوى</span>`;
+    addContentBtnDynamic.style.marginRight = '8px';
+
+    const addSubContentBtnDynamic = document.createElement('button');
+    addSubContentBtnDynamic.className = 'btn-primary';
+    addSubContentBtnDynamic.id = 'addSubContentBtnDynamic';
+    addSubContentBtnDynamic.type = 'button';
+    addSubContentBtnDynamic.innerHTML = `<span data-translate="add-sub-content">إضافة محتويات فرعية</span>`;
+    addSubContentBtnDynamic.style.marginRight = '8px';
+
+    // Insert the new buttons into the file-controls-bar
     const fileControlsBar = document.querySelector('.file-controls-bar');
     if (fileControlsBar) {
-      // دالة جلب صلاحيات المستخدم
-      function userCanAddOldContent() {
-        const role = getUserRoleFromToken();
-        if (role === 'admin') return true;
-        // تحقق من الصلاحيات الإضافية
-if (fileControlsBar && (getUserRoleFromToken() === 'admin' || permissions.canAddOldContent)) {
-  fileControlsBar.insertBefore(addOldContentBtn, document.getElementById('addContentBtn'));
-}
-
-        return false;
-      }
-      if (userCanAddOldContent()) {
-        fileControlsBar.insertBefore(addOldContentBtn, document.getElementById('addContentBtn'));
-      }
+      // Remove any existing dynamic buttons if present
+      const oldAddContentBtnDynamic = document.getElementById('addContentBtnDynamic');
+      if (oldAddContentBtnDynamic) oldAddContentBtnDynamic.remove();
+      const oldAddSubContentBtnDynamic = document.getElementById('addSubContentBtnDynamic');
+      if (oldAddSubContentBtnDynamic) oldAddSubContentBtnDynamic.remove();
+      // Insert new buttons
+      fileControlsBar.appendChild(addContentBtnDynamic);
+      fileControlsBar.appendChild(addSubContentBtnDynamic);
     }
-    
-    // 3) عند الضغط على زر إضافة محتوى قديم
-    addOldContentBtn.addEventListener('click', function() {
-      isOldContentMode = true;
-      openAddContentModal();
+
+    // Redirect logic for the new buttons
+    addContentBtnDynamic.addEventListener('click', function() {
+            window.location.href = 'upload-main-file.html';
+
     });
-    
-    // 4) عند الضغط على زر إضافة محتوى عادي
-    if (addContentBtn) {
-      addContentBtn.addEventListener('click', function() {
-        isOldContentMode = false;
-        openAddContentModal();
-      });
-    }
-
+    addSubContentBtnDynamic.addEventListener('click', function() {
+      window.location.href = 'upload-files.html';
+    });
 
 }); // End of DOMContentLoaded 
 

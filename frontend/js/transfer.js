@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const personCount = document.getElementById('personCount');
     const personsFields = document.getElementById('personsFields');
     const personsChain = document.getElementById('personsChain');
+    const departmentSelect = document.getElementById('departmentSelect');
+    const apiBase = 'http://localhost:3006/api';
 
     function renderPersonFields(count) {
         personsFields.innerHTML = '';
@@ -64,6 +66,48 @@ document.addEventListener('DOMContentLoaded', function() {
             default: return 'اختر الدور';
         }
     }
+
+    async function fetchDepartments() {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${apiBase}/departments`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'فشل جلب الأقسام');
+
+            const lang = localStorage.getItem('language') || 'ar';
+            const defaultText = lang === 'ar' ? 'اختر القسم' : 'Select Department';
+            departmentSelect.innerHTML = `<option value="">${defaultText}</option>`;
+
+            data.forEach(dept => {
+                let parsed;
+                try {
+                    parsed = JSON.parse(dept.name);
+                } catch {
+                    parsed = { ar: dept.name, en: dept.name };
+                }
+                const label = parsed[lang] ?? parsed.ar ?? parsed.en;
+                const opt = document.createElement('option');
+                opt.value = dept.id;
+                opt.textContent = label;
+                departmentSelect.appendChild(opt);
+            });
+        } catch (err) {
+            console.error(err);
+            departmentSelect.innerHTML = `<option value="">فشل جلب الأقسام</option>`;
+        }
+    }
+
+    // Call fetchDepartments on page load
+    fetchDepartments();
+
+    // Update department list when language changes
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'language') {
+            fetchDepartments();
+        }
+    });
 
     personCount.addEventListener('change', function() {
         const count = parseInt(this.value);

@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     const deptResp      = await fetchJSON(`${apiBase}/approvals/assigned-to-me`);
-    const commResp      = await fetchJSON(`${apiBase}/committee-approvals/assigned-to-me`);
     const combined      = [...(deptResp.data||[]), ...(commResp.data||[])];
     const uniqueMap     = new Map();
     combined.forEach(item => uniqueMap.set(item.id, item));
@@ -139,18 +138,50 @@ document.getElementById("nextPage").addEventListener("click", () => {
 
 async function setupFilters(items) {
   const deptFilter = document.getElementById('deptFilter');
-  const deptSet    = new Set(items.map(i => i.source_name).filter(Boolean));
-  deptFilter.innerHTML = `<option value="all">${getTranslation('all-departments')}</option>`;
-  deptSet.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value       = name;
-    opt.textContent = getLocalizedName(name);
-    deptFilter.appendChild(opt);
-  });
+  // جلب الأقسام من قاعدة البيانات
+  let departments = [];
+  try {
+    const res = await fetch(`${apiBase}/departments`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    departments = Array.isArray(data) ? data : (data.data || []);
+  } catch (err) {
+    // fallback: use only items' source_name
+    departments = [];
+  }
+  const lang = localStorage.getItem('language') || 'ar';
+  deptFilter.innerHTML = `<option value="all">${lang === 'ar' ? 'جميع الأقسام' : 'All Departments'}</option>`;
+  // استخدم الأقسام من قاعدة البيانات إذا وجدت، وإلا من العناصر
+  if (departments.length > 0) {
+    departments.forEach(dept => {
+      let parsed;
+      try { parsed = JSON.parse(dept.name); } catch { parsed = { ar: dept.name, en: dept.name }; }
+      const label = parsed[lang] ?? parsed.ar ?? parsed.en;
+      const opt = document.createElement('option');
+      opt.value = dept.id;
+      opt.textContent = label;
+      deptFilter.appendChild(opt);
+    });
+  } else {
+    // fallback: استخدم source_name من العناصر
+    const deptSet = new Set(items.map(i => i.source_name).filter(Boolean));
+    deptSet.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = getLocalizedName(name);
+      deptFilter.appendChild(opt);
+    });
+  }
   deptFilter.addEventListener('change', applyFilters);
-  document.getElementById('statusFilter').addEventListener('change', applyFilters);
-  document.getElementById('searchInput').addEventListener('input', applyFilters);
+  document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
+  document.getElementById('searchInput')?.addEventListener('input', applyFilters);
 }
+
+// تحديث الفلتر عند تغيير اللغة
+window.addEventListener('storage', function(e) {
+  if (e.key === 'language') {
+    setupFilters(allItems);
+  }
+});
 
 function applyFilters() {
   currentPage = 1;  // ترجع للصفحة الأولى عند كل فلتر
@@ -189,8 +220,8 @@ function setupCloseButtons() {
 }
 
 function renderApprovals(items) {
-  const tbody = document.getElementById("approvalsBody");
-  tbody.innerHTML = "";
+  const list = document.querySelector('.approvals-list');
+  list.innerHTML = '';
 
   // 1) إجمالي العناصر والفهارس
   const totalItems = items.length;
@@ -204,44 +235,50 @@ function renderApprovals(items) {
   });
   const pageItems = sorted.slice(startIdx, endIdx);
 
-  // 3) إنشاء الصفوف
+  // 3) إنشاء البطاقات
   const canSign = permissionsKeys.includes('*') || permissionsKeys.includes('sign');
   const canDel  = permissionsKeys.includes('*') || permissionsKeys.includes('sign_on_behalf');
 
   pageItems.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.dataset.id     = item.id;
-    tr.dataset.status = item.approval_status;
-    tr.dataset.source = item.source_name;
-    tr.dataset.type   = item.type;
+    const card = document.createElement('div');
+    card.className = 'approval-card';
+    card.dataset.id     = item.id;
+    card.dataset.status = item.approval_status;
+    card.dataset.source = item.source_name;
+    card.dataset.type   = item.type;
 
-    let actions = "";
+    let actions = '';
     if (item.approval_status === 'pending') {
       actions += `<button class="btn-sign"><i class="fas fa-user-check"></i> ${getTranslation('sign')}</button>`;
       actions += `<button class="btn-delegate"><i class="fas fa-user-friends"></i> ${getTranslation('delegate')}</button>`;
       actions += `<button class="btn-qr"><i class="fas fa-qrcode"></i> ${getTranslation('electronic')}</button>`;
       actions += `<button class="btn-reject"><i class="fas fa-times"></i> ${getTranslation('reject')}</button>`;
       actions += `<button class="btn-preview"><i class="fas fa-eye"></i> ${getTranslation('preview')}</button>`;
+      actions += `<button class="btn-transfer-file"><i class="fas fa-exchange-alt"></i> ${getTranslation('transfer-file')}</button>`;
     }
 
     const contentType = item.type === 'committee'
       ? getTranslation('committee-file')
       : getTranslation('department-report');
 
-    tr.innerHTML = `
-      <td class="col-id">${item.id}</td>
-      <td>
-        ${getLocalizedName(item.title)}
-        <div class="content-meta">(${contentType} - ${getLocalizedName(item.source_name)} - ${getLocalizedName(item.folder_name || item.folderName || '')})</div>
-      </td>
-      <td>${getLocalizedName(item.source_name) || '-'}</td>
-      <td class="col-response">${statusLabel(item.approval_status)}</td>
-      <td class="col-actions">${actions}</td>
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="file-title">${getLocalizedName(item.title)}</span>
+      </div>
+      <div class="card-body">
+        <div class="user-info">
+          <div class="user-details">
+            <span class="user-name">${getLocalizedName(item.created_by_name || '')}</span>
+            <span class="user-meta"><i class="fa fa-building"></i> ${getLocalizedName(item.source_name)}</span>
+            <span class="user-meta"><i class="fa-regular fa-calendar"></i> ${item.created_at ? new Date(item.created_at).toLocaleDateString('ar-EG') : ''}</span>
+          </div>
+        </div>
+        <div class="actions">${actions}</div>
+        <div class="status ${item.approval_status}">${statusLabel(item.approval_status)}</div>
+        <div class="status-info ${item.approval_status}">${item.status_info || ''}</div>
+      </div>
     `;
-    tbody.appendChild(tr);
-
-    if (!canDel) tr.querySelector('.btn-delegate')?.remove();
-    if (!canSign) tr.querySelector('.btn-qr')?.remove();
+    list.appendChild(card);
   });
 
   // 4) حدّث الباجينج
@@ -292,82 +329,77 @@ function statusLabel(status) {
 
 
 function initActions() {
-  document.querySelectorAll('.btn-sign').forEach(btn => {
+  document.querySelectorAll('.approval-card .btn-sign').forEach(btn => {
     btn.addEventListener('click', e => {
-      const id = e.target.closest('tr').dataset.id;
+      const id = e.target.closest('.approval-card').dataset.id;
       openSignatureModal(id);
     });
   });
 
-  document.querySelectorAll('.btn-delegate').forEach(btn => {
+  document.querySelectorAll('.approval-card .btn-delegate').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      selectedContentId = e.target.closest('tr').dataset.id;
+      selectedContentId = e.target.closest('.approval-card').dataset.id;
       openModal('delegateModal');
       loadDepartments();
     });
   });
   
-  document.querySelectorAll('.btn-qr').forEach(btn => {
+  document.querySelectorAll('.approval-card .btn-qr').forEach(btn => {
     btn.addEventListener('click', e => {
-      selectedContentId = e.target.closest('tr').dataset.id;
+      selectedContentId = e.target.closest('.approval-card').dataset.id;
       openModal('qrModal');
     });
   });
 
-  document.querySelectorAll('.btn-reject').forEach(btn => {
+  document.querySelectorAll('.approval-card .btn-reject').forEach(btn => {
     btn.addEventListener('click', e => {
-      selectedContentId = e.target.closest('tr').dataset.id;
+      selectedContentId = e.target.closest('.approval-card').dataset.id;
       openModal('rejectModal');
     });
   });
 
-// لو عندك apiBase من قبل:
-// أو بدل هذا استخدم origin ديناميكي:
-// const serverUrl = window.location.origin;
+  document.querySelectorAll('.approval-card .btn-preview').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      const card     = e.target.closest('.approval-card');
+      const itemId = card.dataset.id;
+      const item   = allItems.find(i => i.id == itemId);
 
+      if (!item || !item.file_path) {
+        alert(getTranslation('no-content'));
+        return;
+      }
 
-document.querySelectorAll('.btn-preview').forEach(btn => {
-  btn.addEventListener('click', async e => {
-    const tr     = e.target.closest('tr');
-    const itemId = tr.dataset.id;
-    const item   = allItems.find(i => i.id == itemId);
-
-    if (!item || !item.file_path) {
-      alert(getTranslation('no-content'));
-      return;
-    }
-
-    // تسجيل عرض المحتوى
-    try {
-      let numericItemId = itemId;
-      if (typeof itemId === 'string') {
-        if (itemId.includes('-')) {
-          const match = itemId.match(/\d+$/);
-          numericItemId = match ? match[0] : itemId;
+      // تسجيل عرض المحتوى
+      try {
+        let numericItemId = itemId;
+        if (typeof itemId === 'string') {
+          if (itemId.includes('-')) {
+            const match = itemId.match(/\d+$/);
+            numericItemId = match ? match[0] : itemId;
+          } else {
+            numericItemId = parseInt(itemId) || itemId;
+          }
         } else {
           numericItemId = parseInt(itemId) || itemId;
         }
-      } else {
-        numericItemId = parseInt(itemId) || itemId;
+        if (!numericItemId || numericItemId <= 0) {
+          console.warn('Invalid content ID:', itemId);
+          return;
+        }
+        await fetchJSON(`${apiBase}/contents/log-view`, {
+          method: 'POST',
+          body: JSON.stringify({
+            contentId: numericItemId,
+            contentType: item.type || 'department',
+            contentTitle: item.title,
+            sourceName: item.source_name,
+            folderName: item.folder_name || item.folderName || ''
+          })
+        });
+      } catch (err) {
+        console.error('Failed to log content view:', err);
+        // لا نوقف العملية إذا فشل تسجيل اللوق
       }
-      if (!numericItemId || numericItemId <= 0) {
-        console.warn('Invalid content ID:', itemId);
-        return;
-      }
-      await fetchJSON(`${apiBase}/contents/log-view`, {
-        method: 'POST',
-        body: JSON.stringify({
-          contentId: numericItemId,
-          contentType: item.type || 'department',
-          contentTitle: item.title,
-          sourceName: item.source_name,
-          folderName: item.folder_name || item.folderName || ''
-        })
-      });
-    } catch (err) {
-      console.error('Failed to log content view:', err);
-      // لا نوقف العملية إذا فشل تسجيل اللوق
-    }
 
 const baseApiUrl = apiBase.replace('/api', '');
 
@@ -391,11 +423,15 @@ else {
   fileBaseUrl = `${baseApiUrl}/uploads`;
 }
 
-    const url = `${fileBaseUrl}/${filePath}`;
-    window.open(url, '_blank');
+      const url = `${fileBaseUrl}/${filePath}`;
+      window.open(url, '_blank');
+    });
   });
-});
 
+  // Attach event for transfer file button
+  document.querySelectorAll('.approval-card .btn-transfer-file').forEach(btn => {
+    btn.addEventListener('click', openFileTransferModal);
+  });
 }
 
 document.getElementById('btnElectronicApprove')?.addEventListener('click', async () => {
@@ -634,3 +670,91 @@ function updateRecordsInfo(totalItems, startIdx, endIdx) {
   document.getElementById('endRecord').textContent   = endIdx;
   document.getElementById('totalCount').textContent  = totalItems;
 }
+
+// === File Transfer Modal Logic ===
+function openFileTransferModal() {
+  document.getElementById('fileTransferModal').style.display = 'flex';
+  loadTransferDepartments();
+}
+
+function closeFileTransferModal() {
+  document.getElementById('fileTransferModal').style.display = 'none';
+}
+
+async function loadTransferDepartments() {
+  const deptSelect = document.getElementById('transferDept');
+  if (!deptSelect) return;
+  try {
+    const res = await fetch(`${apiBase}/departments`, { headers: { Authorization: `Bearer ${token}` } });
+    const json = await res.json();
+    const departments = Array.isArray(json) ? json : (json.data || []);
+    const lang = localStorage.getItem('language') || 'ar';
+    deptSelect.innerHTML = `<option value="" disabled selected>اختر القسم</option>`;
+    departments.forEach(d => {
+      let deptName;
+      try {
+        const parsed = JSON.parse(d.name);
+        deptName = parsed[lang] || parsed.ar || d.name;
+      } catch { deptName = d.name; }
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = deptName;
+      deptSelect.appendChild(opt);
+    });
+  } catch (err) {
+    deptSelect.innerHTML = `<option value="" disabled selected>اختر القسم</option>`;
+  }
+  document.getElementById('transferUser').innerHTML = `<option value="" disabled selected>اختر الأشخاص</option>`;
+  document.getElementById('transferPersonsChain').innerHTML = '';
+}
+
+document.getElementById('transferDept').addEventListener('change', async (e) => {
+  const deptId = e.target.value;
+  try {
+    const res = await fetch(`${apiBase}/users?departmentId=${deptId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const json = await res.json();
+    const users = json.data || [];
+    const userSelect = document.getElementById('transferUser');
+    userSelect.innerHTML = `<option value="" disabled selected>اختر الأشخاص</option>`;
+    users.forEach(user => {
+      const opt = document.createElement('option');
+      opt.value = user.id;
+      opt.textContent = user.name;
+      userSelect.appendChild(opt);
+    });
+  } catch (err) {
+    document.getElementById('transferUser').innerHTML = `<option value="" disabled selected>اختر الأشخاص</option>`;
+  }
+  document.getElementById('transferPersonsChain').innerHTML = '';
+});
+
+document.getElementById('transferUser').addEventListener('change', function(e) {
+  const userId = e.target.value;
+  const userName = e.target.options[e.target.selectedIndex].textContent;
+  const chainDiv = document.getElementById('transferPersonsChain');
+  chainDiv.innerHTML = '';
+  if (userId) {
+    const node = document.createElement('div');
+    node.className = 'person-node';
+    node.innerHTML = `
+      <div class="person-circle"><i class="fa fa-user"></i></div>
+      <div class="person-name">${userName}</div>
+      <div class="person-role">---</div>
+    `;
+    chainDiv.appendChild(node);
+  }
+});
+
+document.querySelectorAll('.modal-close[data-modal="fileTransferModal"]').forEach(btn => {
+  btn.addEventListener('click', closeFileTransferModal);
+});
+
+document.getElementById('btnTransferConfirm').addEventListener('click', function(e) {
+  e.preventDefault();
+  // تنفيذ منطق التحويل هنا
+  closeFileTransferModal();
+  alert('تم تأكيد التحويل!');
+});
+
+// Example: Add event listener to open modal from a button (replace selector as needed)
+// This block is now moved inside initActions()

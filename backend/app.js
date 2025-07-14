@@ -27,7 +27,9 @@ const usersRouter            = require('./routers/users.routes');
 const departmentsRouter      = require('./routers/departments');
 const permissionsDefRouter   = require('./routers/permissionsDef.routes');
 const permsRouter            = require('./routers/permissions.routes');
-
+const folderRouter           = require('./routers/folder.Routes');
+const folderContentRouter    = require('./routers/folderContentRoutes');
+const contentRouter          = require('./routers/contentRoutes');
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -39,7 +41,20 @@ app.use('/api/users',       usersRouter);
 app.use('/api/permissions/definitions', permissionsDefRouter);
 
 app.use('/api/departments', departmentsRouter);
+// folders nested under departments
+app.use('/api/departments/:departmentId/folders', folderRouter);
+// ✅ هذا الصحيح
+app.use('/api/folders', folderRouter);
 
+
+// contents nested under folders
+app.use('/api/folders', folderContentRouter);
+
+
+
+
+// global content endpoints (my-uploads)
+app.use('/api/contents', contentRouter);
 // اختبار الاتصال
 db.connect((err) => {
   if (err) {

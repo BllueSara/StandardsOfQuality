@@ -43,10 +43,16 @@
         <div class="filters-bar">
             <div class="search-box">
                 <i class="fa fa-search"></i>
-                <input type="text" class="search-input" placeholder="...البحث عن ملف">
+                <input type="text" class="search-input" id="searchInput" placeholder="...البحث عن ملف">
             </div>
             <button class="filter-btn"><i class="fa-regular fa-calendar"></i> التاريخ</button>
-            <select class="filter-select">
+            <select id="statusFilter" class="filter-select">
+                <option value="all">جميع الحالات</option>
+                <option value="pending">بانتظار الاعتماد</option>
+                <option value="approved">معتمد</option>
+                <option value="rejected">مرفوض</option>
+            </select>
+            <select id="deptFilter" class="filter-select">
                 <option>جميع الأقسام</option>
             </select>
         </div>
@@ -64,10 +70,7 @@
                             <span class="user-meta"><i class="fa-regular fa-calendar"></i> 21 يناير 2024</span>
                         </div>
                     </div>
-                    <div class="actions">
-                        <button class="btn btn-blue">اعتماد إلكتروني</button>
-                        <button class="btn btn-green">توقيع بالنيابة</button>
-                    </div>
+                    <div class="actions"></div>
                     <div class="status approved">معتمد</div>
                     <div class="status-info approved"><i class="fa fa-check-circle"></i> تم الاعتماد في 22 يناير 2024</div>
                 </div>
@@ -85,13 +88,7 @@
                             <span class="user-meta"><i class="fa-regular fa-calendar"></i> 22 يناير 2024</span>
                         </div>
                     </div>
-                    <div class="actions">
-                        <button class="btn btn-green">توقيع</button>
-                        <button class="btn btn-red">رفض</button>
-                        <button class="btn btn-blue">تحويل</button>
-                        <button class="btn btn-blue">اعتماد إلكتروني</button>
-                        <button class="btn btn-green">توقيع بالنيابة</button>
-                    </div>
+                    <div class="actions"></div>
                 </div>
             </div>
             <!-- بطاقة 3 -->
@@ -107,13 +104,7 @@
                             <span class="user-meta"><i class="fa-regular fa-calendar"></i> 22 يناير 2024</span>
                         </div>
                     </div>
-                    <div class="actions">
-                        <button class="btn btn-green">توقيع</button>
-                        <button class="btn btn-red">رفض</button>
-                        <button class="btn btn-blue">تحويل</button>
-                        <button class="btn btn-blue">اعتماد إلكتروني</button>
-                        <button class="btn btn-green">توقيع بالنيابة</button>
-                    </div>
+                    <div class="actions"></div>
                 </div>
             </div>
             <!-- بطاقة 4 -->
@@ -129,10 +120,7 @@
                             <span class="user-meta"><i class="fa-regular fa-calendar"></i> 20 يناير 2024</span>
                         </div>
                     </div>
-                    <div class="actions">
-                        <button class="btn btn-blue">اعتماد إلكتروني</button>
-                        <button class="btn btn-green">توقيع بالنيابة</button>
-                    </div>
+                    <div class="actions"></div>
                     <div class="status rejected">مرفوض</div>
                     <div class="status-info rejected"><i class="fa fa-times-circle"></i> يحتاج إلى مراجعة الأهداف</div>
                 </div>
@@ -227,5 +215,39 @@
             </div>
         </div>
     </div>
+
+    <!-- ===== مودال تحويل الملف الجديد ===== -->
+    <div id="fileTransferModal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <button class="modal-close" data-modal="fileTransferModal">&times;</button>
+                <h2 class="modal-title">تحويل الملف</h2>
+            </div>
+            <div class="modal-body">
+                <form id="fileTransferForm" autocomplete="off">
+                    <div class="form-group">
+                        <label>اختر القسم</label>
+                        <select id="transferDept" required>
+                            <option value="" disabled selected>اختر القسم</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>اختر الأشخاص</label>
+                        <select id="transferUser" required>
+                            <option value="" disabled selected>اختر الأشخاص</option>
+                        </select>
+                    </div>
+                    <div id="transferPersonsChain" class="persons-chain"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="btnTransferConfirm" class="btn-confirm">تأكيد التحويل</button>
+                <button class="btn-cancel modal-close" data-modal="fileTransferModal">إلغاء</button>
+            </div>
+        </div>
+    </div>
 </body>
+      <script src="/frontend/js/check-status.js"></script>
+      <script src="/frontend/js/pending-approvals.js"></script>
+
 </html> 
