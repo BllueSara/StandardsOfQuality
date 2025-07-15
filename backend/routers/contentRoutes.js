@@ -68,17 +68,63 @@ router.get('/track/:contentId', async (req, res) => {
 
     // جلب كل الملفات في نفس المجموعة (رئيسي أو فرعي)
     let groupId = null;
-    if (content.parent_content_id) {
-      groupId = content.parent_content_id;
-    } else if (content.related_content_id) {
-      groupId = content.related_content_id;
-    } else {
+    let isMainFile = false;
+    
+    console.log('Content debug:', {
+      id: content.id,
+      parent_content_id: content.parent_content_id,
+      related_content_id: content.related_content_id
+    });
+    
+    if (content.parent_content_id && content.parent_content_id === content.id) {
+      // الملف الحالي هو ملف رئيسي (parent_content_id = id نفسه)
       groupId = content.id;
+      isMainFile = true;
+      console.log('This is a main file');
+    } else if (content.related_content_id) {
+      // الملف الحالي هو ملف فرعي (له related_content_id)
+      groupId = content.related_content_id;
+      isMainFile = false;
+      console.log('This is a sub file, main file ID:', content.related_content_id);
+    } else {
+      // ملف عادي (ليس له parent_content_id ولا related_content_id)
+      groupId = content.id;
+      isMainFile = false;
+      console.log('This is a normal file');
     }
-    const [relatedRows] = await db.execute(
-      'SELECT id, title, file_path, created_at FROM contents WHERE parent_content_id = ? OR id = ? ORDER BY created_at ASC',
-      [groupId, groupId]
-    );
+    
+    // جلب جميع الملفات في المجموعة
+    let relatedRows = [];
+    if (isMainFile) {
+      // إذا كان الملف الحالي رئيسي، جلب الملفات الفرعية
+      const [subFilesRows] = await db.execute(
+        'SELECT id, title, file_path, created_at, related_content_id, "sub" as file_type FROM contents WHERE related_content_id = ? ORDER BY created_at ASC',
+        [content.id]
+      );
+      relatedRows = subFilesRows;
+      console.log('Found sub files:', subFilesRows.length);
+    } else if (content.related_content_id) {
+      // إذا كان الملف الحالي فرعي، جلب الملف الرئيسي والملفات الفرعية الأخرى
+      // الملف الرئيسي هو الذي له id = related_content_id للملف الحالي
+      const [mainFileRows] = await db.execute(
+        'SELECT id, title, file_path, created_at, parent_content_id, "main" as file_type FROM contents WHERE id = ? AND parent_content_id = id',
+        [content.related_content_id]
+      );
+      const [otherSubFilesRows] = await db.execute(
+        'SELECT id, title, file_path, created_at, related_content_id, "sub" as file_type FROM contents WHERE related_content_id = ? AND id != ? ORDER BY created_at ASC',
+        [content.related_content_id, content.id]
+      );
+      // ترتيب الملفات: الملف الرئيسي أولاً، ثم الملفات الفرعية
+      relatedRows = [...mainFileRows, ...otherSubFilesRows];
+      console.log('Found main file:', mainFileRows.length, 'and other sub files:', otherSubFilesRows.length);
+      console.log('Main file data:', mainFileRows);
+      console.log('Sub files data:', otherSubFilesRows);
+    } else {
+      // ملف عادي بدون علاقات
+      relatedRows = [];
+      console.log('No related files found');
+    }
+    
     // استثناء الملف الحالي من قائمة attachments
     const attachments = relatedRows.filter(row => row.id !== content.id);
 

@@ -35,9 +35,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderFileInfo(content) {
         if (!content) return;
         document.querySelector('.file-info .info-value').textContent = content.title || '-';
-        document.querySelectorAll('.file-info .info-value')[1].textContent = '-';
-        document.querySelectorAll('.file-info .info-value')[2].textContent = content.created_at ? formatDate(content.created_at) : '-';
-        document.querySelectorAll('.file-info .info-value')[3].innerHTML = `<span class="info-value status ${content.approval_status}"><i class="fa-solid fa-circle-exclamation"></i> ${statusLabel(content.approval_status)}</span>`;
+        document.querySelectorAll('.file-info .info-value')[1].textContent = content.created_at ? formatDate(content.created_at) : '-';
+        document.querySelectorAll('.file-info .info-value')[2].innerHTML = `<span class="status ${content.approval_status}">${statusLabel(content.approval_status)}</span>`;
     }
 
     function renderReviewerInfo(timeline, pending) {
@@ -77,13 +76,27 @@ document.addEventListener('DOMContentLoaded', function () {
             container.innerHTML = '<div>لا توجد ملفات مرتبطة</div>';
             return;
         }
+        
+        console.log('Rendering attachments:', attachments);
+        
         attachments.forEach(att => {
             const item = document.createElement('div');
             item.className = 'attachment-item';
+            
+            // تحديد نوع الملف (رئيسي أو فرعي)
+            const isMainFile = att.file_type === 'main';
+            const iconClass = isMainFile ? 'fa-solid fa-file-circle-check' : 'fa-regular fa-file-lines';
+            const fileTypeLabel = isMainFile ? '<span class="main-file-label">الملف الرئيسي</span>' : '';
+            
+            console.log('File:', att.title, 'Type:', att.file_type, 'IsMain:', isMainFile);
+            
             item.innerHTML = `
-                <i class="fa-regular fa-file-lines"></i>
+                <i class="${iconClass}"></i>
                 <div>
-                    <div class="attachment-name"><a href="http://localhost:3006/${att.file_path}" target="_blank">${att.title || att.file_path}</a></div>
+                    <div class="attachment-name">
+                        <a href="http://localhost:3006/${att.file_path}" target="_blank">${att.title || att.file_path}</a>
+                        ${fileTypeLabel}
+                    </div>
                 </div>
             `;
             container.appendChild(item);

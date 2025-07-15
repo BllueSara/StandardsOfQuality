@@ -1,0 +1,383 @@
+/* ===== استيراد خط Tajawal ===== */
+@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap");
+
+/* ===== إعادة تهيئة القيم الافتراضية ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Tajawal", sans-serif;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff; /* لون خلفية خفيف */
+  color: #2d2d2d;            /* لون النص الأساسي */
+}
+
+body {
+  direction: rtl; /* من اليمين إلى اليسار */
+}
+.header-actions {
+  position: relative;
+  height: 50px;
+  margin-bottom: 16px;
+  width: 100%;
+  top: 10px;
+}
+
+/* زرّ الرجوع على أقصى يسار بلا حواف خارجية */
+.back-btn {
+  position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;      /* حجم يناسب النص */
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+}
+
+/* زرّ الرئيسية في المنتصف */
+.home-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;
+  font-family: inherit;
+}
+
+/* تأثير عند المرور بالفأرة */
+.back-btn:hover,
+.home-btn:hover {
+  opacity: 0.7;
+}
+/* ===== الهيدر العلوي ===== */
+.main-header {
+  background-color: #ffffff;       /* خلفية بيضاء */
+  border-bottom: 1px solid #e0e0e0; /* حد سفلي رمادي فاتح */
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hospital-logo img,
+.system-title img {
+    max-height: 40px;
+    vertical-align: middle;
+}
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: #2d2d2d; /* غامق قليلًا */
+}
+
+.header-logo img {
+  height: 32px;
+}
+
+/* ===== المحتوى الرئيسي ===== */
+.content-wrapper {
+  max-width: 1000px;  /* حجم متناسق مع الصفحات السابقة */
+  margin: 40px auto;
+  padding: 0 100px;
+}
+
+/* ===== عنوان الصفحة والوصف ===== */
+.page-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1f2937; /* غامق جدًا */
+  margin-bottom: 6px;
+}
+
+.page-subtitle {
+  font-size: 1rem;
+  color: #4b5563; /* رمادي متوسط */
+}
+
+/* ===== بطاقة ملف بانتظار الاعتماد ===== */
+.file-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* ===== جدول Proxy Sign ===== */
+.table-container {
+  overflow-x: auto; /* لدعم الشاشات الصغيرة */
+  background-color: transparent;
+  padding: 0 12px 12px; /* حشوة داخلية متناسقة أسفل الجدول */
+}
+
+.proxy-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px; /* تأكيد وجود مساحة كافية للأعمدة */
+  margin-bottom: 12px; /* مساحة بسيطة أسفل آخر صف */
+}
+
+.proxy-table thead {
+  background-color: #ffffff;
+}
+
+.proxy-table thead tr {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.proxy-table th,
+.proxy-table td {
+  padding: 10px 14px;        /* حشوات أقل لتقليل المسافات */
+  text-align: center;
+  font-size: 0.95rem;
+  color: #374151;             /* نفس لون نص الجدول في الصفحات السابقة */
+  vertical-align: middle;
+}
+
+.proxy-table th {
+  font-weight: 500;
+}
+
+.proxy-table tbody tr:nth-child(even) {
+  background-color: #f9fafb; /* خلفية فاتحة للصفوط الزوجية */
+}
+
+/* ===== أعمدة الجدول ===== */
+.col-file {
+  width: 300px;             /* مساحة كافية لاسم الملف */
+  text-align: left;         /* محاذاة النص لليسار داخل الخلية */
+}
+
+.col-signer {
+  width: 240px;             /* مساحة كافية لاسم المُوقّع */
+  text-align: left;         /* محاذاة النص لليسار */
+}
+
+.col-action {
+  width: 200px;             /* مساحة للأزرار */
+  display: flex;
+  justify-content: flex-start; /* محاذاة الأزرار باتجاه اليسار داخل الخلية */
+  gap: 8px;                  /* مسافة بسيطة بين الأزرار */
+  padding-left: 8px;         /* حشوة داخلية بدايةً من اليسار */
+}
+
+/* ===== أيقونات داخل الجدول ===== */
+.file-icon {
+  margin-left: 6px;          /* مسافة بين الأيقونة ونص اسم الملف */
+  color: #2563eb;            /* أزرق خفيف للأيقونة */
+}
+
+.user-icon {
+  margin-left: 6px;          /* مسافة بين الأيقونة ونص اسم المُوقّع */
+  color: #6b7280;            /* رمادي متوسط للأيقونة */
+}
+
+/* ===== أزرار الإجراءات ===== */
+/* زر قبول */
+.btn-accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #2563eb; /* الأزرق الأساسي */
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0. nine five rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-accept i {
+  font-size: 1rem;
+}
+
+.btn-accept:hover {
+  background-color: #1e40af; /* أزرق أغمق عند المرور */
+}
+
+/* زر رفض */
+.btn-reject {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f56565; /* أحمر فاتح */
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0. nine five rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-reject i {
+  font-size: 1rem;
+}
+
+.btn-reject:hover {
+  background-color: #c53030; /* أحمر أغمق عند المرور */
+}
+
+/* ===== تجاوب الصفحة ===== */
+/* شاشات أقل من 1024px */
+@media (max-width: 1024px) {
+  .content-wrapper {
+    max-width: 900px;
+  }
+  .proxy-table {
+    min-width: 500px;
+  }
+  .col-file {
+    width: 240px;
+  }
+  .col-signer {
+    width: 200px;
+  }
+  .col-action {
+    width: 160px;
+  }
+  .btn-accept,
+  .btn-reject {
+    padding: 6px 10px;
+    font-size: 0. nine rem;
+  }
+}
+
+/* شاشات أقل من 768px */
+@media (max-width: 768px) {
+  .content-wrapper {
+    padding: 0 12px;
+  }
+  .page-header {
+    margin-bottom: 16px;
+  }
+  .proxy-table {
+    min-width: 360px;
+  }
+  .col-file {
+    width: 180px;
+  }
+  .col-signer {
+    width: 160px;
+  }
+  .col-action {
+    width: 140px;
+    gap: 6px;
+  }
+  .btn-accept,
+  .btn-reject {
+    padding: 4px 10px;
+    font-size: 0. eight five rem;
+  }
+}
+
+
+.btn-accept,
+.btn-reject {
+  padding: 4px 12px;
+  margin: 2px;
+  font-size: 13px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-accept {
+  background-color: #10b981;
+  color: white;
+}
+
+.btn-reject {
+  background-color: #ef4444;
+  color: white;
+}
+
+.btn-accept:hover {
+  background-color: #059669;
+}
+
+.btn-reject:hover {
+  background-color: #dc2626;
+}
+
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.popup {
+  background: #fff;
+  padding: 20px 25px;
+  border-radius: 8px;
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+.popup-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 12px; /* المسافة بين الأزرار */
+}
+
+.popup-actions button {
+  padding: 6px 16px;
+  min-width: 90px;
+  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+#popupConfirm {
+  background-color: #10b981;
+  color: white;
+}
+
+#popupCancel {
+  background-color: #ef4444;
+  color: white;
+}
+

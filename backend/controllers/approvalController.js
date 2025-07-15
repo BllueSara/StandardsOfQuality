@@ -172,7 +172,15 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       electronic_signature || null,
       notes || ''
     ]);
-
+// إذا كان الرفض، تحديث حالة الملف إلى مرفوض
+    if (!approved) {
+      await db.execute(`
+        UPDATE ${contentsTable}
+        SET approval_status = 'rejected',
+            updated_at = NOW()
+        WHERE id = ?
+      `, [contentId]);
+    }
     // Fetch details for logging
     const [itemDetails] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
     const itemTitle = itemDetails.length > 0 ? itemDetails[0].title : `رقم ${contentId}`;
