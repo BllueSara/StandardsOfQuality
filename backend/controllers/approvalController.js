@@ -439,8 +439,8 @@ const getAssignedApprovals = async (req, res) => {
           'department' AS type,
           CAST(c.approvers_required AS CHAR) AS approvers_required,
           c.created_at,
-          al_reject.approver_id AS rejected_by_id,
-          u_reject.username AS rejected_by_username
+          MAX(al_reject.approver_id) AS rejected_by_id,
+          MAX(u_reject.username) AS rejected_by_username
         FROM contents c
         JOIN folders f        ON c.folder_id = f.id
         JOIN departments d    ON f.department_id = d.id
