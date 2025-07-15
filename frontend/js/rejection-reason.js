@@ -52,65 +52,33 @@ async function fetchFileInfo() {
   }
 }
 
-// جلب سبب الرفض الحقيقي من API جديد (مع اسم الكاتب)
+// جلب السبب والردود من API
 async function fetchRejectionReasonWithAuthor() {
-  try {
-    const res = await fetch(`${apiBase}/contents/${contentId}/rejection-reason`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    
-    if (!res.ok) {
-      throw new Error('فشل في جلب سبب الرفض');
-    }
-    
-    const data = await res.json();
-    return { reason: data.reason || '', author: data.author || '' };
-  } catch (error) {
-    console.error('خطأ في جلب سبب الرفض:', error);
-    return { reason: '', author: '' };
-  }
+  const res = await fetch(`${apiBase}/contents/${contentId}/rejection-reason`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await res.json();
+  return { reason: data.reason || '', author: data.author || '' };
 }
 
-// جلب الردود من الباكند
 async function fetchReplies() {
-  try {
-    const res = await fetch(`${apiBase}/contents/${contentId}/rejection-replies`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    
-    if (!res.ok) {
-      throw new Error('فشل في جلب الردود');
-    }
-    
-    const data = await res.json();
-    return data.data || [];
-  } catch (error) {
-    console.error('خطأ في جلب الردود:', error);
-    return [];
-  }
+  const res = await fetch(`${apiBase}/contents/${contentId}/rejection-replies`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await res.json();
+  return data.data || [];
 }
 
-// إرسال رد جديد
 async function sendReply(text) {
-  try {
-    const res = await fetch(`${apiBase}/contents/${contentId}/rejection-reply`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ reply: text })
-    });
-    
-    if (!res.ok) {
-      throw new Error('فشل في إرسال الرد');
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('خطأ في إرسال الرد:', error);
-    return false;
-  }
+  const res = await fetch(`${apiBase}/contents/${contentId}/rejection-reply`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ reply: text })
+  });
+  return res.ok;
 }
 
 // عرض معلومات الملف
@@ -135,76 +103,37 @@ function renderFileInfo(fileInfo) {
   }
 }
 
-// عرض السبب والردود في الشات
-function renderChat(reason, replies, currentUserId, reasonAuthor) {
-  const chatMessages = document.querySelector('#chat-messages');
-  if (!chatMessages) return;
-  
+function renderChat(reason, replies, currentUser) {
+  const chatMessages = document.getElementById('chat-messages');
   chatMessages.innerHTML = '';
-  
-  // إذا لم يكن هناك سبب، عرض رسالة
-  if (!reason && replies.length === 0) {
-    chatMessages.innerHTML = `
-      <div class="no-messages">
-        <i class="fa fa-comment-slash" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
-        <p style="color: #888; text-align: center;">${getTranslation('no-rejection-reason')}</p>
-      </div>
-    `;
-    return;
-  }
-  
-  // السبب أول رسالة (bubble)
-  if (reason) {
-    const isMe = reasonAuthor && reasonAuthor.toLowerCase() === (window.currentUsername || '').toLowerCase();
+  // أول رسالة: سبب الرفض
+  if (reason && reason.reason) {
     chatMessages.innerHTML += `
-      <div class="msg ${isMe ? 'msg-system' : 'msg-user'}">
-        <div class="msg-text">${reason}</div>
-        <div class="msg-meta">
-          ${reasonAuthor || getTranslation('unknown')} 
-          <span>${formatTime(new Date())}</span>
-        </div>
+      <div class="msg msg-system">
+        <div class="msg-text">${reason.reason}</div>
+        <div class="msg-meta">${reason.author || 'النظام'} <span></span></div>
       </div>
     `;
   }
-  
   // الردود
   replies.forEach(reply => {
-    const isMeReply = reply.username && reply.username.toLowerCase() === (window.currentUsername || '').toLowerCase();
+    const isMe = reply.username && reply.username.toLowerCase() === (currentUser || '').toLowerCase();
     chatMessages.innerHTML += `
-      <div class="msg ${isMeReply ? 'msg-system' : 'msg-user'}">
+      <div class="msg ${isMe ? 'msg-user' : 'msg-system'}">
         <div class="msg-text">${reply.reply_text}</div>
-        <div class="msg-meta">
-          ${reply.username} 
-          <span>${formatTime(reply.created_at)}</span>
-        </div>
+        <div class="msg-meta">${reply.username} <span>${formatTime(reply.created_at)}</span></div>
       </div>
     `;
   });
-  
-  // التمرير إلى آخر رسالة
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// تنسيق الوقت
 function formatTime(dateString) {
   if (!dateString) return '';
-  
-  const lang = localStorage.getItem('language') || 'ar';
-  const date = new Date(dateString);
-  
   try {
-    if (lang === 'en') {
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    } else {
-      return date.toLocaleTimeString('ar-SA', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    }
-  } catch (e) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  } catch {
     return dateString;
   }
 }
@@ -247,7 +176,7 @@ async function refreshData() {
     
     // عرض المعلومات
     renderFileInfo(fileInfo);
-    renderChat(reasonObj.reason, replies, window.currentUserId, reasonObj.author);
+    renderChat(reasonObj, replies, window.currentUsername);
     
   } catch (error) {
     console.error('خطأ في تحديث البيانات:', error);
@@ -263,8 +192,7 @@ async function refreshData() {
   }
 }
 
-// عند تحميل الصفحة
-window.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (!token) {
     alert(getTranslation('please-login') || 'الرجاء تسجيل الدخول');
     window.location.href = 'login.html';
@@ -289,8 +217,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   await refreshData();
 
   // إرسال رد جديد
-  const form = document.querySelector('#reply-form');
-  const input = document.querySelector('#reply-input');
+  const form = document.querySelector('.chat-input-row');
+  const input = form.querySelector('input');
   const charCount = document.querySelector('.char-count');
   
   if (form && input && charCount) {

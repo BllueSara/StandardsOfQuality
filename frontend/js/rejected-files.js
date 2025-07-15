@@ -11,14 +11,13 @@ function getTranslation(key) {
   return translations[lang]?.[key] || key;
 }
 
-// دالة جلب الملفات المرفوضة من قاعدة البيانات
+// جلب الملفات المرفوضة من API
 async function fetchRejectedFiles() {
   if (!token) {
     alert('الرجاء تسجيل الدخول');
     window.location.href = 'login.html';
     return;
   }
-
   try {
     const response = await fetch(`${apiBase}/contents/rejected`, {
       headers: {
@@ -26,123 +25,92 @@ async function fetchRejectedFiles() {
         'Content-Type': 'application/json'
       }
     });
-
-    if (!response.ok) {
-      throw new Error('فشل في جلب الملفات المرفوضة');
-    }
-
+    if (!response.ok) throw new Error('فشل في جلب الملفات المرفوضة');
     const result = await response.json();
     allRejectedFiles = result.data || [];
     filteredFiles = [...allRejectedFiles];
-    
     renderRejectedFiles();
-    updateRejectedCount();
-    populateDepartmentFilter();
   } catch (error) {
     console.error('خطأ في جلب الملفات المرفوضة:', error);
-    showErrorMessage(getTranslation('error-loading-files') || 'حدث خطأ في تحميل الملفات المرفوضة');
+    renderError('حدث خطأ في تحميل الملفات المرفوضة');
   }
 }
 
-// دالة عرض الملفات المرفوضة
 function renderRejectedFiles() {
-  const container = document.querySelector('.rejected-list');
+  const container = document.getElementById('rejected-list');
   if (!container) return;
-
   container.innerHTML = '';
-
   if (filteredFiles.length === 0) {
-    container.innerHTML = `
-      <div class="no-files">
-        <i class="fa fa-inbox" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
-        <p style="color: #888; text-align: center;">${getTranslation('no-rejected-files') || 'لا توجد ملفات مرفوضة'}</p>
-      </div>
-    `;
+    container.innerHTML = `<div style="text-align:center;color:#888;padding:2rem;">لا توجد ملفات مرفوضة</div>`;
     return;
   }
-
   filteredFiles.forEach(file => {
-    const card = createRejectedCard(file);
-    container.appendChild(card);
+    container.appendChild(createRejectedCard(file));
   });
 }
 
-// دالة إنشاء بطاقة ملف مرفوض
 function createRejectedCard(file) {
   const card = document.createElement('div');
   card.className = 'rejected-card';
-  card.dataset.fileId = file.id;
-
-  const fileName = getLocalizedName(file.title);
-  const departmentName = getLocalizedName(file.source_name);
-  const rejectDate = formatDate(file.rejected_at || file.updated_at);
-  const rejectReason = file.reject_reason || getTranslation('no-reason-specified') || 'لا يوجد سبب محدد';
-
+  // استخدم نفس هيكل الكارت الثابت
   card.innerHTML = `
     <div class="rejected-info">
-      <div class="file-title">
-        <i class="fa-regular fa-file-lines"></i> 
-        ${fileName}
-      </div>
-      <div class="file-meta">
-        <i class="fa-regular fa-building"></i> 
-        ${departmentName}
-      </div>
+      <div class="file-title"><i class="fa-regular fa-file-lines"></i> ${getLocalizedName(file.title)}</div>
+      <div class="file-meta"><i class="fa-regular fa-building"></i> ${getLocalizedName(file.source_name)}</div>
       <div class="file-status-row">
-        <span class="status rejected">
-          <i class="fa fa-xmark"></i> 
-          ${getTranslation('rejected') || 'مرفوض'}
-        </span>
-        <span class="file-date">${rejectDate}</span>
-      </div>
-      <div class="reject-reason" style="margin-top: 8px; color: #ef4444; font-size: 0.9rem;">
-        <i class="fa fa-exclamation-triangle"></i>
-        ${getTranslation('rejection-reason') || 'سبب الرفض'}: ${rejectReason}
+        <span class="status rejected"><i class="fa fa-xmark"></i> مرفوض</span>
+        <span class="file-date">${formatDate(file.rejected_at || file.updated_at)}</span>
       </div>
     </div>
-    <button class="details-btn" onclick="viewFileDetails(${file.id})">
-      <i class="fa-regular fa-eye"></i> 
-      ${getTranslation('view-details') || 'عرض تفاصيل'}
-    </button>
+    <button class="details-btn" onclick="viewFileDetails(${file.id})"><i class="fa-regular fa-eye"></i> عرض تفاصيل</button>
   `;
-
   return card;
 }
 
-// دالة عرض تفاصيل الملف
-async function viewFileDetails(fileId) {
+function getLocalizedName(name) {
+  if (!name) return '';
+  const lang = localStorage.getItem('language') || 'ar';
+  if (typeof name === 'string' && name.trim().startsWith('{') && name.trim().endsWith('}')) {
+    try {
+      const parsed = JSON.parse(name);
+      return parsed[lang] || parsed['ar'] || parsed['en'] || name;
+    } catch (e) { return name; }
+  }
+  if (typeof name === 'object' && name !== null) {
+    return name[lang] || name['ar'] || name['en'] || JSON.stringify(name);
+  }
+  return name;
+}
+
+function formatDate(dateString) {
+  if (!dateString) return '';
+  const lang = localStorage.getItem('language') || 'ar';
+  const date = new Date(dateString);
+  if (lang === 'en') {
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } else {
+    return date.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+}
+
+function viewFileDetails(fileId) {
   window.location.href = `rejection-reason.html?contentId=${fileId}`;
 }
 
-// دالة البحث في الملفات المرفوضة
+function renderError(msg) {
+  const container = document.getElementById('rejected-list');
+  if (container) container.innerHTML = `<div style="text-align:center;color:#ef4444;padding:2rem;">${msg}</div>`;
+}
+
 function searchRejectedFiles() {
-  const searchTerm = document.querySelector('#search-input').value.trim().toLowerCase();
-  const departmentFilter = document.querySelector('#department-filter').value;
-  const dateFilter = document.querySelector('#date-filter').value;
-  
+  const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
   filteredFiles = allRejectedFiles.filter(file => {
     const fileName = getLocalizedName(file.title).toLowerCase();
     const departmentName = getLocalizedName(file.source_name).toLowerCase();
     const rejectReason = (file.reject_reason || '').toLowerCase();
-    
-    // فلترة البحث
-    const matchesSearch = !searchTerm || 
-      fileName.includes(searchTerm) || 
-      departmentName.includes(searchTerm) || 
-      rejectReason.includes(searchTerm);
-    
-    // فلترة القسم
-    const matchesDepartment = !departmentFilter || 
-      getLocalizedName(file.source_name) === departmentFilter;
-    
-    // فلترة التاريخ
-    const matchesDate = filterByDate(file.rejected_at || file.updated_at, dateFilter);
-    
-    return matchesSearch && matchesDepartment && matchesDate;
+    return fileName.includes(searchTerm) || departmentName.includes(searchTerm) || rejectReason.includes(searchTerm);
   });
-  
   renderRejectedFiles();
-  updateRejectedCount();
 }
 
 // دالة فلترة التاريخ
@@ -198,65 +166,6 @@ function updateRejectedCount() {
   }
 }
 
-// دالة معالجة النصوص ثنائية اللغة
-function getLocalizedName(name) {
-  if (!name) return '';
-  
-  const lang = localStorage.getItem('language') || 'ar';
-  
-  // إذا كان النص يحتوي على JSON، حاول تحليله
-  if (typeof name === 'string' && name.trim().startsWith('{') && name.trim().endsWith('}')) {
-    try {
-      const parsed = JSON.parse(name);
-      return parsed[lang] || parsed['ar'] || parsed['en'] || name;
-    } catch (e) {
-      return name;
-    }
-  }
-  
-  // إذا كان object، استخرج النص باللغة المناسبة
-  if (typeof name === 'object' && name !== null) {
-    return name[lang] || name['ar'] || name['en'] || JSON.stringify(name);
-  }
-  
-  return name;
-}
-
-// دالة تنسيق التاريخ
-function formatDate(dateString) {
-  if (!dateString) return '';
-  
-  const lang = localStorage.getItem('language') || 'ar';
-  const date = new Date(dateString);
-  
-  if (lang === 'en') {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  } else {
-    return date.toLocaleDateString('ar-SA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  }
-}
-
-// دالة عرض رسالة خطأ
-function showErrorMessage(message) {
-  const container = document.querySelector('.rejected-list');
-  if (container) {
-    container.innerHTML = `
-      <div class="error-message" style="text-align: center; color: #ef4444; padding: 20px;">
-        <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-        <p>${message}</p>
-      </div>
-    `;
-  }
-}
-
 // دالة تحديث النصوص حسب اللغة
 function updatePageTexts() {
   // تحديث النصوص الثابتة
@@ -289,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.querySelector('#search-input');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
-      setTimeout(searchRejectedFiles, 300);
+      setTimeout(searchRejectedFiles, 200);
     });
   }
   

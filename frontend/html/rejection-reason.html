@@ -3,88 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate="rejection-reason-title">سبب الرفض</title>
+    <title>سبب الرفض</title>
     <link rel="stylesheet" href="../css/rejection-reason.css">
-    <link rel="stylesheet" href="../css/shared.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body>
-    <header class="main-header">
-        <div class="header-container">
-            <div class="hospital-logo">
-                <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
-            </div>
-            <div class="system-title">
+     <header class="main-header">
+    <div class="header-container">
+      <div class="hospital-logo">
+        <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
+      </div>
+  <div class="system-title">
                 <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
             </div>
-        </div>
-    </header>
-    <div class="header-actions">
-        <button class="back-btn" onclick="history.back()">
-            <i class="fas fa-arrow-right" id="backIcon"></i>      
-            <span data-translate="back">رجوع</span>
-        </button>
-        <button class="home-btn" onclick="window.location.href='index.html'">
-            <i class="fas fa-home"></i>
-            <span data-translate="home">الرئيسية</span>
-        </button>
     </div>
-    
-    <!-- معلومات الملف -->
-    <div class="file-info-section">
-        <div class="file-info-card">
-            <div class="file-details">
-                <h3 class="file-title" id="file-title">
-                    <i class="fa-regular fa-file-lines"></i>
-                    <span data-translate="loading">جاري التحميل...</span>
-                </h3>
-                <div class="file-meta">
-                    <span class="department" id="file-department">
-                        <i class="fa-regular fa-building"></i>
-                        <span data-translate="loading">جاري التحميل...</span>
-                    </span>
-                    <span class="status rejected">
-                        <i class="fa fa-times"></i>
-                        <span data-translate="rejected">مرفوض</span>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-
+  </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
     <header class="chat-header">
-        <span class="chat-title" data-translate="rejection-reason-title">سبب الرفض</span>
+        <span class="chat-title">سبب الرفض</span>
     </header>
-    
     <main>
         <div class="chat-container">
             <div class="chat-messages" id="chat-messages">
-                <!-- سيتم تحميل الرسائل ديناميكياً -->
-                <div class="loading-message">
-                    <i class="fa fa-spinner fa-spin"></i>
-                    <span data-translate="loading-messages">جاري تحميل الرسائل...</span>
+                <div class="msg msg-system">
+                    <div class="msg-text">عذراً، تم رفض طلبك للأسباب التالية</div>
+                    <div class="msg-meta">النظام <span>10:30 ص</span></div>
+                </div>
+                <div class="msg msg-user">
+                    <div class="msg-text">هل يمكنني معرفة المزيد من التفاصيل؟</div>
+                    <div class="msg-meta">أحمد <span>10:31 ص</span></div>
+                </div>
+                <div class="msg msg-system">
+                    <div class="msg-text">الطلب غير مكتمل البيانات المطلوبة</div>
+                    <div class="msg-meta">النظام <span>10:32 ص</span></div>
                 </div>
             </div>
-            
-            <form class="chat-input-row" id="reply-form">
-                <input type="text" 
-                       id="reply-input" 
-                       maxlength="500" 
-                       data-translate-placeholder="write-reply" 
-                       placeholder="اكتب السبب أو التعليق هنا...">
-                <button class="send-btn" type="submit">
-                    <i class="fa fa-paper-plane"></i> 
-                    <span data-translate="send">إرسال</span>
-                </button>
+            <form class="chat-input-row">
+                <input type="text" maxlength="500" placeholder="اكتب السبب أو التعليق هنا...">
+                <button class="send-btn" type="submit"><i class="fa fa-paper-plane"></i> إرسال</button>
             </form>
             <div class="char-count">0/500</div>
         </div>
     </main>
-    
-    <script src="../js/language.js"></script>
     <script src="../js/rejection-reason.js"></script>
+    <script>
+    // عداد الأحرف
+    const input = document.querySelector('.chat-input-row input');
+    const count = document.querySelector('.char-count');
+    input.addEventListener('input', function() {
+        count.textContent = this.value.length + '/500';
+    });
+    </script>
 </body>
 </html> 

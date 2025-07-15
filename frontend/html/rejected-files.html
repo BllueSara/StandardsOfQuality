@@ -3,83 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate="rejected-files-title">رسائل الرفض</title>
+    <title>رسائل الرفض</title>
     <link rel="stylesheet" href="../css/rejected-files.css">
-    <link rel="stylesheet" href="../css/shared.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
-<body>       
-    <header class="main-header">
-        <div class="header-container">
-            <div class="hospital-logo">
-                <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
-            </div>
-            <div class="system-title">
+<body>       <header class="main-header">
+    <div class="header-container">
+      <div class="hospital-logo">
+        <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز"/>
+      </div>
+  <div class="system-title">
                 <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
             </div>
-        </div>
-    </header>
-    <div class="header-actions">
-        <button class="back-btn" onclick="history.back()">
-            <i class="fas fa-arrow-right" id="backIcon"></i>      
-            <span data-translate="back">رجوع</span>
-        </button>
-        <button class="home-btn" onclick="window.location.href='index.html'">
-            <i class="fas fa-home"></i>
-            <span data-translate="home">الرئيسية</span>
-        </button>
     </div>
+  </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
     <main>
-        <h1 class="page-title" data-translate="rejected-files-title">رسائل الرفض</h1>
-        
-        <!-- قسم الفلترة -->
-        <div class="filter-section">
-            <div class="search-bar">
-                <input type="text" id="search-input" data-translate-placeholder="search-files" placeholder="ابحث باسم الملف أو القسم...">
-                <i class="fa fa-search"></i>
-            </div>
-            
-            <div class="filter-row">
-                <div class="input-group">
-                    <label for="department-filter" data-translate="department">القسم</label>
-                    <select id="department-filter">
-                        <option value="" data-translate="all-departments">جميع الأقسام</option>
-                    </select>
-                </div>
-                
-                <div class="input-group">
-                    <label for="date-filter" data-translate="date">التاريخ</label>
-                    <select id="date-filter">
-                        <option value="" data-translate="all-dates">جميع التواريخ</option>
-                        <option value="today" data-translate="today">اليوم</option>
-                        <option value="week" data-translate="this-week">هذا الأسبوع</option>
-                        <option value="month" data-translate="this-month">هذا الشهر</option>
-                    </select>
-                </div>
-            </div>
+        <h1 class="page-title">رسائل الرفض</h1>
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="ابحث باسم الملف أو القسم...">
+            <i class="fa fa-search"></i>
         </div>
-
-        <!-- عداد الملفات المرفوضة -->
-        <div class="stats-section">
-            <div class="stat-card">
-                <i class="fa fa-times-circle"></i>
-                <div class="stat-info">
-                    <span class="stat-number" id="rejected-count">0</span>
-                    <span class="stat-label" data-translate="rejected-files">ملفات مرفوضة</span>
+        <div class="rejected-list" id="rejected-list">
+            <!-- كارت 1 -->
+            <div class="rejected-card">
+                <div class="rejected-info">
+                    <div class="file-title"><i class="fa-regular fa-file-lines"></i> تقرير المبيعات السنوي.pdf</div>
+                    <div class="file-meta"><i class="fa-regular fa-building"></i> قسم المبيعات</div>
+                    <div class="file-status-row">
+                        <span class="status rejected"><i class="fa fa-xmark"></i> مرفوض</span>
+                        <span class="file-date">٢٣ ديسمبر ٢٠٢٣</span>
+                    </div>
                 </div>
+                <button class="details-btn"><i class="fa-regular fa-eye"></i> عرض تفاصيل</button>
             </div>
-        </div>
-
-        <div class="rejected-list">
-            <!-- سيتم تحميل البيانات ديناميكياً -->
+            <!-- كارت 2 -->
+            <div class="rejected-card">
+                <div class="rejected-info">
+                    <div class="file-title"><i class="fa-regular fa-file-lines"></i> خطة التسويق الربع.docx</div>
+                    <div class="file-meta"><i class="fa-regular fa-building"></i> قسم التسويق</div>
+                    <div class="file-status-row">
+                        <span class="status rejected"><i class="fa fa-xmark"></i> مرفوض</span>
+                        <span class="file-date">٢١ ديسمبر ٢٠٢٣</span>
+                    </div>
+                </div>
+                <button class="details-btn"><i class="fa-regular fa-eye"></i> عرض تفاصيل</button>
+            </div>
+            <!-- كارت 3 -->
+            <div class="rejected-card">
+                <div class="rejected-info">
+                    <div class="file-title"><i class="fa-regular fa-file-lines"></i> تقرير الموارد البشرية.pdf</div>
+                    <div class="file-meta"><i class="fa-regular fa-building"></i> قسم الموارد البشرية</div>
+                    <div class="file-status-row">
+                        <span class="status rejected"><i class="fa fa-xmark"></i> مرفوض</span>
+                        <span class="file-date">٢١ ديسمبر ٢٠٢٣</span>
+                    </div>
+                </div>
+                <button class="details-btn"><i class="fa-regular fa-eye"></i> عرض تفاصيل</button>
+            </div>
+            <!-- كارت 4 -->
+            <div class="rejected-card">
+                <div class="rejected-info">
+                    <div class="file-title"><i class="fa-regular fa-file-lines"></i> ميزانية المشروع.xlsx</div>
+                    <div class="file-meta"><i class="fa-regular fa-building"></i> قسم المالية</div>
+                    <div class="file-status-row">
+                        <span class="status rejected"><i class="fa fa-xmark"></i> مرفوض</span>
+                        <span class="file-date">٢٠ ديسمبر ٢٠٢٣</span>
+                    </div>
+                </div>
+                <button class="details-btn"><i class="fa-regular fa-eye"></i> عرض تفاصيل</button>
+            </div>
+            <!-- كارت 5 -->
+            <div class="rejected-card">
+                <div class="rejected-info">
+                    <div class="file-title"><i class="fa-regular fa-file-lines"></i> تقرير الجودة الشهري.pdf</div>
+                    <div class="file-meta"><i class="fa-regular fa-building"></i> قسم الجودة</div>
+                    <div class="file-status-row">
+                        <span class="status rejected"><i class="fa fa-xmark"></i> مرفوض</span>
+                        <span class="file-date">١٩ ديسمبر ٢٠٢٣</span>
+                    </div>
+                </div>
+                <button class="details-btn"><i class="fa-regular fa-eye"></i> عرض تفاصيل</button>
+            </div>
         </div>
     </main>
     
     <!-- إضافة ملف JavaScript -->
-    <script src="../js/language.js"></script>
     <script src="../js/rejected-files.js"></script>
 </body>
 </html> 
