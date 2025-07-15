@@ -199,6 +199,235 @@
   max-width: 480px;
 }
 
+/* ===== مودال تحويل الملف - تصميم جديد ===== */
+#fileTransferModal .modal {
+  max-width: 700px;
+  width: 90%;
+}
+
+#fileTransferModal .modal-header {
+  padding: 24px 24px 0 24px;
+}
+
+#fileTransferModal .modal-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 0.5rem;
+  text-align: right;
+}
+
+#fileTransferModal .modal-body {
+  padding: 16px 24px 24px 24px;
+}
+
+#fileTransferModal .form-group {
+  margin-bottom: 18px;
+}
+
+#fileTransferModal .form-group label {
+  display: block;
+  color: #222;
+  font-weight: 500;
+  margin-bottom: 6px;
+  font-size: 1.05rem;
+}
+
+#fileTransferModal .form-group select {
+  width: 100%;
+  padding: 12px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fafbfc;
+  color: #444;
+  outline: none;
+  margin-bottom: 4px;
+  transition: border 0.2s;
+}
+
+#fileTransferModal .form-group select:focus {
+  border-color: #2563eb;
+}
+
+/* سلسلة الأشخاص */
+#fileTransferModal .persons-chain {
+  background: #f6f7fa;
+  border-radius: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.03);
+  padding: 28px 10px 18px 10px;
+  margin: 24px 0 16px 0;
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  align-items: flex-end;
+  min-height: 100px;
+}
+
+#fileTransferModal .person-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 90px;
+}
+
+#fileTransferModal .person-circle {
+  width: 54px;
+  height: 54px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #bdbdbd;
+  margin-bottom: 4px;
+}
+
+#fileTransferModal .person-name {
+  font-weight: 600;
+  color: #222;
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+#fileTransferModal .person-role {
+  color: #888;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+/* الأسهم بين الأشخاص */
+#fileTransferModal .arrow-line {
+  width: 70px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: none;
+}
+
+#fileTransferModal .arrow-line .dashed {
+  border-top: 2px dashed #bdbdbd;
+  width: 100%;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
+#fileTransferModal .arrow-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 0;
+  border-top: 2px solid #bdbdbd;
+  z-index: 2;
+}
+
+#fileTransferModal .arrow-line::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 10px solid #bdbdbd;
+  z-index: 3;
+}
+
+/* اتجاه الأسهم حسب اللغة */
+[dir="rtl"] #fileTransferModal .arrow-line::after {
+  left: 0;
+  right: auto;
+}
+
+[dir="rtl"] #fileTransferModal .arrow-line::before {
+  left: -2px;
+  right: auto;
+  transform: translateY(-50%) rotate(0deg);
+}
+
+[dir="ltr"] #fileTransferModal .arrow-line::after {
+  right: 0;
+  left: auto;
+}
+
+[dir="ltr"] #fileTransferModal .arrow-line::before {
+  right: -2px;
+  left: auto;
+  border-right: none;
+  border-left: 10px solid #bdbdbd;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* زر التأكيد */
+#fileTransferModal .btn-confirm {
+  width: 100%;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 18px;
+  transition: background 0.2s;
+}
+
+#fileTransferModal .btn-confirm:hover {
+  background: #1746a2;
+}
+
+/* تحسينات للموبايل */
+@media (max-width: 600px) {
+  #fileTransferModal .modal {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  #fileTransferModal .persons-chain {
+    gap: 18px;
+    padding: 18px 2px 10px 2px;
+  }
+  
+  #fileTransferModal .person-node {
+    min-width: 60px;
+  }
+  
+  #fileTransferModal .person-circle {
+    width: 40px;
+    height: 40px;
+    font-size: 1.3rem;
+  }
+  
+  #fileTransferModal .arrow-line {
+    width: 30px;
+    height: 18px;
+  }
+  
+  #fileTransferModal .arrow-line::after {
+    width: 10px;
+  }
+  
+  #fileTransferModal .arrow-line::before {
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-right: 6px solid #bdbdbd;
+  }
+}
+
 /* استخدم نفس البادينغ والزوايا من المودالات الأخرى */
 #delegateModal .modal-header,
 #delegateModal .modal-footer,
@@ -401,6 +630,41 @@ main {
 .filter-btn i {
     color: #2563eb;
     font-size: 1.1rem;
+}
+
+/* فلتر التاريخ */
+.filter-btn {
+    position: relative;
+}
+
+.date-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 1000;
+    min-width: 150px;
+    margin-top: 4px;
+}
+
+.date-option {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.date-option:last-child {
+    border-bottom: none;
+}
+
+.date-option:hover {
+    background-color: #f8f9fa;
 }
 .approvals-list {
     display: flex;

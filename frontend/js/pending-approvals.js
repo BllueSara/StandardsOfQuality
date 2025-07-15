@@ -71,11 +71,9 @@ function setupCloseButtons() {
 }
 document.addEventListener('DOMContentLoaded', async () => {
   if (!token) return alert(getTranslation('please-login'));
-
   // تعيين اسم المستخدم الحالي من JWT token
   const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
   window.currentUsername = payload.username;
-
   await fetchPermissions();
 
   try {
@@ -92,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   setupSignatureModal();
   setupCloseButtons();
+  setupDateFilter();
 
   // ربط زر إرسال سبب الرفض
   const btnSendReason = document.getElementById('btnSendReason');
@@ -315,6 +314,125 @@ function statusLabel(status) {
     case 'rejected':  return getTranslation('rejected');
     default:          return getTranslation('pending');
   }
+}
+
+// إضافة فلتر التاريخ
+function setupDateFilter() {
+  const dateFilterBtn = document.querySelector('.filter-btn');
+  if (!dateFilterBtn) return;
+  
+  dateFilterBtn.addEventListener('click', function() {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const lastMonth = new Date(today);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    
+    const dateOptions = [
+      { label: 'اليوم', value: 'today', date: today },
+      { label: 'أمس', value: 'yesterday', date: yesterday },
+      { label: 'آخر أسبوع', value: 'lastWeek', date: lastWeek },
+      { label: 'آخر شهر', value: 'lastMonth', date: lastMonth },
+      { label: 'الكل', value: 'all', date: null }
+    ];
+    
+    // إنشاء قائمة منسدلة للتاريخ
+    const dropdown = document.createElement('div');
+    dropdown.className = 'date-dropdown';
+    dropdown.style.cssText = `
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 1000;
+      min-width: 150px;
+    `;
+    
+    dateOptions.forEach(option => {
+      const item = document.createElement('div');
+      item.className = 'date-option';
+      item.style.cssText = `
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s;
+      `;
+      item.textContent = option.label;
+      
+      item.addEventListener('click', () => {
+        applyDateFilter(option.value, option.date);
+        document.body.removeChild(dropdown);
+      });
+      
+      item.addEventListener('mouseenter', () => {
+        item.style.backgroundColor = '#f8f9fa';
+      });
+      
+      item.addEventListener('mouseleave', () => {
+        item.style.backgroundColor = 'white';
+      });
+      
+      dropdown.appendChild(item);
+    });
+    
+    // إزالة القائمة السابقة إذا وجدت
+    const existingDropdown = document.querySelector('.date-dropdown');
+    if (existingDropdown) {
+      document.body.removeChild(existingDropdown);
+    }
+    
+    // إضافة القائمة الجديدة
+    document.body.appendChild(dropdown);
+    
+    // إغلاق القائمة عند النقر خارجها
+    document.addEventListener('click', function closeDropdown(e) {
+      if (!dateFilterBtn.contains(e.target) && !dropdown.contains(e.target)) {
+        if (document.body.contains(dropdown)) {
+          document.body.removeChild(dropdown);
+        }
+        document.removeEventListener('click', closeDropdown);
+      }
+    });
+  });
+}
+
+function applyDateFilter(filterType, filterDate) {
+  if (filterType === 'all') {
+    filteredItems = allItems;
+  } else {
+    filteredItems = allItems.filter(item => {
+      if (!item.created_at) return false;
+      
+      const itemDate = new Date(item.created_at);
+      const today = new Date();
+      
+      switch (filterType) {
+        case 'today':
+          return itemDate.toDateString() === today.toDateString();
+        case 'yesterday':
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          return itemDate.toDateString() === yesterday.toDateString();
+        case 'lastWeek':
+          const lastWeek = new Date(today);
+          lastWeek.setDate(lastWeek.getDate() - 7);
+          return itemDate >= lastWeek;
+        case 'lastMonth':
+          const lastMonth = new Date(today);
+          lastMonth.setMonth(lastMonth.getMonth() - 1);
+          return itemDate >= lastMonth;
+        default:
+          return true;
+      }
+    });
+  }
+  
+  renderApprovals(filteredItems);
 }
 
 // (بقية دوال initActions و signature modal و delegate تبقى كما كانت)
@@ -662,10 +780,52 @@ function disableActionsFor(contentId) {
 function openFileTransferModal() {
   document.getElementById('fileTransferModal').style.display = 'flex';
   loadTransferDepartments();
+  setupPersonCountHandler();
 }
 
 function closeFileTransferModal() {
   document.getElementById('fileTransferModal').style.display = 'none';
+  // إعادة تعيين الحقول
+  document.getElementById('personCount').value = '';
+  document.getElementById('transferDept').value = '';
+  document.getElementById('personsFields').innerHTML = '';
+  document.getElementById('transferPersonsChain').innerHTML = '';
+}
+
+function setupPersonCountHandler() {
+  const personCountSelect = document.getElementById('personCount');
+  if (!personCountSelect) return;
+  
+  personCountSelect.addEventListener('change', function() {
+    const count = parseInt(this.value);
+    const personsFields = document.getElementById('personsFields');
+    personsFields.innerHTML = '';
+    
+    if (count > 0) {
+      for (let i = 1; i <= count; i++) {
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+        formGroup.innerHTML = `
+          <label>اختر الشخص ${i}</label>
+          <select class="person-select" data-person="${i}" required>
+            <option value="" disabled selected>اختر الشخص</option>
+          </select>
+        `;
+        personsFields.appendChild(formGroup);
+      }
+      
+      // إضافة مستمعي الأحداث للحقول الجديدة
+      setupPersonSelectHandlers();
+    }
+  });
+}
+
+function setupPersonSelectHandlers() {
+  document.querySelectorAll('.person-select').forEach(select => {
+    select.addEventListener('change', function() {
+      updatePersonsChain();
+    });
+  });
 }
 
 async function loadTransferDepartments() {
@@ -691,8 +851,6 @@ async function loadTransferDepartments() {
   } catch (err) {
     deptSelect.innerHTML = `<option value="" disabled selected>اختر القسم</option>`;
   }
-  document.getElementById('transferUser').innerHTML = `<option value="" disabled selected>اختر الأشخاص</option>`;
-  document.getElementById('transferPersonsChain').innerHTML = '';
 }
 
 document.getElementById('transferDept').addEventListener('change', async (e) => {
@@ -701,36 +859,63 @@ document.getElementById('transferDept').addEventListener('change', async (e) => 
     const res = await fetch(`${apiBase}/users?departmentId=${deptId}`, { headers: { Authorization: `Bearer ${token}` } });
     const json = await res.json();
     const users = json.data || [];
-    const userSelect = document.getElementById('transferUser');
-    userSelect.innerHTML = `<option value="" disabled selected>اختر الأشخاص</option>`;
-    users.forEach(user => {
-      const opt = document.createElement('option');
-      opt.value = user.id;
-      opt.textContent = user.name;
-      userSelect.appendChild(opt);
+    
+    // تحديث جميع حقول اختيار الأشخاص
+    document.querySelectorAll('.person-select').forEach(select => {
+      select.innerHTML = `<option value="" disabled selected>اختر الشخص</option>`;
+      users.forEach(user => {
+        const opt = document.createElement('option');
+        opt.value = user.id;
+        opt.textContent = user.name;
+        select.appendChild(opt);
+      });
     });
   } catch (err) {
-    document.getElementById('transferUser').innerHTML = `<option value="" disabled selected>اختر الأشخاص</option>`;
+    document.querySelectorAll('.person-select').forEach(select => {
+      select.innerHTML = `<option value="" disabled selected>اختر الشخص</option>`;
+    });
   }
   document.getElementById('transferPersonsChain').innerHTML = '';
 });
 
-document.getElementById('transferUser').addEventListener('change', function(e) {
-  const userId = e.target.value;
-  const userName = e.target.options[e.target.selectedIndex].textContent;
+function updatePersonsChain() {
   const chainDiv = document.getElementById('transferPersonsChain');
   chainDiv.innerHTML = '';
-  if (userId) {
-    const node = document.createElement('div');
-    node.className = 'person-node';
-    node.innerHTML = `
-      <div class="person-circle"><i class="fa fa-user"></i></div>
-      <div class="person-name">${userName}</div>
-      <div class="person-role">---</div>
-    `;
-    chainDiv.appendChild(node);
+  
+  const selectedPersons = [];
+  document.querySelectorAll('.person-select').forEach(select => {
+    if (select.value) {
+      const userName = select.options[select.selectedIndex].textContent;
+      selectedPersons.push({
+        id: select.value,
+        name: userName,
+        personNum: select.dataset.person
+      });
+    }
+  });
+  
+  if (selectedPersons.length > 0) {
+    selectedPersons.forEach((person, index) => {
+      const node = document.createElement('div');
+      node.className = 'person-node';
+      
+      // إضافة سهم بين الأشخاص (إلا للأول)
+      if (index > 0) {
+        const arrow = document.createElement('div');
+        arrow.className = 'arrow-line';
+        arrow.innerHTML = '<div class="dashed"></div>';
+        chainDiv.appendChild(arrow);
+      }
+      
+      node.innerHTML = `
+        <div class="person-circle"><i class="fa fa-user"></i></div>
+        <div class="person-name">${person.name}</div>
+        <div class="person-role">الشخص ${person.personNum}</div>
+      `;
+      chainDiv.appendChild(node);
+    });
   }
-});
+}
 
 document.querySelectorAll('.modal-close[data-modal="fileTransferModal"]').forEach(btn => {
   btn.addEventListener('click', closeFileTransferModal);
@@ -738,7 +923,28 @@ document.querySelectorAll('.modal-close[data-modal="fileTransferModal"]').forEac
 
 document.getElementById('btnTransferConfirm').addEventListener('click', function(e) {
   e.preventDefault();
+  
+  // التحقق من صحة البيانات
+  const personCount = document.getElementById('personCount').value;
+  const deptId = document.getElementById('transferDept').value;
+  const selectedPersons = [];
+  
+  document.querySelectorAll('.person-select').forEach(select => {
+    if (select.value) {
+      selectedPersons.push({
+        id: select.value,
+        name: select.options[select.selectedIndex].textContent
+      });
+    }
+  });
+  
+  if (!personCount || !deptId || selectedPersons.length === 0) {
+    alert('يرجى ملء جميع الحقول المطلوبة');
+    return;
+  }
+  
   // تنفيذ منطق التحويل هنا
+  console.log('تحويل الملف إلى:', selectedPersons);
   closeFileTransferModal();
   alert('تم تأكيد التحويل!');
 });

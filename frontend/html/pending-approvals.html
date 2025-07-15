@@ -48,7 +48,7 @@
             <button class="filter-btn"><i class="fa-regular fa-calendar"></i> التاريخ</button>
             <select id="statusFilter" class="filter-select">
                 <option value="all">جميع الحالات</option>
-                <option value="pending">بانتظار الاعتماد</option>
+                <option value="pending">قيد الاعتماد</option>
                 <option value="approved">معتمد</option>
                 <option value="rejected">مرفوض</option>
             </select>
@@ -224,21 +224,29 @@
                 <h2 class="modal-title">تحويل الملف</h2>
             </div>
             <div class="modal-body">
+                <p class="page-desc" style="margin-bottom: 24px;">قم بتحويل الملف إلى الأشخاص المطلوبين</p>
+                <p class="page-desc" style="margin-bottom: 24px; color: #666; font-size: 0.95rem;">سيتم إرسال الملف لغير الأشخاص الأساسيين</p>
                 <form id="fileTransferForm" autocomplete="off">
+                    <div class="form-group">
+                        <label>حدد عدد الأشخاص</label>
+                        <select id="personCount" required>
+                            <option value="">اختر العدد</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>اختر القسم</label>
                         <select id="transferDept" required>
                             <option value="" disabled selected>اختر القسم</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>اختر الأشخاص</label>
-                        <select id="transferUser" required>
-                            <option value="" disabled selected>اختر الأشخاص</option>
-                        </select>
-                    </div>
-                    <div id="transferPersonsChain" class="persons-chain"></div>
+                    <div id="personsFields"></div>
                 </form>
+                <div id="transferPersonsChain" class="persons-chain"></div>
             </div>
             <div class="modal-footer">
                 <button id="btnTransferConfirm" class="btn-confirm">تأكيد التحويل</button>
