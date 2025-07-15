@@ -13,7 +13,7 @@ const statusFilter = document.querySelector('.status-filter');
 async function fetchApprovals() {
   if (!token) return alert('الرجاء تسجيل الدخول');
   try {
-    const res = await fetch(`${apiBase}/approvals/assigned-to-me`, {
+    const res = await fetch(`${apiBase}/contents/my-uploads`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) throw new Error(await res.text());
@@ -24,7 +24,7 @@ async function fetchApprovals() {
     populateStatusFilter();
   } catch (err) {
     console.error('Error fetching approvals:', err);
-    alert('حدث خطأ أثناء جلب الاعتمادات');
+    alert('حدث خطأ أثناء جلب طلباتك');
   }
 }
 
@@ -42,7 +42,7 @@ function renderApprovals() {
       <td>${formatDate(item.created_at)}</td>
       <td><span class="status ${item.approval_status}">${statusLabel(item.approval_status)}</span></td>
       <td>
-        <button class="track-btn" data-id="${item.id}">تتبع الطلب</button>
+        <button class="track-btn" data-id="${item.id}">تتبع الملف</button>
         <i class="fa-regular fa-eye fa-blue action-icon" title="عرض" data-id="${item.id}" data-file="${item.file_path}"></i>
       </td>
     `;

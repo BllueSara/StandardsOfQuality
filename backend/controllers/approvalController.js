@@ -438,13 +438,17 @@ const getAssignedApprovals = async (req, res) => {
           u.username AS created_by_username,
           'department' AS type,
           CAST(c.approvers_required AS CHAR) AS approvers_required,
-          c.created_at
+          c.created_at,
+          al_reject.approver_id AS rejected_by_id,
+          u_reject.username AS rejected_by_username
         FROM contents c
         JOIN folders f        ON c.folder_id = f.id
         JOIN departments d    ON f.department_id = d.id
         JOIN users u          ON c.created_by = u.id
         LEFT JOIN content_approvers ca ON ca.content_id = c.id
         LEFT JOIN users u2     ON ca.user_id = u2.id
+        LEFT JOIN approval_logs al_reject ON c.id = al_reject.content_id AND al_reject.status = 'rejected'
+        LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
         WHERE c.approval_status IN ('pending', 'approved', 'rejected')
         GROUP BY c.id
       `
@@ -460,15 +464,19 @@ const getAssignedApprovals = async (req, res) => {
           u.username AS created_by_username,
           'department' AS type,
           CAST(c.approvers_required AS CHAR) AS approvers_required,
-          c.created_at
+          c.created_at,
+          MAX(al_reject.approver_id) AS rejected_by_id,
+          MAX(u_reject.username) AS rejected_by_username
         FROM contents c
         JOIN folders f        ON c.folder_id = f.id
         JOIN departments d    ON f.department_id = d.id
         JOIN users u          ON c.created_by = u.id
         -- هنا نضمن أن الصف موجود فقط لو هو من المعينين أو منشئه
-        JOIN content_approvers ca ON ca.content_id = c.id AND ca.user_id = ?
+        LEFT JOIN content_approvers ca ON ca.content_id = c.id AND ca.user_id = ?
         LEFT JOIN users u2     ON ca.user_id = u2.id
-        WHERE c.approval_status IN ('pending', 'approved', 'rejected')
+        LEFT JOIN approval_logs al_reject ON c.id = al_reject.content_id AND al_reject.status = 'rejected'
+        LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
+        WHERE (c.approval_status IN ('pending', 'approved', 'rejected') AND ca.user_id IS NOT NULL)
           OR c.created_by = ?
         GROUP BY c.id
       `;

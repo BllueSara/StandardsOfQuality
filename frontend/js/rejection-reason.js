@@ -37,18 +37,19 @@ async function sendReply(text) {
 function renderChat(reason, replies, currentUserId, reasonAuthor) {
   const chatMessages = document.querySelector('.chat-messages');
   chatMessages.innerHTML = '';
-  // السبب أول رسالة (مع اسم كاتب السبب)
+  // السبب أول رسالة (bubble)
+  const isMe = reasonAuthor && reasonAuthor.toLowerCase() === (window.currentUsername || '').toLowerCase();
   chatMessages.innerHTML += `
-    <div class="msg msg-system">
+    <div class="msg ${isMe ? 'msg-system' : 'msg-user'}">
       <div class="msg-text">${reason || 'لا يوجد سبب مذكور'}</div>
       <div class="msg-meta">${reasonAuthor || 'غير معروف'}</div>
     </div>
   `;
   // الردود
   replies.forEach(reply => {
-    const isUser = reply.user_id == currentUserId;
+    const isMeReply = reply.username && reply.username.toLowerCase() === (window.currentUsername || '').toLowerCase();
     chatMessages.innerHTML += `
-      <div class="msg ${isUser ? 'msg-user' : 'msg-system'}">
+      <div class="msg ${isMeReply ? 'msg-system' : 'msg-user'}">
         <div class="msg-text">${reply.reply_text}</div>
         <div class="msg-meta">${reply.username} <span>${formatTime(reply.created_at)}</span></div>
       </div>
@@ -76,6 +77,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
   const currentUserId = payload.id;
+  window.currentUsername = payload.username; // حفظ اسم المستخدم الحالي للمقارنة
 
   // جلب السبب والردود مع اسم الكاتب
   const reasonObj = await fetchRejectionReasonWithAuthor();

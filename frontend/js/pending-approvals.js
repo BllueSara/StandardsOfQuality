@@ -72,6 +72,10 @@ function setupCloseButtons() {
 document.addEventListener('DOMContentLoaded', async () => {
   if (!token) return alert(getTranslation('please-login'));
 
+  // تعيين اسم المستخدم الحالي من JWT token
+  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+  window.currentUsername = payload.username;
+
   await fetchPermissions();
 
   try {
@@ -231,11 +235,21 @@ function renderApprovals(items) {
     card.dataset.type   = item.type;
 
     let actions = '';
-    if (item.approval_status === 'pending') {
+    if (item.approval_status === 'pending' || item.approval_status === 'rejected') {
       actions += `<button class="btn-sign">${getTranslation('sign')}</button>`;
       actions += `<button class="btn-delegate">${getTranslation('delegate')}</button>`;
       actions += `<button class="btn-qr">${getTranslation('electronic')}</button>`;
-      actions += `<button class="btn-reject">${getTranslation('reject')}</button>`;
+      
+      // إخفاء زر الرفض إذا كان الملف مرفوض والمرسل الحالي هو من رفضه
+      const currentUsername = window.currentUsername || '';
+      const isRejectedByCurrentUser = item.approval_status === 'rejected' && 
+                                     item.rejected_by_username && 
+                                     item.rejected_by_username.toLowerCase() === currentUsername.toLowerCase();
+      
+      if (!isRejectedByCurrentUser) {
+        actions += `<button class="btn-reject">${getTranslation('reject')}</button>`;
+      }
+      
       actions += `<button class="btn-preview">${getTranslation('preview')}</button>`;
       actions += `<button class="btn-transfer-file">${getTranslation('transfer-file')}</button>`;
     }

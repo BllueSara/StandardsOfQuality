@@ -1260,8 +1260,8 @@ const getRejectedContents = async (req, res) => {
 
         const connection = await db.getConnection();
 
-        // جلب الملفات المرفوضة مع معلومات الرفض
-        const [rejectedContents] = await connection.execute(`
+        // بناء الاستعلام حسب دور المستخدم
+        let query = `
             SELECT 
                 c.id, 
                 c.title, 
@@ -1281,8 +1281,19 @@ const getRejectedContents = async (req, res) => {
             LEFT JOIN users u ON c.created_by = u.id
             LEFT JOIN approval_logs al ON c.id = al.content_id AND al.status = 'rejected'
             WHERE c.approval_status = 'rejected'
-            ORDER BY al.created_at DESC
-        `);
+        `;
+
+        let params = [];
+
+        // إذا لم يكن المستخدم admin، أضف شرط الملكية
+        if (decodedToken.role !== 'admin') {
+            query += ' AND c.created_by = ?';
+            params.push(decodedToken.id);
+        }
+
+        query += ' ORDER BY al.created_at DESC';
+
+        const [rejectedContents] = await connection.execute(query, params);
 
         connection.release();
 
