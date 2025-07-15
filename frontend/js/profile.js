@@ -54,7 +54,29 @@ const employeeNumberSpan = document.getElementById('profile-employee-number');
             // usernameSpan.textContent = user.username || getTranslation('not-available');
             // بما أن الفورم لا يرسل username، سنعرض الإيميل كاسم مستخدم مؤقتاً أو نتركه فارغاً إذا لم يكن مطلوباً
             usernameSpan.textContent = user.username || getTranslation('not-available');
-            departmentSpan.textContent = parseLocalized(user.department_name) || getTranslation('not-available');
+            // جلب اسم القسم من بيانات المستخدم عبر /api/users/:id
+            fetch(`http://localhost:3006/api/users/${user.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                let deptName = data.data.departmentName;
+                if (typeof deptName === 'string' && deptName.trim().startsWith('{')) {
+                    try {
+                        const obj = JSON.parse(deptName);
+                        const lang = localStorage.getItem('language') || 'ar';
+                        deptName = obj[lang] || obj.ar || obj.en || deptName;
+                    } catch {
+                        // إذا فشل التحويل، استخدم النص كما هو
+                    }
+                }
+                departmentSpan.textContent = deptName || getTranslation('not-available');
+            })
+            .catch(() => {
+                departmentSpan.textContent = getTranslation('not-available');
+            });
 employeeNumberSpan.textContent = user.employee_number || getTranslation('not-available');
 
         } else {

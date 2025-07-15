@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="sign-title">توقيع بالنيابة - نظام إدارة الجودة والسلامة</title>
+
+  <!-- ===== استيراد خط Tajawal ===== -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- ===== Font Awesome للأيقونات ===== -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    crossorigin="anonymous"
+  />
+  <link rel="stylesheet" href="../css/shared.css"/>
+
+  <!-- ===== ربط ملف التنسيقات ===== -->
+  <link rel="stylesheet" href="/frontend/css/sign.css" />
+</head>
+<body>
+  <!-- ===== الهيدر العلوي ===== -->
+ <header class="main-header">
+    <div class="header-container">
+      <div class="system-title">
+          <img src="/frontend/images/system-title.png" alt="نظام إدارة الجودة والسلامة">
+      </div>
+      <div class="hospital-logo">
+          <img src="/frontend/images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
+      </div>
+    </div>
+  </header>
+  <div class="header-actions">
+    <button class="back-btn" onclick="history.back()">
+     <i class="fas fa-arrow-right" id="backIcon"></i>        <span data-translate="back">رجوع</span>
+    </button>
+    <button class="home-btn" onclick="window.location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span data-translate="home">الرئيسية</span>
+    </button>
+  </div>
+  <!-- ===== المحتوى الرئيسي ===== -->
+  <main class="content-wrapper">
+    <!-- ===== عنوان الصفحة والوصف ===== -->
+    <div class="page-header">
+      <h1 class="page-title" data-translate="sign-page-title">توقيع بالنيابة</h1>
+      <p class="page-subtitle" data-translate="sign-page-subtitle">المستندات التي تحتاج توقيعك بالنيابة عن الآخرين</p>
+    </div>
+
+    <!-- ===== بطاقة الجدول ===== -->
+    <div class="file-card">
+      <!-- جدول المستندات -->
+      <div class="table-container">
+        <table class="proxy-table">
+          <thead>
+            <tr>
+              <th class="col-file" data-translate="file-name">اسم الملف</th>
+              <th class="col-signer" data-translate="delegated-by">من وكلك</th>
+              <th class="col-action" data-translate="actions">الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- الصفوف يتم إدراجها هنا من الجافاسكربت -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <div id="popupOverlay" class="popup-overlay" style="display: none;">
+    <div class="popup">
+      <p id="popupMessage"></p>
+      <textarea id="rejectReason"
+                rows="4"
+                data-placeholder="reject-reason"
+                style="display: none; width: 100%; box-sizing: border-box; margin-top: 8px;"></textarea>
+      <div class="popup-actions" style="margin-top: 12px; text-align: right;">
+        <button id="popupConfirm" data-translate="continue">متابعة</button>
+        <button id="popupCancel" style="margin-left: 8px;" data-translate="cancel">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/frontend/js/language.js"></script>
+  <script src="/frontend/js/sign.js"></script>
+      <script src="/frontend/js/check-status.js"></script>
+
+</body>
+</html>

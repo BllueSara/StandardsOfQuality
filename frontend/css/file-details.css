@@ -271,6 +271,25 @@ main {
     font-weight: 600;
     color: #222;
     font-size: 1.05rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.main-file-label {
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+    align-self: flex-start;
+    margin-top: 2px;
+}
+
+.attachment-item i.fa-file-circle-check {
+    color: #2563eb;
+    font-size: 1.2rem;
 }
 .attachment-size {
     color: #888;

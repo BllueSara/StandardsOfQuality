@@ -779,8 +779,8 @@ if (cancelContentBtn) {
 
     await fetchPermissions();
 // أخف أو أظهر الأزرار العامّة
-  if (!permissions.canAddFolder)  addFolderBtn   .style.display = 'none';
-  if (!permissions.canAddContent) addContentBtn .style.display = 'none';
+  if (!permissions.canAddFolder && addFolderBtn)  addFolderBtn.style.display = 'none';
+  if (!permissions.canAddContent && addContentBtn) addContentBtn.style.display = 'none';
 
     // دالة لجلب التوكن من localStorage (مكررة، يمكن نقلها إلى shared.js)
 
@@ -845,9 +845,9 @@ async function fetchFolders(departmentId) {
 
   console.log('🔥 fetchFolders() fired for departmentId:', departmentId);
   currentDepartmentId = departmentId;
-  foldersSection.style.display = 'block';
-  folderContentsSection.style.display = 'none';
-  backToFilesContainer.style.display = 'none';
+  if (foldersSection) foldersSection.style.display = 'block';
+  if (folderContentsSection) folderContentsSection.style.display = 'none';
+  if (backToFilesContainer) backToFilesContainer.style.display = 'none';
 
   try {
     const response = await fetch(
@@ -864,8 +864,8 @@ async function fetchFolders(departmentId) {
     }
 
     const foldersList = document.querySelector('.folders-list');
-    foldersList.innerHTML = '';
-    folderContentTitle.textContent = data.departmentName || 'مجلدات القسم';
+    if (foldersList) foldersList.innerHTML = '';
+    if (folderContentTitle) folderContentTitle.textContent = data.departmentName || 'مجلدات القسم';
     currentDepartmentName = data.departmentName || 'قسم';
 
     if (data.data.length) {
@@ -927,7 +927,7 @@ async function fetchFolders(departmentId) {
         }
       });
     } else {
-      foldersList.innerHTML =
+      if (foldersList) foldersList.innerHTML =
         `<div class="no-content" data-translate="no-folders">${getTranslation('no-folders')}</div>`;
     }
   } catch (err) {
@@ -950,10 +950,10 @@ async function fetchFolders(departmentId) {
         }
         
         // تحديث حالة العرض فقط إذا لم نكن في حالة عرض المحتويات
-        if (folderContentsSection.style.display === 'none') {
-            foldersSection.style.display = 'none';
-            folderContentsSection.style.display = 'block';
-            backToFilesContainer.style.display = 'none';
+        if (folderContentsSection && folderContentsSection.style.display === 'none') {
+            if (foldersSection) foldersSection.style.display = 'none';
+            if (folderContentsSection) folderContentsSection.style.display = 'block';
+            if (backToFilesContainer) backToFilesContainer.style.display = 'none';
         }
         
         const userRole = getUserRoleFromToken();
@@ -968,7 +968,7 @@ async function fetchFolders(departmentId) {
             window._lastFilesData = data.data;
             if (response.ok) {
                 const filesList = document.querySelector('.files-list');
-                filesList.innerHTML = '';
+                if (filesList) filesList.innerHTML = '';
                 
                 // استخراج اسم المجلد حسب اللغة
                 let displayFolderName = data.folderName;
@@ -980,7 +980,7 @@ async function fetchFolders(departmentId) {
                     displayFolderName = data.folderName;
                 }
                 
-                folderContentTitle.textContent = displayFolderName;
+                if (folderContentTitle) folderContentTitle.textContent = displayFolderName;
                 currentFolderName = displayFolderName; // حفظ اسم المجلد الحالي
 
                 if (data.data && data.data.length > 0) {
@@ -1001,7 +1001,7 @@ async function fetchFolders(departmentId) {
                     // الملفات العادية: ليس لها parent_content_id ولا related_content_id
                     const normalFiles = allContents.filter(item => !Number(item.parent_content_id) && !Number(item.related_content_id));
 
-                    filesList.innerHTML = '';
+                    if (filesList) filesList.innerHTML = '';
 
                     // عرض المجموعات (ملف رئيسي + فرعية)
                     mainFiles.forEach(mainFile => {
@@ -1020,13 +1020,13 @@ async function fetchFolders(departmentId) {
                         groupBox.appendChild(subCard);
                       });
 
-                      filesList.appendChild(groupBox);
+                      if (filesList) filesList.appendChild(groupBox);
                     });
 
                     // عرض الملفات العادية
                     normalFiles.forEach(file => {
                       const fileCard = createFileCard(file, false);
-                      filesList.appendChild(fileCard);
+                      if (filesList) filesList.appendChild(fileCard);
                     });
 
                     // --- دالة إنشاء كارت الملف بنفس ستايلك القديم مع تمييز الرئيسي والفرعي ---
@@ -1034,10 +1034,18 @@ async function fetchFolders(departmentId) {
                       const card = document.createElement('div');
                       card.className = 'file-item';
 
-                      // حالة الاعتماد
-                      const key = file.is_approved ? 'status-approved' : 'status-awaiting';
-                      const approvalStatus = getTranslation(key);
-                      const approvalClass = file.is_approved ? 'approved' : 'pending';
+let approvalStatus = '';
+                      let approvalClass = '';
+                      if (file.approval_status === 'rejected') {
+                        approvalStatus = getTranslation('rejected');
+                        approvalClass = 'rejected';
+                      } else if (file.is_approved) {
+                        approvalStatus = getTranslation('status-approved');
+                        approvalClass = 'approved';
+                      } else {
+                        approvalStatus = getTranslation('status-awaiting');
+                        approvalClass = 'pending';
+                      }
 
                       // اسم الملف حسب اللغة
                       let displayTitle;
@@ -1125,7 +1133,7 @@ if (isMain) {
                       return card;
                     }
                 } else {
-                    filesList.innerHTML = `<div class="no-content" data-translate="no-contents">${getTranslation('no-contents')}</div>`;
+                    if (filesList) filesList.innerHTML = `<div class="no-content" data-translate="no-contents">${getTranslation('no-contents')}</div>`;
                 }
             } else {
                 showToast(data.message || 'فشل جلب محتويات المجلد.', 'error');
@@ -1943,9 +1951,9 @@ function closeEditContentModal() {
                 // تجاهل الضغط على أيقونات التعديل/الحذف
                 if (event.target.closest('.edit-icon') || event.target.closest('.delete-icon')) return;
                 event.preventDefault();
-                foldersSection.style.display = 'none';
-                folderContentsSection.style.display = 'block';
-                backToFilesContainer.style.display = 'none';
+                if (foldersSection) foldersSection.style.display = 'none';
+                if (folderContentsSection) folderContentsSection.style.display = 'block';
+                if (backToFilesContainer) backToFilesContainer.style.display = 'none';
             });
         });
     }
@@ -1953,9 +1961,9 @@ function closeEditContentModal() {
     // عند الضغط على زر الرجوع من تفاصيل الملف إلى قائمة الملفات
     if (backToFilesBtn) {
         backToFilesBtn.addEventListener('click', function() {
-            folderContentsSection.style.display = 'block';
-            foldersSection.style.display = 'none';
-            backToFilesContainer.style.display = 'none';
+            if (folderContentsSection) folderContentsSection.style.display = 'block';
+            if (foldersSection) foldersSection.style.display = 'none';
+            if (backToFilesContainer) backToFilesContainer.style.display = 'none';
         });
     }
 
@@ -2160,7 +2168,7 @@ createFolderBtn.onclick = async () => {
     }
 
     function getCurrentSection() {
-        if (folderContentsSection.style.display !== 'none') return 'folder';
+        if (folderContentsSection && folderContentsSection.style.display !== 'none') return 'folder';
         return 'folders';
     }
 
@@ -2169,9 +2177,9 @@ createFolderBtn.onclick = async () => {
             const section = getCurrentSection();
             if (section === 'folder') {
                 // من قائمة الملفات إلى قائمة المجلدات
-                folderContentsSection.style.display = 'none';
-                foldersSection.style.display = 'block';
-                backToFilesContainer.style.display = 'none'; // Hide the back to files button
+                if (folderContentsSection) folderContentsSection.style.display = 'none';
+                if (foldersSection) foldersSection.style.display = 'block';
+                if (backToFilesContainer) backToFilesContainer.style.display = 'none'; // Hide the back to files button
             } else {
                 // من قائمة المجلدات إلى الأقسام (departmens.html)
                 window.location.href = 'departments.html';
