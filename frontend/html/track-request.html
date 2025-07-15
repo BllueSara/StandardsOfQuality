@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تتبع الملف</title>
+    <title data-translate="track-request-title">تتبع الملف</title>
     <link rel="stylesheet" href="../css/track-request.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,71 +31,20 @@
     </button>
   </div>
     <main>
-        <h1 class="page-title">تتبع الملف</h1>
-        <div class="request-info">
-            <div class="info-row">
-                <div class="info-item">
-                    <div class="info-label">رقم الملف</div>
-                    <div class="info-value"><i class="fa-regular fa-file-lines"></i> #2023-4891</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">اسم الملف</div>
-                    <div class="info-value">طلب موافقة إدارية</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">تاريخ تقديم الملف</div>
-                    <div class="info-value"><i class="fa-regular fa-calendar"></i> 2023/12/15</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">مقدم الملف</div>
-                    <div class="info-value"><i class="fa-regular fa-user"></i> أحمد محمد علي</div>
-                </div>
-            </div>
+        <h1 class="page-title" data-translate="track-request-title">تتبع الملف</h1>
+        <div class="request-info" id="request-info">
+            <!-- سيتم تحميل معلومات الملف ديناميكياً -->
         </div>
         <div class="track-container">
-            <div class="track-list">
-                <!-- المرحلة 1 -->
-                <div class="track-card approved">
-                    <div class="track-content">
-                        <div class="track-title">قسم الاستقبال</div>
-                        <div class="track-user">سارة أحمد</div>
-                        <div class="track-date"><i class="fa-regular fa-calendar"></i> 2023/12/15</div>
-                    </div>
-                    <div class="track-status approved">تمت الموافقة</div>
-                </div>
-                <!-- المرحلة 2 -->
-                <div class="track-card approved">
-                    <div class="track-content">
-                        <div class="track-title">الإدارة القانونية</div>
-                        <div class="track-user">محمد خالد</div>
-                        <div class="track-date"><i class="fa-regular fa-calendar"></i> 2023/12/16</div>
-                    </div>
-                    <div class="track-status approved">تمت الموافقة</div>
-                </div>
-                <!-- المرحلة 3 -->
-                <div class="track-card pending">
-                    <div class="track-content">
-                        <div class="track-title">مكتب المدير العام</div>
-                        <div class="track-user">د. عبدالله العمري</div>
-                        <div class="track-date"><i class="fa-regular fa-calendar"></i> -</div>
-                    </div>
-                    <div class="track-status pending">قيد المراجعة</div>
-                </div>
+            <div class="track-list" id="track-list">
+                <!-- سيتم تحميل المراحل ديناميكياً -->
             </div>
-            <div class="track-timeline">
-                <div class="timeline-step approved"><i class="fa fa-check"></i></div>
-                <div class="timeline-line"></div>
-                <div class="timeline-step approved"><i class="fa fa-check"></i></div>
-                <div class="timeline-line"></div>
-                <div class="timeline-step pending"><i class="fa fa-clock"></i></div>
+            <div class="track-timeline" id="track-timeline">
+                <!-- سيتم تحميل التايملاين ديناميكياً -->
             </div>
         </div>
-        <div class="footer-info">
-            <div class="footer-row">
-                <div>زمن المعالجة المتوقع <span>2023/12/16 - 14:30</span></div>
-                <div>03 أيام عمل</div>
-            </div>
-            <div class="footer-update">آخر تحديث</div>
+        <div class="footer-info" id="footer-info">
+            <!-- سيتم تحميل أوقات المعالجة والتحديث ديناميكياً -->
         </div>
     </main>
     <script src="../js/track-request.js"></script>

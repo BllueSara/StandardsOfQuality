@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحويل الملف</title>
+    <title data-translate="transfer-title">تحويل الملف</title>
     <link rel="stylesheet" href="../css/transfer.css">
-        <link rel="stylesheet" href="../css/approvals-types.css">
-
+    <link rel="stylesheet" href="../css/approvals-types.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
@@ -32,33 +31,29 @@
     </button>
   </div>
     <main>
-        <h1 class="page-title">تحويل الملف</h1>
-        <p class="page-desc">قم بتحويل الملف إلى الأشخاص المطلوبين</p>
+        <h1 class="page-title" data-translate="transfer-title">تحويل الملف</h1>
+        <p class="page-desc" data-translate="transfer-desc">قم بتحويل الملف إلى الأشخاص المطلوبين</p>
         <form class="transfer-form" id="transferForm" autocomplete="off">
             <div class="form-group">
-                <label>حدد عدد الأشخاص</label>
+                <label data-translate="select-person-count">حدد عدد الأشخاص</label>
                 <select id="personCount" required>
-                    <option value="">اختر العدد</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
+                    <!-- سيتم تحميل الخيارات ديناميكياً -->
                 </select>
             </div>
             <div class="form-group">
-                <label>اختر القسم</label>
+                <label data-translate="select-department">اختر القسم</label>
                 <select id="departmentSelect">
-                    <option>اختر القسم</option>
-                    <option>قسم الجودة</option>
-                    <option>قسم المالية</option>
-                    <option>قسم التسويق</option>
+                    <!-- سيتم تحميل الأقسام ديناميكياً -->
                 </select>
             </div>
-            <div id="personsFields"></div>
+            <div id="personsFields">
+                <!-- سيتم تحميل حقول الأشخاص ديناميكياً -->
+            </div>
         </form>
-        <div class="persons-chain" id="personsChain"></div>
-        <button class="submit-btn" type="button" onclick="submitTransfer()">تأكيد التحويل</button>
+        <div class="persons-chain" id="personsChain">
+            <!-- سيتم تحميل سلسلة الأشخاص ديناميكياً -->
+        </div>
+        <button class="submit-btn" type="button" onclick="submitTransfer()" data-translate="confirm-transfer">تأكيد التحويل</button>
     </main>
     <script src="../js/transfer.js"></script>
 </body>
