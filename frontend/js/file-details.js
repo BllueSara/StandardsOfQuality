@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
             renderReviewerInfo(data.timeline, data.pending);
             renderHistoryTable(data.timeline);
             renderAttachments(data.attachments);
+            updateCounters(data.timeline, data.attachments);
         } else {
             showError('تعذر جلب بيانات الملف');
         }
@@ -34,9 +35,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderFileInfo(content) {
         if (!content) return;
-        document.querySelector('.file-info .info-value').textContent = content.title || '-';
-        document.querySelectorAll('.file-info .info-value')[1].textContent = content.created_at ? formatDate(content.created_at) : '-';
-        document.querySelectorAll('.file-info .info-value')[2].innerHTML = `<span class="status ${content.approval_status}">${statusLabel(content.approval_status)}</span>`;
+        document.getElementById('file-name').textContent = content.title || '-';
+        document.getElementById('upload-date').textContent = content.created_at ? formatDate(content.created_at) : '-';
+        document.getElementById('file-status').innerHTML = `<span class="status ${content.approval_status}">${statusLabel(content.approval_status)}</span>`;
     }
 
     function renderReviewerInfo(timeline, pending) {
@@ -48,15 +49,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (!reviewer) return;
         document.getElementById('reviewer-name').textContent = reviewer.approver || '-';
-        document.getElementById('reviewer-position').textContent = reviewer.role || '-';
         document.getElementById('reviewer-department').textContent = getLocalizedName(reviewer.department) || '-';
         document.getElementById('reviewer-email').textContent = reviewer.email || '-';
     }
 
     function renderHistoryTable(timeline) {
-        const tbody = document.querySelector('.history-table tbody');
+        const tbody = document.getElementById('history-tbody');
         tbody.innerHTML = '';
-        if (!timeline || timeline.length === 0) return;
+        if (!timeline || timeline.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">لا توجد مراجعات</td></tr>';
+            return;
+        }
         timeline.forEach(row => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -70,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderAttachments(attachments) {
-        const container = document.querySelector('.attachments-list');
+        const container = document.getElementById('attachments-list');
         container.innerHTML = '';
         if (!attachments || attachments.length === 0) {
             container.innerHTML = '<div>لا توجد ملفات مرتبطة</div>';
@@ -103,11 +106,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // دالة تحديث العدادات
+    function updateCounters(timeline, attachments) {
+        const historyCount = timeline ? timeline.length : 0;
+        const attachmentsCount = attachments ? attachments.length : 0;
+        
+        const historyCounter = document.querySelector('.history-count');
+        const attachmentsCounter = document.querySelector('.attachments-count');
+        
+        if (historyCounter) {
+            historyCounter.textContent = `(${historyCount})`;
+        }
+        
+        if (attachmentsCounter) {
+            attachmentsCounter.textContent = `(${attachmentsCount})`;
+        }
+    }
+
     function formatDate(dateStr) {
         const d = new Date(dateStr);
         if (isNaN(d)) return '-';
         return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
+    
     function statusLabel(status) {
         switch (status) {
             case 'pending': return 'قيد المراجعة';
@@ -116,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
             default: return status || '-';
         }
     }
+    
     function actionLabel(status) {
         switch (status) {
             case 'approved': return 'تمت المراجعة';
@@ -124,6 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
             default: return status || '-';
         }
     }
+    
     function showError(msg) {
         alert(msg);
     }
@@ -140,8 +163,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // تحويل الملف: جلب الأقسام والأشخاص
-    const deptSelect = document.querySelector('.transfer-card .department-select');
-    const userSelect = document.querySelector('.transfer-card .user-select');
+    const deptSelect = document.getElementById('transfer-dept');
+    const userSelect = document.getElementById('transfer-user');
+    const transferBtn = document.getElementById('transfer-btn');
+    
     // جلب الأقسام من الباك مثل transfer.js
     async function fetchDepartments() {
         try {
@@ -171,31 +196,34 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } catch (err) {
             console.error(err);
-            deptSelect.innerHTML = `<option value=\"\">فشل جلب الأقسام</option>`;
+            deptSelect.innerHTML = `<option value="">فشل جلب الأقسام</option>`;
         }
     }
+    
     // Call fetchDepartments on page load
     fetchDepartments();
+    
     // Update department list when language changes
     window.addEventListener('storage', function(e) {
         if (e.key === 'language') {
             fetchDepartments();
         }
     });
+    
     // عند اختيار قسم، جلب الموظفين في هذا القسم
     deptSelect.addEventListener('change', async function() {
         const deptId = deptSelect.value;
         if (!deptId || deptId === '') {
-            userSelect.innerHTML = '<option>اختر الموظف المطلوب</option>';
+            userSelect.innerHTML = '<option value="">اختر الموظف المطلوب</option>';
             return;
         }
-        userSelect.innerHTML = '<option>جاري التحميل...</option>';
+        userSelect.innerHTML = '<option value="">جاري التحميل...</option>';
         try {
             const res = await fetch(`http://localhost:3006/api/users?departmentId=${deptId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
             });
             const data = await res.json();
-            userSelect.innerHTML = '<option>اختر الموظف المطلوب</option>';
+            userSelect.innerHTML = '<option value="">اختر الموظف المطلوب</option>';
             (data.data || []).forEach(user => {
                 const opt = document.createElement('option');
                 opt.value = user.id;
@@ -203,7 +231,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 userSelect.appendChild(opt);
             });
         } catch {
-            userSelect.innerHTML = '<option>تعذر جلب الأشخاص</option>';
+            userSelect.innerHTML = '<option value="">تعذر جلب الأشخاص</option>';
+        }
+    });
+
+    // إضافة وظيفة تحويل الملف
+    transferBtn.addEventListener('click', async function() {
+        const deptId = deptSelect.value;
+        const userId = userSelect.value;
+        
+        if (!deptId || !userId) {
+            alert('يرجى اختيار القسم والموظف');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`http://localhost:3006/api/approvals/${contentId}/delegate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                },
+                body: JSON.stringify({
+                    delegateTo: userId,
+                    notes: 'تم التحويل من صفحة تفاصيل الملف'
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                alert('تم تحويل الملف بنجاح');
+                location.reload(); // إعادة تحميل الصفحة لعرض التحديثات
+            } else {
+                alert(data.message || 'فشل تحويل الملف');
+            }
+        } catch (error) {
+            console.error('Error transferring file:', error);
+            alert('حدث خطأ أثناء تحويل الملف');
         }
     });
 });

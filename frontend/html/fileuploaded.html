@@ -142,7 +142,7 @@
       background-color: #e6f4ea;
       color: #2e7d32;
     }
-    .status.review {
+    .status.pending {
       background-color: #fff8e1;
       color: #f9a825;
     }
@@ -164,6 +164,12 @@
       color: #777;
       margin-bottom: 1rem;
     }
+    .no-files {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
@@ -180,8 +186,11 @@
           <select id="statusFilter">
             <option value="all">جميع الملفات</option>
             <option value="approved">معتمد</option>
-            <option value="review">قيد المراجعة</option>
+            <option value="pending">قيد المراجعة</option>
             <option value="rejected">مرفوض</option>
+          </select>
+          <select id="deptFilter">
+            <option value="all">جميع الأقسام</option>
           </select>
           <button>ترتيب حسب ▾</button>
         </div>
@@ -191,79 +200,189 @@
       </div>
     </div>
 
-    <div class="count" id="fileCount">عرض 3 من 3 ملفات</div>
+    <div class="count" id="fileCount">عرض 0 من 0 ملفات</div>
 
-    <div class="file-card approved">
-      <div class="file-main">
-        <div class="file-details">
-          <img src="pdf-icon.png" alt="PDF">
-          <div class="file-text">
-            <div class="file-name">طلب إجازة.pdf</div>
-            <div class="file-date">٣ يناير ٢٠٢٤</div>
-          </div>
-        </div>
-        <div class="status approved">معتمد</div>
-      </div>
-      <hr>
-      <div class="file-main">
-        <div class="file-details">
-          <img src="word-icon.png" alt="Word">
-          <div class="file-text">
-            <div class="file-name">عقد العمل.docx</div>
-            <div class="file-date">٣ يناير ٢٠٢٤</div>
-          </div>
-        </div>
-        <div class="status review">قيد المراجعة</div>
-      </div>
-    </div>
-
-    <div class="file-card rejected">
-      <div class="file-main">
-        <div class="file-details">
-          <img src="pdf-icon.png" alt="PDF">
-          <div class="file-text">
-            <div class="file-name">تقرير الأداء.pdf</div>
-            <div class="file-date">٢٠ يناير ٢٠٢٤</div>
-          </div>
-        </div>
-        <div class="status rejected">مرفوض</div>
-      </div>
-      <div class="rejection-reason">
-        <strong>بسبب الرفض:</strong><br>
-        يرجى إضافة توقيع المدير المباشر
-      </div>
+    <div id="filesContainer">
+      <!-- سيتم إنشاء الملفات ديناميكياً من JavaScript -->
     </div>
   </div>
 
   <script>
-    const searchInput = document.getElementById('searchInput');
-    const statusFilter = document.getElementById('statusFilter');
-    const fileCards = document.querySelectorAll('.file-card');
-    const countEl = document.getElementById('fileCount');
+    const apiBase = 'http://localhost:3006/api';
+    const token = localStorage.getItem('token');
+    let allFiles = [];
+    let filteredFiles = [];
 
-    function updateVisibleFiles() {
-      const keyword = searchInput.value.toLowerCase();
-      const status = statusFilter.value;
-      let visible = 0;
+    // جلب الملفات من الباك إند
+    async function fetchFiles() {
+      if (!token) {
+        alert('الرجاء تسجيل الدخول');
+        return;
+      }
 
-      fileCards.forEach(card => {
-        const name = card.querySelector('.file-name').textContent.toLowerCase();
-        const matchesName = name.includes(keyword);
-        const matchesStatus = status === 'all' || card.classList.contains(status);
-
-        if (matchesName && matchesStatus) {
-          card.style.display = 'flex';
-          visible++;
-        } else {
-          card.style.display = 'none';
-        }
-      });
-
+      try {
+        const response = await fetch(`${apiBase}/contents/my-uploads`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) throw new Error('فشل جلب الملفات');
+        
+        const data = await response.json();
+        allFiles = data.data || [];
+        filteredFiles = allFiles;
+        
+        renderFiles();
+        updateFileCount();
+        setupFilters();
+      } catch (error) {
+        console.error('Error fetching files:', error);
+        showError('حدث خطأ أثناء جلب الملفات');
+      }
     }
 
-    searchInput.addEventListener('input', updateVisibleFiles);
-    statusFilter.addEventListener('change', updateVisibleFiles);
-    window.addEventListener('load', updateVisibleFiles);
+    // عرض الملفات
+    function renderFiles() {
+      const container = document.getElementById('filesContainer');
+      container.innerHTML = '';
+
+      if (filteredFiles.length === 0) {
+        container.innerHTML = '<div class="no-files">لا توجد ملفات</div>';
+        return;
+      }
+
+      filteredFiles.forEach(file => {
+        const card = createFileCard(file);
+        container.appendChild(card);
+      });
+    }
+
+    // إنشاء كارت الملف
+    function createFileCard(file) {
+      const card = document.createElement('div');
+      card.className = `file-card ${file.approval_status}`;
+      
+      const statusText = getStatusText(file.approval_status);
+      const statusClass = file.approval_status;
+      
+      card.innerHTML = `
+        <div class="file-main">
+          <div class="file-details">
+            <img src="${getFileIcon(file.file_path)}" alt="File">
+            <div class="file-text">
+              <div class="file-name">${file.title || 'غير محدد'}</div>
+              <div class="file-date">${formatDate(file.created_at)}</div>
+            </div>
+          </div>
+          <div class="status ${statusClass}">${statusText}</div>
+        </div>
+        ${file.approval_status === 'rejected' && file.rejection_reason ? `
+          <div class="rejection-reason">
+            <strong>سبب الرفض:</strong><br>
+            ${file.rejection_reason}
+          </div>
+        ` : ''}
+      `;
+      
+      return card;
+    }
+
+    // تحديث عداد الملفات
+    function updateFileCount() {
+      const countEl = document.getElementById('fileCount');
+      countEl.textContent = `عرض ${filteredFiles.length} من ${allFiles.length} ملفات`;
+    }
+
+    // إعداد الفلاتر
+    async function setupFilters() {
+      try {
+        // جلب الأقسام
+        const response = await fetch(`${apiBase}/departments`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const departments = await response.json();
+          const deptFilter = document.getElementById('deptFilter');
+          
+          departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = getLocalizedName(dept.name);
+            deptFilter.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading departments:', error);
+      }
+    }
+
+    // تطبيق الفلاتر
+    function applyFilters() {
+      const keyword = document.getElementById('searchInput').value.toLowerCase();
+      const status = document.getElementById('statusFilter').value;
+      const dept = document.getElementById('deptFilter').value;
+
+      filteredFiles = allFiles.filter(file => {
+        const matchesKeyword = file.title.toLowerCase().includes(keyword);
+        const matchesStatus = status === 'all' || file.approval_status === status;
+        const matchesDept = dept === 'all' || file.source_name === dept;
+
+        return matchesKeyword && matchesStatus && matchesDept;
+      });
+
+      renderFiles();
+      updateFileCount();
+    }
+
+    // دوال مساعدة
+    function getStatusText(status) {
+      switch (status) {
+        case 'approved': return 'معتمد';
+        case 'pending': return 'قيد المراجعة';
+        case 'rejected': return 'مرفوض';
+        default: return status;
+      }
+    }
+
+    function getFileIcon(filePath) {
+      const ext = filePath.split('.').pop().toLowerCase();
+      switch (ext) {
+        case 'pdf': return 'pdf-icon.png';
+        case 'doc':
+        case 'docx': return 'word-icon.png';
+        case 'xls':
+        case 'xlsx': return 'excel-icon.png';
+        default: return 'file-icon.png';
+      }
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('ar-EG');
+    }
+
+    function getLocalizedName(name) {
+      const lang = localStorage.getItem('language') || 'ar';
+      try {
+        const parsed = JSON.parse(name);
+        return parsed[lang] || parsed.ar || parsed.en || name;
+      } catch {
+        return name;
+      }
+    }
+
+    function showError(message) {
+      alert(message);
+    }
+
+    // Event listeners
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('deptFilter').addEventListener('change', applyFilters);
+
+    // تحميل الملفات عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', fetchFiles);
   </script>
 </body>
 </html>

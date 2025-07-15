@@ -35,12 +35,23 @@
     </button>
   </div>
     <main>
-                <h1>اعتماداتي</h1>
+        <div class="page-header">
+            <h1>اعتماداتي <span class="files-count">(0)</span></h1>
+        </div>
 
         <div class="filters-bar">
-            <input type="text" class="search-input" placeholder="...البحث عن ملف">
-            <select class="status-filter">
-                <option>جميع الحالات</option>
+            <div class="search-box">
+                <i class="fa fa-search"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="...البحث عن ملف">
+            </div>
+            <select id="statusFilter" class="status-filter">
+                <option value="all">جميع الحالات</option>
+                <option value="pending">بانتظار الاعتماد</option>
+                <option value="approved">معتمد</option>
+                <option value="rejected">مرفوض</option>
+            </select>
+            <select id="deptFilter" class="dept-filter">
+                <option value="all">جميع الأقسام</option>
             </select>
         </div>
         <div class="table-container">
@@ -48,13 +59,14 @@
                 <thead>
                     <tr>
                         <th>اسم الملف</th>
+                        <th>القسم</th>
                         <th>تاريخ الرفع</th>
                         <th>الحالة</th>
                         <th>الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
-            
+                    <!-- سيتم إنشاء الصفوف ديناميكياً من JavaScript -->
                 </tbody>
             </table>
         </div>

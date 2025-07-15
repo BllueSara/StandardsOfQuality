@@ -37,16 +37,15 @@
                 <div class="file-info-grid">
                     <div>
                         <div class="info-label">اسم الملف</div>
-                        <div class="info-value">تقرير المبيعات الشهري.pdf</div>
+                        <div class="info-value" id="file-name">-</div>
                     </div>
-
                     <div>
                         <div class="info-label">تاريخ الرفع</div>
-                        <div class="info-value">15 يناير 2024</div>
+                        <div class="info-value" id="upload-date">-</div>
                     </div>
                     <div>
                         <div class="info-label">حالة الملف</div>
-                        <div class="info-value"><span class="status pending"><i class="fa-solid fa-circle-exclamation"></i> قيد المراجعة</span></div>
+                        <div class="info-value" id="file-status">-</div>
                     </div>
                 </div>
             </div>
@@ -55,33 +54,35 @@
                 <div class="reviewer-grid">
                     <div>
                         <div class="info-label">الاسم</div>
-                        <div class="info-value" id="reviewer-name"> </div>
+                        <div class="info-value" id="reviewer-name">-</div>
                     </div>
-
                     <div>
                         <div class="info-label">القسم</div>
-                        <div class="info-value" id="reviewer-department"></div>
+                        <div class="info-value" id="reviewer-department">-</div>
                     </div>
                     <div>
                         <div class="info-label">البريد الإلكتروني</div>
-                        <div class="info-value" id="reviewer-email"></div>
+                        <div class="info-value" id="reviewer-email">-</div>
                     </div>
                 </div>
             </div>
             <div class="card transfer-card">
                 <div class="card-title"><i class="fa-regular fa-paper-plane"></i> تحويل الملف</div>
                 <div class="transfer-row">
-                    <select class="department-select">
-                        <option>اختر القسم</option>
+                    <select class="department-select" id="transfer-dept">
+                        <option value="">اختر القسم</option>
                     </select>
-                    <select class="user-select">
-                        <option>اختر الموظف المطلوب</option>
+                    <select class="user-select" id="transfer-user">
+                        <option value="">اختر الموظف المطلوب</option>
                     </select>
-                    <button class="transfer-btn"><i class="fa-regular fa-paper-plane"></i> تحويل</button>
+                    <button class="transfer-btn" id="transfer-btn"><i class="fa-regular fa-paper-plane"></i> تحويل</button>
                 </div>
             </div>
             <div class="card history-card">
-                <div class="card-title"><i class="fa-regular fa-calendar"></i> تاريخ المراجعات</div>
+                <div class="card-title">
+                    <i class="fa-regular fa-calendar"></i> تاريخ المراجعات 
+                    <span class="history-count">(0)</span>
+                </div>
                 <div class="history-table-wrapper">
                     <table class="history-table">
                         <thead>
@@ -92,40 +93,19 @@
                                 <th>التاريخ</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>تم التحقق من جميع البيانات</td>
-                                <td>تمت المراجعة</td>
-                                <td>محمد أحمد</td>
-                                <td>14 يناير 2024</td>
-                            </tr>
-                            <tr>
-                                <td>يجرى مراجعة الأرقام النهائية</td>
-                                <td>تم التحويل</td>
-                                <td>سارة خالد</td>
-                                <td>13 يناير 2024</td>
-                            </tr>
+                        <tbody id="history-tbody">
+                            <!-- سيتم إنشاء الصفوف ديناميكياً من JavaScript -->
                         </tbody>
                     </table>
                 </div>
             </div>
             <div class="card attachments-card">
-                <div class="card-title"><i class="fa-regular fa-folder"></i> الملفات المرتبطة</div>
-                <div class="attachments-list">
-                    <div class="attachment-item">
-                        <i class="fa-regular fa-file-lines"></i>
-                        <div>
-                            <div class="attachment-name">ملخص المبيعات.pdf</div>
-                            <div class="attachment-size">1.2 ميجابايت</div>
-                        </div>
-                    </div>
-                    <div class="attachment-item">
-                        <i class="fa-regular fa-file-lines"></i>
-                        <div>
-                            <div class="attachment-name">كشف تقرير الأداء</div>
-                            <div class="attachment-size">960 كيلوبايت</div>
-                        </div>
-                    </div>
+                <div class="card-title">
+                    <i class="fa-regular fa-folder"></i> الملفات المرتبطة 
+                    <span class="attachments-count">(0)</span>
+                </div>
+                <div class="attachments-list" id="attachments-list">
+                    <!-- سيتم إنشاء الملفات المرتبطة ديناميكياً من JavaScript -->
                 </div>
             </div>
         </div>

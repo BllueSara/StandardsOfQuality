@@ -4,6 +4,13 @@ const token = localStorage.getItem('token');
 let allRejectedFiles = [];
 let filteredFiles = [];
 
+// دالة للحصول على الترجمة
+function getTranslation(key) {
+  const lang = localStorage.getItem('language') || 'ar';
+  const translations = window.translations || {};
+  return translations[lang]?.[key] || key;
+}
+
 // دالة جلب الملفات المرفوضة من قاعدة البيانات
 async function fetchRejectedFiles() {
   if (!token) {
@@ -30,9 +37,10 @@ async function fetchRejectedFiles() {
     
     renderRejectedFiles();
     updateRejectedCount();
+    populateDepartmentFilter();
   } catch (error) {
     console.error('خطأ في جلب الملفات المرفوضة:', error);
-    alert('حدث خطأ في تحميل الملفات المرفوضة');
+    showErrorMessage(getTranslation('error-loading-files') || 'حدث خطأ في تحميل الملفات المرفوضة');
   }
 }
 
@@ -47,7 +55,7 @@ function renderRejectedFiles() {
     container.innerHTML = `
       <div class="no-files">
         <i class="fa fa-inbox" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
-        <p style="color: #888; text-align: center;">لا توجد ملفات مرفوضة</p>
+        <p style="color: #888; text-align: center;">${getTranslation('no-rejected-files') || 'لا توجد ملفات مرفوضة'}</p>
       </div>
     `;
     return;
@@ -68,7 +76,7 @@ function createRejectedCard(file) {
   const fileName = getLocalizedName(file.title);
   const departmentName = getLocalizedName(file.source_name);
   const rejectDate = formatDate(file.rejected_at || file.updated_at);
-  const rejectReason = file.reject_reason || 'لا يوجد سبب محدد';
+  const rejectReason = file.reject_reason || getTranslation('no-reason-specified') || 'لا يوجد سبب محدد';
 
   card.innerHTML = `
     <div class="rejected-info">
@@ -83,18 +91,18 @@ function createRejectedCard(file) {
       <div class="file-status-row">
         <span class="status rejected">
           <i class="fa fa-xmark"></i> 
-          مرفوض
+          ${getTranslation('rejected') || 'مرفوض'}
         </span>
         <span class="file-date">${rejectDate}</span>
       </div>
       <div class="reject-reason" style="margin-top: 8px; color: #ef4444; font-size: 0.9rem;">
         <i class="fa fa-exclamation-triangle"></i>
-        سبب الرفض: ${rejectReason}
+        ${getTranslation('rejection-reason') || 'سبب الرفض'}: ${rejectReason}
       </div>
     </div>
     <button class="details-btn" onclick="viewFileDetails(${file.id})">
       <i class="fa-regular fa-eye"></i> 
-      عرض تفاصيل
+      ${getTranslation('view-details') || 'عرض تفاصيل'}
     </button>
   `;
 
@@ -106,229 +114,205 @@ async function viewFileDetails(fileId) {
   window.location.href = `rejection-reason.html?contentId=${fileId}`;
 }
 
-// دالة عرض مودال تفاصيل الملف
-function showFileDetailsModal(file) {
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  `;
-
-  const fileName = getLocalizedName(file.title);
-  const departmentName = getLocalizedName(file.source_name);
-  const rejectDate = formatDate(file.rejected_at || file.updated_at);
-  const rejectReason = file.reject_reason || 'لا يوجد سبب محدد';
-
-  modal.innerHTML = `
-    <div class="modal" style="
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 500px;
-      width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
-    ">
-      <div class="modal-header" style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 16px;
-      ">
-        <h3 style="margin: 0; color: #333;">تفاصيل الملف المرفوض</h3>
-        <button onclick="this.closest('.modal-overlay').remove()" style="
-          background: none;
-          border: none;
-          font-size: 24px;
-          cursor: pointer;
-          color: #666;
-        ">&times;</button>
-      </div>
-      
-      <div class="modal-body">
-        <div style="margin-bottom: 16px;">
-          <strong>اسم الملف:</strong>
-          <p style="margin: 5px 0; color: #333;">${fileName}</p>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-          <strong>القسم:</strong>
-          <p style="margin: 5px 0; color: #333;">${departmentName}</p>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-          <strong>تاريخ الرفض:</strong>
-          <p style="margin: 5px 0; color: #333;">${rejectDate}</p>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-          <strong>سبب الرفض:</strong>
-          <p style="margin: 5px 0; color: #ef4444; background: #fee2e2; padding: 8px; border-radius: 6px;">
-            ${rejectReason}
-          </p>
-        </div>
-        
-        ${file.file_path ? `
-        <div style="margin-bottom: 16px;">
-          <strong>الملف الأصلي:</strong>
-          <button onclick="downloadFile('${file.file_path}')" style="
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 8px;
-          ">
-            <i class="fa fa-download"></i> تحميل الملف
-          </button>
-        </div>
-        ` : ''}
-      </div>
-      
-      <div class="modal-footer" style="
-        margin-top: 20px;
-        padding-top: 16px;
-        border-top: 1px solid #eee;
-        text-align: center;
-      ">
-        <button onclick="this.closest('.modal-overlay').remove()" style="
-          background: #6b7280;
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 6px;
-          cursor: pointer;
-        ">إغلاق</button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-}
-
-// دالة تحميل الملف
-function downloadFile(filePath) {
-  const baseApiUrl = apiBase.replace('/api', '');
-  let fileBaseUrl;
-  let path;
-
-  if (filePath.startsWith('backend/uploads/')) {
-    fileBaseUrl = `${baseApiUrl}/backend/uploads`;
-    path = filePath.replace(/^backend\/uploads\//, '');
-  } else if (filePath.startsWith('uploads/')) {
-    fileBaseUrl = `${baseApiUrl}/uploads`;
-    path = filePath.replace(/^uploads\//, '');
-  } else {
-    fileBaseUrl = `${baseApiUrl}/uploads`;
-    path = filePath;
-  }
-
-  const url = `${fileBaseUrl}/${path}`;
-  window.open(url, '_blank');
-}
-
 // دالة البحث في الملفات المرفوضة
 function searchRejectedFiles() {
-  const searchTerm = document.querySelector('.search-bar input').value.trim().toLowerCase();
+  const searchTerm = document.querySelector('#search-input').value.trim().toLowerCase();
+  const departmentFilter = document.querySelector('#department-filter').value;
+  const dateFilter = document.querySelector('#date-filter').value;
   
   filteredFiles = allRejectedFiles.filter(file => {
     const fileName = getLocalizedName(file.title).toLowerCase();
     const departmentName = getLocalizedName(file.source_name).toLowerCase();
     const rejectReason = (file.reject_reason || '').toLowerCase();
     
-    return fileName.includes(searchTerm) || 
-           departmentName.includes(searchTerm) || 
-           rejectReason.includes(searchTerm);
+    // فلترة البحث
+    const matchesSearch = !searchTerm || 
+      fileName.includes(searchTerm) || 
+      departmentName.includes(searchTerm) || 
+      rejectReason.includes(searchTerm);
+    
+    // فلترة القسم
+    const matchesDepartment = !departmentFilter || 
+      getLocalizedName(file.source_name) === departmentFilter;
+    
+    // فلترة التاريخ
+    const matchesDate = filterByDate(file.rejected_at || file.updated_at, dateFilter);
+    
+    return matchesSearch && matchesDepartment && matchesDate;
   });
   
   renderRejectedFiles();
   updateRejectedCount();
 }
 
-// دالة تحديث عدد الملفات المرفوضة
-function updateRejectedCount() {
-  const count = filteredFiles.length;
-  const title = document.querySelector('.page-title');
-  if (title) {
-    title.textContent = `رسائل الرفض (${count})`;
+// دالة فلترة التاريخ
+function filterByDate(fileDate, dateFilter) {
+  if (!dateFilter) return true;
+  
+  const fileDateTime = new Date(fileDate);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  switch (dateFilter) {
+    case 'today':
+      return fileDateTime >= today;
+    case 'week':
+      return fileDateTime >= weekAgo;
+    case 'month':
+      return fileDateTime >= monthAgo;
+    default:
+      return true;
   }
 }
 
-// دالة الحصول على الاسم المحلي
+// دالة ملء فلتر الأقسام
+function populateDepartmentFilter() {
+  const departmentFilter = document.querySelector('#department-filter');
+  if (!departmentFilter) return;
+  
+  // مسح الخيارات الحالية (باستثناء الخيار الافتراضي)
+  const defaultOption = departmentFilter.querySelector('option[value=""]');
+  departmentFilter.innerHTML = '';
+  if (defaultOption) {
+    departmentFilter.appendChild(defaultOption);
+  }
+  
+  // استخراج الأقسام الفريدة من الملفات
+  const departments = [...new Set(allRejectedFiles.map(file => getLocalizedName(file.source_name)))];
+  
+  departments.forEach(dept => {
+    const option = document.createElement('option');
+    option.value = dept;
+    option.textContent = dept;
+    departmentFilter.appendChild(option);
+  });
+}
+
+// دالة تحديث عداد الملفات المرفوضة
+function updateRejectedCount() {
+  const countElement = document.getElementById('rejected-count');
+  if (countElement) {
+    countElement.textContent = filteredFiles.length;
+  }
+}
+
+// دالة معالجة النصوص ثنائية اللغة
 function getLocalizedName(name) {
   if (!name) return '';
   
-  try {
-    const parsed = typeof name === 'string' ? JSON.parse(name) : name;
-    const lang = localStorage.getItem('language') || 'ar';
-    return parsed?.[lang] || parsed?.ar || parsed?.en || name;
-  } catch {
-    return name;
+  const lang = localStorage.getItem('language') || 'ar';
+  
+  // إذا كان النص يحتوي على JSON، حاول تحليله
+  if (typeof name === 'string' && name.trim().startsWith('{') && name.trim().endsWith('}')) {
+    try {
+      const parsed = JSON.parse(name);
+      return parsed[lang] || parsed['ar'] || parsed['en'] || name;
+    } catch (e) {
+      return name;
+    }
   }
+  
+  // إذا كان object، استخرج النص باللغة المناسبة
+  if (typeof name === 'object' && name !== null) {
+    return name[lang] || name['ar'] || name['en'] || JSON.stringify(name);
+  }
+  
+  return name;
 }
 
 // دالة تنسيق التاريخ
 function formatDate(dateString) {
   if (!dateString) return '';
   
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ar-EG', {
+  const lang = localStorage.getItem('language') || 'ar';
+  const date = new Date(dateString);
+  
+  if (lang === 'en') {
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
-  } catch {
-    return dateString;
+  } else {
+    return date.toLocaleDateString('ar-SA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   }
 }
 
-// إعداد الأحداث عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', function() {
-  // جلب الملفات المرفوضة
-  fetchRejectedFiles();
-  
-  // إعداد البحث
-  const searchInput = document.querySelector('.search-bar input');
-  if (searchInput) {
-    searchInput.addEventListener('input', searchRejectedFiles);
+// دالة عرض رسالة خطأ
+function showErrorMessage(message) {
+  const container = document.querySelector('.rejected-list');
+  if (container) {
+    container.innerHTML = `
+      <div class="error-message" style="text-align: center; color: #ef4444; padding: 20px;">
+        <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+        <p>${message}</p>
+      </div>
+    `;
   }
-  
-  // إعداد زر الرجوع
-  const backBtn = document.querySelector('.back-btn');
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      history.back();
-    });
-  }
-  
-  // إعداد زر الرئيسية
-  const homeBtn = document.querySelector('.home-btn');
-  if (homeBtn) {
-    homeBtn.addEventListener('click', () => {
-      window.location.href = 'index.html';
-    });
-  }
-});
+}
 
-// دالة إعادة تحميل البيانات
+// دالة تحديث النصوص حسب اللغة
+function updatePageTexts() {
+  // تحديث النصوص الثابتة
+  document.querySelectorAll('[data-translate]').forEach(element => {
+    const key = element.getAttribute('data-translate');
+    element.textContent = getTranslation(key);
+  });
+  
+  // تحديث placeholders
+  document.querySelectorAll('[data-translate-placeholder]').forEach(element => {
+    const key = element.getAttribute('data-translate-placeholder');
+    element.placeholder = getTranslation(key);
+  });
+}
+
+// دالة تحديث البيانات
 function refreshData() {
   fetchRejectedFiles();
 }
 
-// تصدير الدوال للاستخدام الخارجي
+// إضافة مستمعي الأحداث
+document.addEventListener('DOMContentLoaded', () => {
+  // تحديث النصوص عند التحميل
+  updatePageTexts();
+  
+  // تحميل البيانات
+  fetchRejectedFiles();
+  
+  // مستمع البحث
+  const searchInput = document.querySelector('#search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      setTimeout(searchRejectedFiles, 300);
+    });
+  }
+  
+  // مستمعي الفلاتر
+  const departmentFilter = document.querySelector('#department-filter');
+  const dateFilter = document.querySelector('#date-filter');
+  
+  if (departmentFilter) {
+    departmentFilter.addEventListener('change', searchRejectedFiles);
+  }
+  
+  if (dateFilter) {
+    dateFilter.addEventListener('change', searchRejectedFiles);
+  }
+  
+  // مراقبة تغيير اللغة
+  window.addEventListener('languageChanged', () => {
+    updatePageTexts();
+    renderRejectedFiles();
+    populateDepartmentFilter();
+  });
+});
+
+// تصدير الدوال للاستخدام العام
 window.viewFileDetails = viewFileDetails;
-window.downloadFile = downloadFile;
 window.refreshData = refreshData; 

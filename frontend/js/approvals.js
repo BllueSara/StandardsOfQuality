@@ -6,8 +6,20 @@ let filteredApprovals = [];
 
 // DOM elements
 const tableBody = document.querySelector('.files-table tbody');
-const searchInput = document.querySelector('.search-input');
-const statusFilter = document.querySelector('.status-filter');
+const searchInput = document.querySelector('#searchInput');
+const statusFilter = document.querySelector('#statusFilter');
+const deptFilter = document.querySelector('#deptFilter');
+
+// دالة تحويل اسم القسم حسب اللغة
+function getLocalizedDepartmentName(deptName) {
+  const currentLang = localStorage.getItem('language') || 'ar';
+  try {
+    const parsed = JSON.parse(deptName);
+    return parsed[currentLang] || parsed.ar || parsed.en || deptName;
+  } catch {
+    return deptName;
+  }
+}
 
 // Fetch approvals from backend
 async function fetchApprovals() {
@@ -21,10 +33,42 @@ async function fetchApprovals() {
     approvals = data || [];
     filteredApprovals = approvals;
     renderApprovals();
-    populateStatusFilter();
+    updateFilesCount();
+    await setupFilters();
   } catch (err) {
     console.error('Error fetching approvals:', err);
     alert('حدث خطأ أثناء جلب طلباتك');
+  }
+}
+
+// Update files count
+function updateFilesCount() {
+  const countElement = document.querySelector('.files-count');
+  if (countElement) {
+    countElement.textContent = `(${filteredApprovals.length})`;
+  }
+}
+
+// Setup filters
+async function setupFilters() {
+  // جلب الأقسام من قاعدة البيانات
+  try {
+    const res = await fetch(`${apiBase}/departments`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+    const data = await res.json();
+    const departments = Array.isArray(data) ? data : (data.data || []);
+    const currentLang = localStorage.getItem('language') || 'ar';
+    
+    deptFilter.innerHTML = '<option value="all">جميع الأقسام</option>';
+    departments.forEach(dept => {
+      const opt = document.createElement('option');
+      opt.value = dept.id;
+      opt.textContent = getLocalizedDepartmentName(dept.name);
+      deptFilter.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Failed to load departments:', err);
   }
 }
 
@@ -32,13 +76,14 @@ async function fetchApprovals() {
 function renderApprovals() {
   tableBody.innerHTML = '';
   if (filteredApprovals.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="4">لا توجد بيانات</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="5">لا توجد بيانات</td></tr>';
     return;
   }
   filteredApprovals.forEach(item => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${item.title}</td>
+      <td>${item.source_name ? getLocalizedDepartmentName(item.source_name) : '-'}</td>
       <td>${formatDate(item.created_at)}</td>
       <td><span class="status ${item.approval_status}">${statusLabel(item.approval_status)}</span></td>
       <td>
@@ -48,6 +93,7 @@ function renderApprovals() {
     `;
     tableBody.appendChild(tr);
   });
+  updateFilesCount();
 }
 
 // Format date as yyyy/mm/dd
@@ -67,31 +113,18 @@ function statusLabel(status) {
   }
 }
 
-// Populate status filter
-function populateStatusFilter() {
-  const statuses = ['جميع الحالات', 'قيد الاعتماد', 'معتمد', 'مرفوض'];
-  statusFilter.innerHTML = '';
-  statuses.forEach(label => {
-    const opt = document.createElement('option');
-    opt.value = label;
-    opt.textContent = label;
-    statusFilter.appendChild(opt);
-  });
-}
-
 // Filter approvals
 function applyFilters() {
   const search = searchInput.value.trim().toLowerCase();
   const status = statusFilter.value;
+  const dept = deptFilter.value;
+  
   filteredApprovals = approvals.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(search);
-    let matchesStatus = true;
-    if (status !== 'جميع الحالات') {
-      if (status === 'قيد الاعتماد') matchesStatus = item.approval_status === 'pending';
-      else if (status === 'معتمد') matchesStatus = item.approval_status === 'approved';
-      else if (status === 'مرفوض') matchesStatus = item.approval_status === 'rejected';
-    }
-    return matchesSearch && matchesStatus;
+    const matchesStatus = status === 'all' || item.approval_status === status;
+    const matchesDept = dept === 'all' || item.source_name === dept;
+    
+    return matchesSearch && matchesStatus && matchesDept;
   });
   renderApprovals();
 }
@@ -99,6 +132,7 @@ function applyFilters() {
 // Event listeners
 searchInput.addEventListener('input', applyFilters);
 statusFilter.addEventListener('change', applyFilters);
+deptFilter.addEventListener('change', applyFilters);
 
 tableBody.addEventListener('click', function(e) {
   if (e.target.classList.contains('track-btn')) {
