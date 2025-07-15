@@ -1236,6 +1236,70 @@ const logContentView = async (req, res) => {
   }
 };
 
+// دالة جلب الملفات المرفوضة
+const getRejectedContents = async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ 
+                status: 'error',
+                message: 'غير مصرح: لا يوجد توكن أو التوكن غير صالح' 
+            });
+        }
+
+        const token = authHeader.split(' ')[1];
+        let decodedToken;
+        try {
+            decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (error) {
+            return res.status(401).json({ 
+                status: 'error',
+                message: 'غير مصرح: توكن غير صالح' 
+            });
+        }
+
+        const connection = await db.getConnection();
+
+        // جلب الملفات المرفوضة مع معلومات الرفض
+        const [rejectedContents] = await connection.execute(`
+            SELECT 
+                c.id, 
+                c.title, 
+                c.notes,
+                c.file_path, 
+                c.approval_status,
+                c.created_at,
+                c.updated_at,
+                f.name as folder_name,
+                d.name as source_name,
+                u.username as created_by_username,
+                al.comments as reject_reason,
+                al.created_at as rejected_at
+            FROM contents c
+            LEFT JOIN folders f ON c.folder_id = f.id
+            LEFT JOIN departments d ON f.department_id = d.id
+            LEFT JOIN users u ON c.created_by = u.id
+            LEFT JOIN approval_logs al ON c.id = al.content_id AND al.status = 'rejected'
+            WHERE c.approval_status = 'rejected'
+            ORDER BY al.created_at DESC
+        `);
+
+        connection.release();
+
+        res.json({
+            status: 'success',
+            message: 'تم جلب الملفات المرفوضة بنجاح',
+            data: rejectedContents
+        });
+    } catch (error) {
+        console.error('getRejectedContents error:', error);
+        res.status(500).json({ 
+            status: 'error',
+            message: 'خطأ في جلب الملفات المرفوضة' 
+        });
+    }
+};
+
 module.exports = {
   getMyUploadedContent,
   getContentsByFolderId,
@@ -1250,6 +1314,7 @@ module.exports = {
   updateContentName,
   deleteContentName,
   upload,
-  logContentView
+  logContentView,
+  getRejectedContents
 };
   

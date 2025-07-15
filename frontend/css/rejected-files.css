@@ -215,6 +215,53 @@ main {
     background: #2563eb;
     color: #fff;
 }
+
+/* تحسينات إضافية للملفات المرفوضة */
+.reject-reason {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #dc2626;
+}
+
+.no-files {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+}
+
+.no-files i {
+    display: block;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+/* تحسين مودال التفاصيل */
+.modal-overlay {
+    backdrop-filter: blur(4px);
+}
+
+.modal {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e5e7eb;
+}
+
+/* تحسين البحث */
+.search-bar input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: #fff;
+}
+
+/* تحسين البطاقات */
+.rejected-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
 @media (max-width: 600px) {
     main {
         padding: 0 2vw 24px 2vw;

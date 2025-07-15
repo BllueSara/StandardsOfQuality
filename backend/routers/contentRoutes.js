@@ -16,6 +16,8 @@ const { getContentById } = require('../controllers/contentController');
 const { updateContent } = require('../controllers/contentController');
 const { deleteContent } = require('../controllers/contentController');
 const { logContentView } = require('../controllers/contentController');
+const { getRejectedContents } = require('../controllers/contentController');
+const { rejectContent, addRejectionReply, getRejectionReplies, getRejectionReason } = require('../controllers/rejectionController');
 
 
 const router = express.Router();
@@ -40,6 +42,9 @@ const upload = multer({ storage });
 
 // GET /api/contents/my-uploads
 router.get('/my-uploads', getMyUploadedContent);
+
+// GET /api/contents/rejected - جلب الملفات المرفوضة
+router.get('/rejected', getRejectedContents);
 
 router.delete('/:contentId', deleteContent);
 
@@ -148,6 +153,13 @@ router.put('/:contentId', upload.single('file'), updateContent);
 
 // POST /api/contents/log-view - تسجيل عرض المحتوى
 router.post('/log-view', logContentView);
+
+// Route جديد للرفض فقط
+router.post('/rejections/:contentId', rejectContent);
+// Routes للردود
+router.post('/:contentId/rejection-reply', addRejectionReply);
+router.get('/:contentId/rejection-replies', getRejectionReplies);
+router.get('/:contentId/rejection-reason', getRejectionReason);
 
 
 module.exports = router;

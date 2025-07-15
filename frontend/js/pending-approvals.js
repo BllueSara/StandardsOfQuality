@@ -95,16 +95,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnSendReason.addEventListener('click', async () => {
       const reason = document.getElementById('rejectReason').value.trim();
       if (!reason) return alert(getTranslation('please-enter-reason'));
-      const type     = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
-      const endpoint = type === 'committee' ? 'committee-approvals' : 'approvals';
       try {
-        await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/approve`, {
+        await fetchJSON(`${apiBase}/contents/rejections/${selectedContentId}`, {
           method: 'POST',
-          body: JSON.stringify({ approved: false, signature: null, notes: reason })
+          body: JSON.stringify({ reason })
         });
         alert(getTranslation('success-rejected'));
         closeModal('rejectModal');
         updateApprovalStatusInUI(selectedContentId, 'rejected');
+        disableActionsFor(selectedContentId);
       } catch (e) {
         console.error('Failed to send rejection:', e);
         alert(getTranslation('error-sending'));
@@ -277,6 +276,18 @@ function updateApprovalStatusInUI(id, newStatus) {
   if (!item) return;
   item.approval_status = newStatus;
   applyFilters();
+  // تحديث البطاقة مباشرة
+  const card = document.querySelector(`.approval-card[data-id="${id}"]`);
+  if (card) {
+    card.classList.remove('pending', 'approved', 'rejected');
+    card.classList.add(newStatus);
+    const statusDiv = card.querySelector('.status');
+    if (statusDiv) {
+      statusDiv.textContent = statusLabel(newStatus);
+      statusDiv.className = 'status ' + newStatus;
+    }
+    disableActionsFor(id);
+  }
 }
 
 // تم حذف الباجينشن بالكامل بناءً على طلب المستخدم
