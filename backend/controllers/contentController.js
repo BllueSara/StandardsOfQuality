@@ -77,6 +77,7 @@ const getContentsByFolderId = async (req, res) => {
                 f.name,
                 f.department_id,
                 d.name as department_name,
+                d.approval_sequence as department_approval_sequence,
                 f.created_by,
                 u.username as created_by_username
             FROM folders f 
@@ -94,6 +95,20 @@ const getContentsByFolderId = async (req, res) => {
             });
         }
 
+        // جلب approval_sequence للقسم
+        let approvalSequence = [];
+        const rawSeq = folder[0].department_approval_sequence;
+        if (Array.isArray(rawSeq)) {
+            approvalSequence = rawSeq;
+        } else if (typeof rawSeq === 'string') {
+            try {
+                approvalSequence = JSON.parse(rawSeq);
+            } catch {
+                approvalSequence = [];
+            }
+        }
+        approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+
         // بناء استعلام المحتوى
         let query = `
             SELECT 
@@ -108,8 +123,8 @@ const getContentsByFolderId = async (req, res) => {
                 c.approvers_required,
                 c.created_at,
                 c.updated_at,
-                    c.parent_content_id,         -- أضف هذا السطر
-    c.related_content_id,        -- وأضف هذا السطر
+                c.parent_content_id,
+                c.related_content_id,
                 u.username as created_by_username,
                 a.username as approved_by_username
             FROM contents c
@@ -118,52 +133,21 @@ const getContentsByFolderId = async (req, res) => {
             WHERE c.folder_id = ?
         `;
         let params = [folderId];
-
-        // إذا لم يكن المستخدم مسؤول، أظهر فقط المعتمدة أو المرفوعة منه
-        // تم حذف الشرط بناءً على طلب العميل ليظهر كل الملفات للجميع
-        // if (decodedToken.role !== 'admin') {
-        //     query += ' AND c.is_approved = 1 AND c.approval_status = "approved"';
-        // }
-        
         query += ' ORDER BY c.created_at DESC';
 
         const [contents] = await connection.execute(query, params);
         connection.release();
 
-        // منطق الفلترة حسب الصلاحية
-        const now = new Date();
-        const nowMs = now.getTime();
-        const oneDayMs = 24 * 60 * 60 * 1000;
         const isAdmin = decodedToken.role === 'admin';
-        // TODO: إذا عندك صلاحية خاصة أضفها هنا
+        const userId = Number(decodedToken.id);
 
-const filtered = contents.filter(item => {
-  if (!item.end_date) return true;
-  const endDate = new Date(item.end_date);
-  if (isNaN(endDate.getTime())) return true;
-
-  const diffDays = Math.ceil((endDate.getTime() - nowMs) / (1000 * 60 * 60 * 24));
-
-  if (!isAdmin) {
-    // ✅ يظهر للمستخدم العادي إذا ما انتهى أو انتهى اليوم بالضبط
-    if (diffDays >= 0) return true;
-    // 🚫 لو انتهى من أمس أو قبل
-    return false;
-  }
-
-  // ✅ الأدمن يشوف الكل
-  return true;
-}).map(item => {
-  let extra = {};
-  if (item.end_date) {
-    const endDate = new Date(item.end_date);
-    if (!isNaN(endDate.getTime()) && nowMs > endDate.getTime() + oneDayMs) {
-      extra.expired = true;
-    }
-  }
-  return { ...item, extra };
-});
-
+        // فلترة النتائج حسب الصلاحية
+        const filtered = contents.filter(item => {
+            if (isAdmin) return true; // الأدمن يرى كل شيء
+            if (item.is_approved) return true; // الملفات المعتمدة تظهر للجميع
+            // الملفات غير المعتمدة تظهر فقط إذا كان المستخدم من ضمن approval_sequence
+            return approvalSequence.includes(userId);
+        });
 
         res.json({
             status: 'success',

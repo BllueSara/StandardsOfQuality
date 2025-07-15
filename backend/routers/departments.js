@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { getDepartments, addDepartment, updateDepartment, deleteDepartment } = require('../controllers/departmentController');
+const { getDepartments, addDepartment, updateDepartment, deleteDepartment, getApprovalSequence, updateApprovalSequence } = require('../controllers/departmentController');
 
 // إعدادات تخزين multer
 const storage = multer.diskStorage({
@@ -27,4 +27,6 @@ router.put('/:id', upload.single('image'), updateDepartment);
 // مسار حذف قسم
 router.delete('/:id', deleteDepartment);
 
+router.get('/:id/approval-sequence', getApprovalSequence);
+router.put('/:id/approval-sequence', updateApprovalSequence);
 module.exports = router; 

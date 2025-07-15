@@ -172,6 +172,86 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       electronic_signature || null,
       notes || ''
     ]);
+
+    // تحديث ملف PDF مباشرة بعد كل عملية اعتماد
+    await generatePdfFunction(contentId);
+
+    // تحديث حقل approvals_log في جدول contents ليعكس آخر حالة من جدول approval_logs
+    const [allLogs] = await db.execute(
+      `SELECT approver_id AS user_id, status, signature, electronic_signature, comments, created_at FROM approval_logs WHERE content_id = ?`,
+      [contentId]
+    );
+    await db.execute(
+      `UPDATE contents SET approvals_log = ? WHERE id = ?`,
+      [JSON.stringify(allLogs), contentId]
+    );
+
+    // إضافة الشخص التالي في approval_sequence إلى content_approvers (إن وجد)
+    if (approved) {
+      try {
+        // جلب folder_id من جدول contents
+        const [folderRows2] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ?`, [contentId]);
+        if (folderRows2.length) {
+          const folderId2 = folderRows2[0].folder_id;
+          // جلب department_id من جدول folders
+          const [deptRows2] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId2]);
+          if (deptRows2.length) {
+            const departmentId2 = deptRows2[0].department_id;
+            // جلب approval_sequence من جدول departments
+            const [seqRows2] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId2]);
+            if (seqRows2.length) {
+              let approvalSequence2 = [];
+              const rawSeq = seqRows2[0].approval_sequence;
+              if (Array.isArray(rawSeq)) {
+                approvalSequence2 = rawSeq;
+              } else if (typeof rawSeq === 'string') {
+                try {
+                  approvalSequence2 = JSON.parse(rawSeq);
+                } catch {
+                  approvalSequence2 = [];
+                }
+              } else {
+                approvalSequence2 = [];
+              }
+              // حدد ترتيب المعتمد الحالي
+              const idx = approvalSequence2.findIndex(x => Number(x) === Number(approverId));
+              // إشعار للشخص الأول في التسلسل إذا كان هو المعتمد الحالي
+              if (idx === 0) {
+                const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+                const fileTitle = contentRows.length ? contentRows[0].title : '';
+                await insertNotification(
+                  approverId,
+                  'ملف جديد بانتظار اعتمادك',
+                  `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
+                  'approval'
+                );
+              }
+              if (idx !== -1 && idx < approvalSequence2.length - 1) {
+                const nextApproverId = approvalSequence2[idx + 1];
+                // تحقق إذا كان التالي لم يعتمد بعد
+                const [logNext] = await db.execute(`SELECT status FROM approval_logs WHERE content_id = ? AND approver_id = ?`, [contentId, nextApproverId]);
+                if (!logNext.length || logNext[0].status !== 'approved') {
+                  // أضف التالي إلى content_approvers إذا لم يكن موجودًا
+                  const [insertResult] = await db.execute(`INSERT IGNORE INTO ${contentApproversTable} (content_id, user_id) VALUES (?, ?)`, [contentId, nextApproverId]);
+                  // إرسال إشعار للشخص التالي
+                  // جلب عنوان الملف
+                  const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+                  const fileTitle = contentRows.length ? contentRows[0].title : '';
+                  await insertNotification(
+                    nextApproverId,
+                    'ملف جديد بانتظار اعتمادك',
+                    `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
+                    'approval'
+                  );
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error while adding next approver:', e);
+      }
+    }
 // إذا كان الرفض، تحديث حالة الملف إلى مرفوض
     if (!approved) {
       await db.execute(`
@@ -203,17 +283,6 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       // لم يعد هناك إشعار هنا
     }
 
-    let [ownerRows] = await db.execute(`SELECT created_by, title FROM ${contentsTable} WHERE id = ?`, [contentId]);
-    if (ownerRows.length) {
-      const ownerId = ownerRows[0].created_by;
-      const fileTitle = ownerRows[0].title || '';
-      await insertNotification(
-        ownerId,
-        approved ? 'تم اعتماد ملفك' : 'تم رفض ملفك',
-        `الملف "${fileTitle}" ${approved ? 'تم اعتماده' : 'تم رفضه'} من قبل الإدارة.`,
-        approved ? 'approval' : 'rejected'
-      );
-    }
 
     if (approved === true && isProxy) {
       await db.execute(`
@@ -222,30 +291,86 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       `, [contentId, approverId]);
     }
 
-    const [remaining] = await db.execute(`
-      SELECT COUNT(*) AS count
-      FROM ${contentApproversTable} ca
-      LEFT JOIN ${approvalLogsTable} al 
-        ON ca.content_id = al.content_id AND ca.user_id = al.approver_id
-      WHERE ca.content_id = ? AND (al.status IS NULL OR al.status != 'approved')
-    `, [contentId]);
+    // تحقق من اكتمال الاعتماد من جميع أعضاء approval_sequence
+    // 1. جلب folder_id من جدول contents
+    const [folderRows] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ?`, [contentId]);
+    if (folderRows.length) {
+      const folderId = folderRows[0].folder_id;
+      // 2. جلب department_id من جدول folders
+      const [deptRows] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId]);
+      if (deptRows.length) {
+        const departmentId = deptRows[0].department_id;
+        // 3. جلب approval_sequence من جدول departments
+        const [seqRows] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId]);
+        if (seqRows.length) {
+          let approvalSequence = [];
+          const rawSeq = seqRows[0].approval_sequence;
+          if (Array.isArray(rawSeq)) {
+            approvalSequence = rawSeq;
+          } else if (typeof rawSeq === 'string') {
+            try {
+              approvalSequence = JSON.parse(rawSeq);
+            } catch {
+              approvalSequence = [];
+            }
+          } else {
+            approvalSequence = [];
+          }
+          approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+          // 4. تحقق أن كل من في approval_sequence اعتمد الملف فعلاً
+          const [logs] = await db.execute(`SELECT approver_id, status FROM approval_logs WHERE content_id = ?`, [contentId]);
+          const approvedSet = new Set(logs.filter(l => l.status === 'approved').map(l => Number(l.approver_id)));
 
-    if (remaining[0].count === 0) {
-      await generatePdfFunction(contentId);
-      await db.execute(`
-        UPDATE ${contentsTable}
-        SET is_approved = 1,
-            approval_status = 'approved',
-            approved_by = ?,
-            updated_at = NOW()
-        WHERE id = ?
-      `, [approverId, contentId]);
+          // شرط أكثر أمانًا: كل من في approval_sequence وقع وعددهم متساوي
+          const allApproved = approvalSequence.length > 0 &&
+            approvalSequence.every(approverId => approvedSet.has(approverId)) &&
+            approvedSet.size === approvalSequence.length;
+          console.log('allApproved (final):', allApproved);
+          if (allApproved) {
+            await generatePdfFunction(contentId);
+            await db.execute(`
+              UPDATE ${contentsTable}
+              SET is_approved = 1,
+                  approval_status = 'approved',
+                  approved_by = ?,
+                  updated_at = NOW()
+              WHERE id = ?
+            `, [approverId, contentId]);
+            // إرسال إشعار لصاحب الملف بأن الملف تم اعتماده من الجميع
+            let [ownerRowsFinal] = await db.execute(`SELECT created_by, title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+            if (ownerRowsFinal.length) {
+              const ownerIdFinal = ownerRowsFinal[0].created_by;
+              const fileTitleFinal = ownerRowsFinal[0].title || '';
+              await insertNotification(
+                ownerIdFinal,
+                approved ? 'تم اعتماد ملفك' : 'تم رفض ملفك',
+                `الملف "${fileTitleFinal}" ${approved ? 'تم اعتماده' : 'تم رفضه'} من قبل الإدارة.`,
+                approved ? 'approval' : 'rejected'
+              );
+            }
+            console.log('تم اعتماد الملف نهائيًا!');
+          } else {
+            console.log('لم يتم الاعتماد النهائي رغم التحقق.');
+          }
+        } else {
+          console.log('seqRows is empty, لم يتم جلب approval_sequence');
+        }
+      } else {
+        console.log('deptRows is empty, لم يتم جلب department_id');
+      }
+    } else {
+      console.log('folderRows is empty, لم يتم جلب folder_id');
     }
 
-    res.status(200).json({ status: 'success', message: 'تم التوقيع بنجاح' });
+    // الاستجابة النهائية
+    if (approved) {
+      return res.status(200).json({ status: 'success', message: 'تم تسجيل اعتمادك بنجاح' });
+    } else {
+      return res.status(200).json({ status: 'success', message: 'تم تسجيل رفضك بنجاح' });
+    }
   } catch (err) {
     console.error('Error in handleApproval:', err);
-    res.status(500).json({ status: 'error', message: 'خطأ أثناء معالجة الاعتماد' });
+    return res.status(500).json({ status: 'error', message: 'خطأ أثناء معالجة الاعتماد', error: err.message, stack: err.stack });
   }
 };
 // توليد نسخة نهائية موقعة من PDF مع دعم "توقيع بالنيابة"
@@ -291,19 +416,37 @@ async function generateFinalSignedPDF(contentId) {
     ORDER BY al.created_at
   `, [contentId]);
 
-  console.log('PDF logs:', logs); // للتأكد من القيم
-
   if (!logs.length) {
     console.warn('⚠️ No approved signatures found for content', contentId);
     return;
   }
 
-  // 4) إعداد الصفحة
+  // 4) حذف أي صفحة تواقيع قديمة في نهاية الملف (عنوانها Signatures Summary)
+  const signatureTitles = ['Signatures Summary', 'Signatures Summary (continued)'];
+  let pageCount = pdfDoc.getPageCount();
+  // ابحث من النهاية للأمام
+  while (pageCount > 0) {
+    const lastPage = pdfDoc.getPage(pageCount - 1);
+    // لا توجد طريقة مباشرة لقراءة النص من الصفحة في pdf-lib،
+    // لكن يمكننا حفظ عدد الصفحات الأصلية في أول توقيع (metadata) أو نفترض أن صفحة التواقيع دائماً في النهاية ونحذفها دائماً
+    // سنحذف آخر صفحة إذا كان عدد صفحات الملف أكبر من 1 (حتى لا نحذف كل الصفحات)
+    // أو إذا كان هناك أكثر من صفحة واحدة وتمت إضافة صفحة تواقيع سابقاً
+    // الحل العملي: احذف آخر صفحة دائماً إذا كان عدد الصفحات > 1
+    if (pageCount > 1) {
+      pdfDoc.removePage(pageCount - 1);
+      pageCount--;
+    } else {
+      break;
+    }
+    // إذا أردت منطق أدق، يمكن حفظ مؤشر في metadata
+  }
+
+  // 5) أضف صفحة التواقيع في نهاية الملف
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   let page = pdfDoc.addPage();
   let y = 750;
-
-  page.drawText('Signatures Summary', {
+  const signatureTitle = 'Signatures Summary';
+  page.drawText(signatureTitle, {
     x: 200,
     y,
     size: 20,
@@ -312,33 +455,33 @@ async function generateFinalSignedPDF(contentId) {
   });
   y -= 40;
 
-  // 5) رسم كل توقيع
+  // 6) رسم كل توقيع
   for (const log of logs) {
     if (y < 200) {
       page = pdfDoc.addPage();
       y = 750;
+      page.drawText(signatureTitle + ' (continued)', {
+        x: 200,
+        y,
+        size: 20,
+        font,
+        color: rgb(0, 0, 0)
+      });
+      y -= 40;
     }
-
-    // التسمية تصير:
-    //   إذا signed_as_proxy = 1 → "Signed by Ahmed on behalf of Rawad"
-    //   وإلا → "Signed by Ahmed"
     const label = log.signed_as_proxy
       ? `Signed by ${log.actual_signer} on behalf of ${log.original_user}`
       : `Signed by ${log.actual_signer}`;
-
     page.drawText(label, {
       x: 50, y, size: 14, font, color: rgb(0, 0, 0)
     });
     y -= 25;
-
-    // توقيع يدوي
     if (log.signature?.startsWith('data:image')) {
       try {
         const base64Data = log.signature.split(',')[1];
         const imgBytes = Buffer.from(base64Data, 'base64');
         const img = await pdfDoc.embedPng(imgBytes);
         const dims = img.scale(0.4);
-
         page.drawImage(img, {
           x: 150,
           y: y - dims.height + 10,
@@ -347,19 +490,15 @@ async function generateFinalSignedPDF(contentId) {
         });
         y -= dims.height + 20;
       } catch (err) {
-        console.warn('Failed to draw hand signature:', err);
         y -= 20;
       }
     }
-
-    // توقيع إلكتروني
     if (log.electronic_signature) {
       try {
         const stampPath = path.join(__dirname, '../e3teamdelc.png');
         const stampBytes = fs.readFileSync(stampPath);
         const stampImg = await pdfDoc.embedPng(stampBytes);
         const dims = stampImg.scale(0.5);
-
         page.drawImage(stampImg, {
           x: 150,
           y: y - dims.height + 10,
@@ -368,20 +507,15 @@ async function generateFinalSignedPDF(contentId) {
         });
         y -= dims.height + 20;
       } catch (err) {
-        console.warn('Failed to draw electronic signature:', err);
         y -= 20;
       }
     }
-
-    // التعليقات
     if (log.comments) {
       page.drawText(`Comments: ${log.comments}`, {
         x: 50, y, size: 12, font, color: rgb(0.3, 0.3, 0.3)
       });
       y -= 20;
     }
-
-    // فاصل
     page.drawLine({
       start: { x: 50, y },
       end:   { x: 550, y },
@@ -391,7 +525,7 @@ async function generateFinalSignedPDF(contentId) {
     y -= 30;
   }
 
-  // 6) حفظ التعديلات
+  // 7) حفظ التعديلات
   try {
     const finalBytes = await pdfDoc.save();
     fs.writeFileSync(fullPath, finalBytes);
@@ -424,29 +558,29 @@ const getAssignedApprovals = async (req, res) => {
     const permsSet = await getUserPermissions(userId);
     const canViewAll = userRole === 'admin' || permsSet.has('transfer_credits');
 
-    // لو الكيان ليس admin أو لا يملك الصلاحية، نبني استعلام محدود
+    // جلب كل الملفات (حسب الصلاحية)
     const departmentContentQuery = canViewAll
       ? `
         SELECT
-          CONCAT('dept-', c.id) AS id,
+          c.id,
           c.title,
           c.file_path,
           c.approval_status,
-          GROUP_CONCAT(DISTINCT u2.username) AS assigned_approvers,
+          d.id AS department_id,
           d.name AS source_name,
+          d.approval_sequence AS department_approval_sequence,
           f.name AS folder_name,
           u.username AS created_by_username,
           'department' AS type,
           CAST(c.approvers_required AS CHAR) AS approvers_required,
           c.created_at,
           MAX(al_reject.approver_id) AS rejected_by_id,
-          MAX(u_reject.username) AS rejected_by_username
+          MAX(u_reject.username) AS rejected_by_username,
+          c.approvals_log
         FROM contents c
         JOIN folders f        ON c.folder_id = f.id
         JOIN departments d    ON f.department_id = d.id
         JOIN users u          ON c.created_by = u.id
-        LEFT JOIN content_approvers ca ON ca.content_id = c.id
-        LEFT JOIN users u2     ON ca.user_id = u2.id
         LEFT JOIN approval_logs al_reject ON c.id = al_reject.content_id AND al_reject.status = 'rejected'
         LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
         WHERE c.approval_status IN ('pending', 'approved', 'rejected')
@@ -454,39 +588,32 @@ const getAssignedApprovals = async (req, res) => {
       `
       : `
         SELECT
-          CONCAT('dept-', c.id) AS id,
+          c.id,
           c.title,
           c.file_path,
           c.approval_status,
-          GROUP_CONCAT(DISTINCT u2.username) AS assigned_approvers,
+          d.id AS department_id,
           d.name AS source_name,
+          d.approval_sequence AS department_approval_sequence,
           f.name AS folder_name,
           u.username AS created_by_username,
           'department' AS type,
           CAST(c.approvers_required AS CHAR) AS approvers_required,
           c.created_at,
           MAX(al_reject.approver_id) AS rejected_by_id,
-          MAX(u_reject.username) AS rejected_by_username
+          MAX(u_reject.username) AS rejected_by_username,
+          c.approvals_log
         FROM contents c
         JOIN folders f        ON c.folder_id = f.id
         JOIN departments d    ON f.department_id = d.id
         JOIN users u          ON c.created_by = u.id
-        -- هنا نضمن أن الصف موجود فقط لو هو من المعينين أو منشئه
-        LEFT JOIN content_approvers ca ON ca.content_id = c.id AND ca.user_id = ?
-        LEFT JOIN users u2     ON ca.user_id = u2.id
         LEFT JOIN approval_logs al_reject ON c.id = al_reject.content_id AND al_reject.status = 'rejected'
         LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
-        WHERE (c.approval_status IN ('pending', 'approved', 'rejected') AND ca.user_id IS NOT NULL)
-          OR c.created_by = ?
+        WHERE c.approval_status IN ('pending', 'approved', 'rejected')
         GROUP BY c.id
       `;
 
-    
-    // إذا كان مفوّض محدود نمرر userId مرتين لكل جزء
-    const params = canViewAll
-      ? []
-      : [userId, userId, userId, userId];
-
+    const params = [];
     const finalQuery = `
       ${departmentContentQuery}
       ORDER BY created_at DESC
@@ -494,16 +621,78 @@ const getAssignedApprovals = async (req, res) => {
 
     const [rows] = await db.execute(finalQuery, params);
 
-    // تحويل الحقل من نص JSON إلى مصفوفة
+    // تحويل الحقول من نص JSON إلى مصفوفة
     rows.forEach(row => {
+      console.log('raw department_approval_sequence:', row.department_approval_sequence);
       try {
         row.approvers_required = JSON.parse(row.approvers_required);
       } catch {
         row.approvers_required = [];
       }
+      // تصحيح التحويل لقبول array أو string
+      if (Array.isArray(row.department_approval_sequence)) {
+        row.approval_sequence = row.department_approval_sequence;
+      } else if (typeof row.department_approval_sequence === 'string') {
+        try {
+          row.approval_sequence = JSON.parse(row.department_approval_sequence);
+        } catch {
+          row.approval_sequence = [];
+        }
+      } else {
+        row.approval_sequence = [];
+      }
+      // تصحيح approvals_log ليقبل Array أو String أو null
+      if (Array.isArray(row.approvals_log)) {
+        // لا شيء
+      } else if (typeof row.approvals_log === 'string') {
+        try {
+          row.approvals_log = JSON.parse(row.approvals_log);
+        } catch {
+          row.approvals_log = [];
+        }
+      } else if (row.approvals_log == null) {
+        row.approvals_log = [];
+      }
     });
 
-    return res.json({ status: 'success', data: rows });
+    if (canViewAll) {
+      // الأدمن أو من لديه صلاحية يرى كل الملفات
+      return res.json({ status: 'success', data: rows });
+    }
+
+    // لوجات تشخيصية قبل الفلترة
+    console.log('userId:', userId, typeof userId);
+    rows.forEach(row => {
+      console.log('row.approval_sequence:', row.approval_sequence, typeof row.approval_sequence?.[0]);
+      console.log('row.approvals_log:', row.approvals_log);
+      console.log('row.approval_status:', row.approval_status);
+    });
+    // فلترة الملفات حسب تسلسل الاعتماد للمستخدم العادي فقط
+    const filteredRows = rows.filter(row => {
+      // تحويل عناصر السيكونس إلى أرقام مع إزالة الفراغات
+      const sequence = (row.approval_sequence || []).map(x => Number(String(x).trim()));
+      const myIndex = sequence.indexOf(Number(userId));
+      if (myIndex === -1) return false; // المستخدم ليس ضمن السلسلة
+      // إذا الملف معتمد أو مرفوض، يظهر للجميع في السلسلة
+      if (row.approval_status === 'approved' || row.approval_status === 'rejected') {
+        return true;
+      }
+      // تحقق من أن كل من قبله اعتمد الملف (فقط إذا كان pending)
+      let allPreviousApproved = true;
+      for (let i = 0; i < myIndex; i++) {
+        const approverId = sequence[i];
+        // تأكد أن user_id رقم للمقارنة الصحيحة
+        const approved = row.approvals_log?.find(log => Number(log.user_id) === approverId && log.status === 'approved');
+        if (!approved) {
+          allPreviousApproved = false;
+          break;
+        }
+      }
+      // إذا كل من قبله اعتمد، يعرض له الملف
+      return allPreviousApproved && row.approval_status === 'pending';
+    });
+
+    return res.json({ status: 'success', data: filteredRows });
   } catch (err) {
     console.error('Error in getAssignedApprovals:', err);
     return res.status(500).json({ status: 'error', message: 'Internal Server Error' });

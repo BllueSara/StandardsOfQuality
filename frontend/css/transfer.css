@@ -1,4 +1,4 @@
-body {
+body,:placeholder-shown,input,select,textarea,button {
     font-family: 'Tajawal', Arial, sans-serif;
     background: #ffffff;
     margin: 0;

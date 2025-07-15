@@ -137,9 +137,7 @@ router.get('/track/:contentId', async (req, res) => {
         d.name AS department
       FROM approval_logs al
       JOIN users u ON al.approver_id = u.id
-      JOIN contents c ON al.content_id = c.id
-      JOIN folders f ON c.folder_id = f.id
-      LEFT JOIN departments d ON f.department_id = d.id
+      LEFT JOIN departments d ON u.department_id = d.id
       WHERE al.content_id = ?
       ORDER BY al.created_at ASC
     `, [contentId]);

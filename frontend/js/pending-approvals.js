@@ -82,6 +82,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     allItems = combined;
     filteredItems = allItems;
 
+    // حساب عدد الملفات غير المعتمدة (pending)
+    const pendingCount = allItems.filter(item => item.approval_status === 'pending').length;
+    document.querySelector('.pending-count').textContent = pendingCount;
+
     await setupFilters(allItems);
     renderApprovals(filteredItems);
   } catch (err) {
@@ -822,9 +826,8 @@ function setupPersonCountHandler() {
 
 function setupPersonSelectHandlers() {
   document.querySelectorAll('.person-select').forEach(select => {
-    select.addEventListener('change', function() {
-      updatePersonsChain();
-    });
+    if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
+    select.addEventListener('change', updatePersonsChainPopup);
   });
 }
 
@@ -862,6 +865,7 @@ document.getElementById('transferDept').addEventListener('change', async (e) => 
     
     // تحديث جميع حقول اختيار الأشخاص
     document.querySelectorAll('.person-select').forEach(select => {
+      if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
       select.innerHTML = `<option value="" disabled selected>اختر الشخص</option>`;
       users.forEach(user => {
         const opt = document.createElement('option');
@@ -872,6 +876,7 @@ document.getElementById('transferDept').addEventListener('change', async (e) => 
     });
   } catch (err) {
     document.querySelectorAll('.person-select').forEach(select => {
+      if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
       select.innerHTML = `<option value="" disabled selected>اختر الشخص</option>`;
     });
   }
@@ -884,6 +889,7 @@ function updatePersonsChain() {
   
   const selectedPersons = [];
   document.querySelectorAll('.person-select').forEach(select => {
+    if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
     if (select.value) {
       const userName = select.options[select.selectedIndex].textContent;
       selectedPersons.push({
@@ -910,12 +916,143 @@ function updatePersonsChain() {
       node.innerHTML = `
         <div class="person-circle"><i class="fa fa-user"></i></div>
         <div class="person-name">${person.name}</div>
-        <div class="person-role">الشخص ${person.personNum}</div>
       `;
       chainDiv.appendChild(node);
     });
   }
 }
+
+// عنصر اختيار شخص من قسم الجودة فوق السلسلة
+let qualityUserSelectDiv = null;
+
+async function renderQualityUserSelectPopup() {
+    // إزالة العنصر القديم إذا وجد
+    if (qualityUserSelectDiv && qualityUserSelectDiv.parentNode) {
+        qualityUserSelectDiv.parentNode.removeChild(qualityUserSelectDiv);
+    }
+    qualityUserSelectDiv = document.createElement('div');
+    qualityUserSelectDiv.className = 'quality-user-select-group';
+    qualityUserSelectDiv.style.marginBottom = '18px';
+    qualityUserSelectDiv.innerHTML = `
+        <label style="font-weight:600;display:block;margin-bottom:8px;">
+            اختيار الشخص المسؤول في قسم الجودة <span style='color:red;'>*</span>
+        </label>
+        <select id="qualityUserSelectPopup" class="person-select" style="width:100%;max-width:300px;" required>
+            <option value="">اختر الشخص</option>
+        </select>
+    `;
+    const chainDiv = document.getElementById('transferPersonsChain');
+    chainDiv.parentNode.insertBefore(qualityUserSelectDiv, chainDiv);
+    // جلب الأشخاص من قسم الجودة (departmentId=9) فقط
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${apiBase}/users?departmentId=9`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'فشل جلب مستخدمي الجودة');
+        const select = qualityUserSelectDiv.querySelector('#qualityUserSelectPopup');
+        (data.data || []).forEach(user => {
+            // فلترة إضافية في الفرونت اند إذا لزم الأمر
+            if (user.departmentId == 9 || user.department_id == 9) {
+                const opt = document.createElement('option');
+                opt.value = user.id;
+                opt.textContent = user.name;
+                select.appendChild(opt);
+            }
+        });
+        select.addEventListener('change', updatePersonsChainPopup);
+    } catch (err) {
+        console.error('فشل جلب مستخدمي الجودة:', err);
+    }
+}
+
+function updatePersonsChainPopup() {
+    const chainDiv = document.getElementById('transferPersonsChain');
+    chainDiv.innerHTML = '';
+    const selectedPersons = [];
+    document.querySelectorAll('.person-select').forEach(select => {
+        if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
+        if (select.value) {
+            const userName = select.options[select.selectedIndex].textContent;
+            selectedPersons.push({
+                id: select.value,
+                name: userName,
+                personNum: select.dataset.person
+            });
+        }
+    });
+    // أضف الأشخاص المختارين من القسم
+    if (selectedPersons.length > 0) {
+        selectedPersons.forEach((person, index) => {
+            // لا تكرر الشخص إذا كان هو نفسه المختار للجودة
+            const qualitySelect = document.getElementById('qualityUserSelectPopup');
+            if (qualitySelect && qualitySelect.value && person.id === qualitySelect.value) return;
+            const node = document.createElement('div');
+            node.className = 'person-node';
+            // إضافة سهم بين الأشخاص (إلا للأول)
+            if (index > 0) {
+                const arrow = document.createElement('div');
+                arrow.className = 'arrow-line';
+                arrow.innerHTML = '<div class="dashed"></div>';
+                chainDiv.appendChild(arrow);
+            }
+            node.innerHTML = `
+                <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
+                <div class="person-name">${person.name}</div>
+            `;
+            chainDiv.appendChild(node);
+        });
+    }
+    // أضف الشخص المختار من الجودة إذا لم يكن مكرر
+    const qualitySelect = document.getElementById('qualityUserSelectPopup');
+    if (qualitySelect && qualitySelect.value) {
+        // تحقق أنه لم يتم عرضه سابقاً
+        if (!selectedPersons.some(p => p.id === qualitySelect.value)) {
+            if (selectedPersons.length > 0) {
+                const arrow = document.createElement('div');
+                arrow.className = 'arrow-line';
+                arrow.innerHTML = '<div class="dashed"></div>';
+                chainDiv.appendChild(arrow);
+            }
+            const qualityNode = document.createElement('div');
+            qualityNode.className = 'person-node';
+            qualityNode.innerHTML = `
+                <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
+                <div class="person-name">${qualitySelect.options[qualitySelect.selectedIndex].textContent}</div>
+            `;
+            chainDiv.appendChild(qualityNode);
+        }
+    }
+    // أضف مدير المستشفى
+    if ((selectedPersons.length > 0 || (qualitySelect && qualitySelect.value))) {
+        const arrow = document.createElement('div');
+        arrow.className = 'arrow-line';
+        arrow.innerHTML = '<div class="dashed"></div>';
+        chainDiv.appendChild(arrow);
+        const managerNode = document.createElement('div');
+        managerNode.className = 'person-node';
+        managerNode.innerHTML = `
+            <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
+            <div class="person-name">مدير المستشفى</div>
+        `;
+        chainDiv.appendChild(managerNode);
+    }
+}
+
+// استدعِ اختيار الجودة عند فتح البوب أب
+const oldOpenFileTransferModal = openFileTransferModal;
+openFileTransferModal = function() {
+    oldOpenFileTransferModal();
+    renderQualityUserSelectPopup();
+    // اربط تحديث السلسلة
+    setupPersonSelectHandlers = function() {
+        document.querySelectorAll('.person-select').forEach(select => {
+            if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
+            select.addEventListener('change', updatePersonsChainPopup);
+        });
+    };
+};
 
 document.querySelectorAll('.modal-close[data-modal="fileTransferModal"]').forEach(btn => {
   btn.addEventListener('click', closeFileTransferModal);
@@ -930,6 +1067,7 @@ document.getElementById('btnTransferConfirm').addEventListener('click', function
   const selectedPersons = [];
   
   document.querySelectorAll('.person-select').forEach(select => {
+    if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
     if (select.value) {
       selectedPersons.push({
         id: select.value,

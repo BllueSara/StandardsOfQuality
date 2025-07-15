@@ -33,7 +33,22 @@
     <main>
         <h1 class="page-title" data-translate="track-request-title">تتبع الملف</h1>
         <div class="request-info" id="request-info">
-            <!-- سيتم تحميل معلومات الملف ديناميكياً -->
+            <div class="info-item">
+                <span class="info-label"><i class="fa-regular fa-file-lines"></i> رقم الطلب</span>
+                <span class="info-value"><i class="fa-regular fa-file-lines"></i> #--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label"><i class="fa-regular fa-file"></i> العنوان</span>
+                <span class="info-value">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label"><i class="fa-regular fa-calendar"></i> تاريخ الإنشاء</span>
+                <span class="info-value">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label"><i class="fa-regular fa-user"></i> أنشئ بواسطة</span>
+                <span class="info-value">--</span>
+            </div>
         </div>
         <div class="track-container">
             <div class="track-list" id="track-list">
@@ -44,7 +59,11 @@
             </div>
         </div>
         <div class="footer-info" id="footer-info">
-            <!-- سيتم تحميل أوقات المعالجة والتحديث ديناميكياً -->
+            <div class="footer-row">
+                <span>تاريخ آخر تحديث:</span>
+                <div>--</div>
+            </div>
+            <div class="footer-update">--</div>
         </div>
     </main>
     <script src="../js/track-request.js"></script>

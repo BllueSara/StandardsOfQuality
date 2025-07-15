@@ -359,5 +359,21 @@ function getNotificationTranslation(text) {
   if (assignOvrToMatch) {
     return `The OVR report with number ${assignOvrToMatch[1]} has been assigned to: ${assignOvrToMatch[2]}`;
   }
+  if (text === 'ملف جديد بانتظار اعتمادك') {
+    return 'A new file is awaiting your approval';
+  }
+  if (text === 'تم اعتماد ملفك من جميع المعتمدين') {
+    return 'Your file has been approved by all approvers';
+  }
+  // ترجمة ديناميكية: لديك ملف بعنوان "xxx" بحاجة لاعتمادك.
+  const waitingApprovalMatch = text.match(/^لديك ملف بعنوان "(.+)" بحاجة لاعتمادك\.$/);
+  if (waitingApprovalMatch) {
+    return `You have a file titled "${waitingApprovalMatch[1]}" awaiting your approval.`;
+  }
+  // ترجمة ديناميكية: الملف "xxx" تم اعتماده من جميع أعضاء التسلسل.
+  const allApprovedMatch = text.match(/^الملف "(.+)" تم اعتماده من جميع أعضاء التسلسل\.$/);
+  if (allApprovedMatch) {
+    return `The file "${allApprovedMatch[1]}" has been approved by all approvers.`;
+  }
   return text;
 }

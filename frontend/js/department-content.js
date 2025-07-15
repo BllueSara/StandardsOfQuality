@@ -2846,7 +2846,7 @@ async function addSubFile(mainFileId, folderId) {
   const token = localStorage.getItem('token');
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
-  fileInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+  fileInput.accept = '.pdf'; // فقط PDF
   fileInput.style.display = 'none';
   document.body.appendChild(fileInput);
   fileInput.click();

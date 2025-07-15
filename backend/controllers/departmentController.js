@@ -340,9 +340,54 @@ const deleteDepartment = async (req, res) => {
     }
 };
 
+// جلب سلسلة الاعتماد لقسم
+const getApprovalSequence = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await db.query('SELECT approval_sequence FROM departments WHERE id = ?', [id]);
+    if (!rows.length) return res.status(404).json({ message: 'Department not found' });
+
+    let approvalSequence2 = [];
+    const rawSeq = rows[0].approval_sequence;
+    if (Array.isArray(rawSeq)) {
+      approvalSequence2 = rawSeq;
+    } else if (typeof rawSeq === 'string') {
+      try {
+        approvalSequence2 = JSON.parse(rawSeq);
+      } catch {
+        approvalSequence2 = [];
+      }
+    } else {
+      approvalSequence2 = [];
+    }
+
+    res.json({ approval_sequence: approvalSequence2 });
+  } catch (err) {
+    console.error('getApprovalSequence error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// تحديث سلسلة الاعتماد لقسم
+const updateApprovalSequence = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approval_sequence } = req.body;
+    if (!Array.isArray(approval_sequence)) return res.status(400).json({ message: 'approval_sequence must be array' });
+    const [rows] = await db.query('SELECT id FROM departments WHERE id = ?', [id]);
+    if (!rows.length) return res.status(404).json({ message: 'Department not found' });
+    await db.query('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(approval_sequence), id]);
+    res.json({ message: 'Approval sequence updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
     getDepartments,
     addDepartment,
     updateDepartment,
-    deleteDepartment
+    deleteDepartment,
+    getApprovalSequence,
+    updateApprovalSequence
 }; 

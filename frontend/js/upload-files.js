@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainUploadBtn = document.querySelector('.main-upload-btn');
     const mainFileInput = document.createElement('input');
     mainFileInput.type = 'file';
-    mainFileInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+    mainFileInput.accept = '.pdf'; // فقط PDF
     mainFileInput.multiple = false;
     mainFileInput.style.display = 'none';
     document.body.appendChild(mainFileInput);
@@ -21,7 +21,16 @@ document.addEventListener('DOMContentLoaded', function() {
         mainFileInput.click();
     });
     mainFileInput.addEventListener('change', function(e) {
-        selectedMainFile = mainFileInput.files[0] || null;
+        const file = mainFileInput.files[0] || null;
+        const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+        if (file && !allowedExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+            alert('فقط الملفات التالية مسموح بها: PDF, DOC, DOCX, XLS, XLSX');
+            mainFileInput.value = '';
+            selectedMainFile = null;
+            renderMainFileList();
+            return;
+        }
+        selectedMainFile = file;
         renderMainFileList();
     });
     function renderMainFileList() {
@@ -84,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadBtn = document.querySelector('.upload-btn');
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+    fileInput.accept = '.pdf'; // فقط PDF
     fileInput.multiple = true;
     fileInput.style.display = 'none';
     document.body.appendChild(fileInput);
@@ -99,11 +108,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     fileInput.addEventListener('change', function(e) {
         const newFiles = Array.from(fileInput.files);
+        let validFiles = [];
+        const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
         newFiles.forEach(file => {
-            if (!selectedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
-                selectedFiles.push(file);
+            if (allowedExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+                if (!selectedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
+                    validFiles.push(file);
+                }
+            } else {
+                alert('فقط الملفات التالية مسموح بها: PDF, DOC, DOCX, XLS, XLSX\n' + file.name);
             }
         });
+        selectedFiles = selectedFiles.concat(validFiles);
         renderFilesList();
     });
     function renderFilesList() {

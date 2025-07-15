@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadForm = document.querySelector('.upload-form');
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+    fileInput.accept = '.pdf'; // فقط PDF
     fileInput.style.display = 'none';
     document.body.appendChild(fileInput);
 
@@ -39,7 +39,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     fileInput.addEventListener('change', function(e) {
         if (fileInput.files.length > 0) {
-            selectedFile = fileInput.files[0];
+            const file = fileInput.files[0];
+            const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+            if (!allowedExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+                alert('فقط الملفات التالية مسموح بها: PDF, DOC, DOCX, XLS, XLSX');
+                fileInput.value = '';
+                fileInfoDiv.innerHTML = '';
+                selectedFile = null;
+                return;
+            }
+            selectedFile = file;
             // تحديث واجهة المستخدم باسم الملف وحجمه فقط
             const sizeMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
             fileInfoDiv.innerHTML = `

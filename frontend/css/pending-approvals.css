@@ -1,4 +1,5 @@
-* {
+body,:placeholder-shown,input,select,textarea,button {
+  font-size: 14px;
     font-family: 'Tajawal', Arial, sans-serif;
     background: #ffffff;
     margin: 0;
@@ -275,9 +276,10 @@
 #fileTransferModal .person-circle {
   width: 54px;
   height: 54px;
-  background: #fff;
+  background: transparent;
   border-radius: 50%;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  /* أزل الظل نهائياً */
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -857,3 +859,35 @@ main {
 .btn-reject i { color: #fff !important; }
 .btn-preview i { color: #fff !important; }
 .btn-transfer-file i { color: #fff !important; }  */
+
+/* إزالة خلفية الشخص في سلسلة التحويل */
+.person-circle.no-bg {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#fileTransferModal .person-circle,
+#fileTransferModal .person-circle * {
+  background: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+#qualityUserSelectPopup {
+  width: 100%;
+  max-width: 100%;
+  padding: 12px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fafbfc;
+  color: #444;
+  outline: none;
+  margin-bottom: 4px;
+  transition: border 0.2s;
+  box-sizing: border-box;
+}
+#qualityUserSelectPopup:focus {
+  border-color: #2563eb;
+}
