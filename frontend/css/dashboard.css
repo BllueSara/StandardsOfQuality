@@ -177,6 +177,42 @@ body {
 #filesTable tr:last-child td {
   border-bottom: none;
 }
+/* جدول نسبة اكتمال الاعتمادات لكل قسم */
+#departmentCompletionTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1.2rem;
+  font-size: 1.05rem;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(79,140,255,0.07);
+}
+#departmentCompletionTable th, #departmentCompletionTable td {
+  padding: 0.9rem 1.1rem;
+  text-align: center;
+  border-bottom: 1px solid #eaeaea;
+}
+#departmentCompletionTable th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(90deg, #e0eaff 60%, #f7f8fa 100%);
+  color: #4f8cff;
+  font-weight: bold;
+  font-size: 1.08rem;
+  letter-spacing: 0.5px;
+  z-index: 2;
+}
+#departmentCompletionTable tr:nth-child(even) td {
+  background: #f7f8fa;
+}
+#departmentCompletionTable tr:last-child td {
+  border-bottom: none;
+}
+/* تلوين النسبة المئوية (احتياطي) */
+.percent-green { color: #43c97f; font-weight: bold; }
+.percent-orange { color: #ffb300; font-weight: bold; }
+.percent-red { color: #e74c3c; font-weight: bold; }
 @media (max-width: 900px) {
   .dashboard-cards {
     flex-direction: column;

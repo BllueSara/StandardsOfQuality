@@ -73,7 +73,6 @@ const handleApproval = async (req, res) => {
   const { approved, signature, notes, electronic_signature, on_behalf_of, } = req.body;
 
   let contentId;
-  let isCommitteeContent = false;
 
   if (typeof originalContentId === 'string') {
     if (originalContentId.startsWith('dept-')) {
@@ -186,66 +185,71 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       [JSON.stringify(allLogs), contentId]
     );
 
-    // إضافة الشخص التالي في approval_sequence إلى content_approvers (إن وجد)
+    // إضافة الشخص التالي في التسلسل (custom أو department) إلى content_approvers (إن وجد)
     if (approved) {
       try {
-        // جلب folder_id من جدول contents
-        const [folderRows2] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ?`, [contentId]);
-        if (folderRows2.length) {
-          const folderId2 = folderRows2[0].folder_id;
-          // جلب department_id من جدول folders
-          const [deptRows2] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId2]);
-          if (deptRows2.length) {
-            const departmentId2 = deptRows2[0].department_id;
-            // جلب approval_sequence من جدول departments
-            const [seqRows2] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId2]);
-            if (seqRows2.length) {
-              let approvalSequence2 = [];
-              const rawSeq = seqRows2[0].approval_sequence;
-              if (Array.isArray(rawSeq)) {
-                approvalSequence2 = rawSeq;
-              } else if (typeof rawSeq === 'string') {
-                try {
-                  approvalSequence2 = JSON.parse(rawSeq);
-                } catch {
+        // جلب التسلسل الفعلي (custom أو department)
+        let approvalSequence2 = [];
+        // جلب custom_approval_sequence من جدول contents
+        const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+        if (customRows.length && customRows[0].custom_approval_sequence) {
+          try {
+            const parsed = JSON.parse(customRows[0].custom_approval_sequence);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              approvalSequence2 = parsed;
+            }
+          } catch {}
+        }
+        // إذا لا يوجد custom أو كان فارغًا، استخدم approval_sequence من القسم
+        if (approvalSequence2.length === 0) {
+          // جلب folder_id من جدول contents
+          const [folderRows2] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ?`, [contentId]);
+          if (folderRows2.length) {
+            const folderId2 = folderRows2[0].folder_id;
+            // جلب department_id من جدول folders
+            const [deptRows2] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId2]);
+            if (deptRows2.length) {
+              const departmentId2 = deptRows2[0].department_id;
+              // جلب approval_sequence من جدول departments
+              const [seqRows2] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId2]);
+              if (seqRows2.length) {
+                const rawSeq = seqRows2[0].approval_sequence;
+                if (Array.isArray(rawSeq)) {
+                  approvalSequence2 = rawSeq;
+                } else if (typeof rawSeq === 'string') {
+                  try {
+                    approvalSequence2 = JSON.parse(rawSeq);
+                  } catch {
+                    approvalSequence2 = [];
+                  }
+                } else {
                   approvalSequence2 = [];
-                }
-              } else {
-                approvalSequence2 = [];
-              }
-              // حدد ترتيب المعتمد الحالي
-              const idx = approvalSequence2.findIndex(x => Number(x) === Number(approverId));
-              // إشعار للشخص الأول في التسلسل إذا كان هو المعتمد الحالي
-              if (idx === 0) {
-                const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
-                const fileTitle = contentRows.length ? contentRows[0].title : '';
-                await insertNotification(
-                  approverId,
-                  'ملف جديد بانتظار اعتمادك',
-                  `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
-                  'approval'
-                );
-              }
-              if (idx !== -1 && idx < approvalSequence2.length - 1) {
-                const nextApproverId = approvalSequence2[idx + 1];
-                // تحقق إذا كان التالي لم يعتمد بعد
-                const [logNext] = await db.execute(`SELECT status FROM approval_logs WHERE content_id = ? AND approver_id = ?`, [contentId, nextApproverId]);
-                if (!logNext.length || logNext[0].status !== 'approved') {
-                  // أضف التالي إلى content_approvers إذا لم يكن موجودًا
-                  const [insertResult] = await db.execute(`INSERT IGNORE INTO ${contentApproversTable} (content_id, user_id) VALUES (?, ?)`, [contentId, nextApproverId]);
-                  // إرسال إشعار للشخص التالي
-                  // جلب عنوان الملف
-                  const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
-                  const fileTitle = contentRows.length ? contentRows[0].title : '';
-                  await insertNotification(
-                    nextApproverId,
-                    'ملف جديد بانتظار اعتمادك',
-                    `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
-                    'approval'
-                  );
                 }
               }
             }
+          }
+        }
+        approvalSequence2 = (approvalSequence2 || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+        // حدد ترتيب المعتمد الحالي
+        const idx = approvalSequence2.findIndex(x => Number(x) === Number(approverId));
+        // إشعار للشخص الأول في التسلسل إذا كان هو المعتمد الحالي
+
+        if (idx !== -1 && idx < approvalSequence2.length - 1) {
+          const nextApproverId = approvalSequence2[idx + 1];
+          // تحقق إذا كان التالي لم يعتمد بعد
+          const [logNext] = await db.execute(`SELECT status FROM approval_logs WHERE content_id = ? AND approver_id = ?`, [contentId, nextApproverId]);
+          if (!logNext.length || logNext[0].status !== 'approved') {
+            // أضف التالي إلى content_approvers إذا لم يكن موجودًا
+            await db.execute(`INSERT IGNORE INTO ${contentApproversTable} (content_id, user_id) VALUES (?, ?)`, [contentId, nextApproverId]);
+            // إرسال إشعار للشخص التالي
+            const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+            const fileTitle = contentRows.length ? contentRows[0].title : '';
+            await insertNotification(
+              nextApproverId,
+              'ملف جديد بانتظار اعتمادك',
+              `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
+              'approval'
+            );
           }
         }
       } catch (e) {
@@ -291,75 +295,76 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       `, [contentId, approverId]);
     }
 
-    // تحقق من اكتمال الاعتماد من جميع أعضاء approval_sequence
-    // 1. جلب folder_id من جدول contents
-    const [folderRows] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ?`, [contentId]);
-    if (folderRows.length) {
-      const folderId = folderRows[0].folder_id;
-      // 2. جلب department_id من جدول folders
-      const [deptRows] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId]);
-      if (deptRows.length) {
-        const departmentId = deptRows[0].department_id;
-        // 3. جلب approval_sequence من جدول departments
-        const [seqRows] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId]);
-        if (seqRows.length) {
-          let approvalSequence = [];
-          const rawSeq = seqRows[0].approval_sequence;
-          if (Array.isArray(rawSeq)) {
-            approvalSequence = rawSeq;
-          } else if (typeof rawSeq === 'string') {
-            try {
-              approvalSequence = JSON.parse(rawSeq);
-            } catch {
+    // تحقق من اكتمال الاعتماد من جميع أعضاء التسلسل (custom أو department)
+    let approvalSequence = [];
+    // جلب custom_approval_sequence من جدول contents
+    const [customRowsFinal] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+    if (customRowsFinal.length && customRowsFinal[0].custom_approval_sequence) {
+      try {
+        const parsed = JSON.parse(customRowsFinal[0].custom_approval_sequence);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          approvalSequence = parsed;
+        }
+      } catch {}
+    }
+    // إذا لا يوجد custom أو كان فارغًا، استخدم approval_sequence من القسم
+    if (approvalSequence.length === 0) {
+      // جلب folder_id من جدول contents
+      const [folderRows] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ?`, [contentId]);
+      if (folderRows.length) {
+        const folderId = folderRows[0].folder_id;
+        // جلب department_id من جدول folders
+        const [deptRows] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId]);
+        if (deptRows.length) {
+          const departmentId = deptRows[0].department_id;
+          // جلب approval_sequence من جدول departments
+          const [seqRows] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId]);
+          if (seqRows.length) {
+            const rawSeq = seqRows[0].approval_sequence;
+            if (Array.isArray(rawSeq)) {
+              approvalSequence = rawSeq;
+            } else if (typeof rawSeq === 'string') {
+              try {
+                approvalSequence = JSON.parse(rawSeq);
+              } catch {
+                approvalSequence = [];
+              }
+            } else {
               approvalSequence = [];
             }
-          } else {
-            approvalSequence = [];
           }
-          approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
-          // 4. تحقق أن كل من في approval_sequence اعتمد الملف فعلاً
-          const [logs] = await db.execute(`SELECT approver_id, status FROM approval_logs WHERE content_id = ?`, [contentId]);
-          const approvedSet = new Set(logs.filter(l => l.status === 'approved').map(l => Number(l.approver_id)));
-
-          // شرط أكثر أمانًا: كل من في approval_sequence وقع وعددهم متساوي
-          const allApproved = approvalSequence.length > 0 &&
-            approvalSequence.every(approverId => approvedSet.has(approverId)) &&
-            approvedSet.size === approvalSequence.length;
-          console.log('allApproved (final):', allApproved);
-          if (allApproved) {
-            await generatePdfFunction(contentId);
-            await db.execute(`
-              UPDATE ${contentsTable}
-              SET is_approved = 1,
-                  approval_status = 'approved',
-                  approved_by = ?,
-                  updated_at = NOW()
-              WHERE id = ?
-            `, [approverId, contentId]);
-            // إرسال إشعار لصاحب الملف بأن الملف تم اعتماده من الجميع
-            let [ownerRowsFinal] = await db.execute(`SELECT created_by, title FROM ${contentsTable} WHERE id = ?`, [contentId]);
-            if (ownerRowsFinal.length) {
-              const ownerIdFinal = ownerRowsFinal[0].created_by;
-              const fileTitleFinal = ownerRowsFinal[0].title || '';
-              await insertNotification(
-                ownerIdFinal,
-                approved ? 'تم اعتماد ملفك' : 'تم رفض ملفك',
-                `الملف "${fileTitleFinal}" ${approved ? 'تم اعتماده' : 'تم رفضه'} من قبل الإدارة.`,
-                approved ? 'approval' : 'rejected'
-              );
-            }
-            console.log('تم اعتماد الملف نهائيًا!');
-          } else {
-            console.log('لم يتم الاعتماد النهائي رغم التحقق.');
-          }
-        } else {
-          console.log('seqRows is empty, لم يتم جلب approval_sequence');
         }
-      } else {
-        console.log('deptRows is empty, لم يتم جلب department_id');
       }
-    } else {
-      console.log('folderRows is empty, لم يتم جلب folder_id');
+    }
+    approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+    // تحقق أن كل من في approvalSequence اعتمد الملف فعلاً
+    const [logs] = await db.execute(`SELECT approver_id, status FROM approval_logs WHERE content_id = ?`, [contentId]);
+    const approvedSet = new Set(logs.filter(l => l.status === 'approved').map(l => Number(l.approver_id)));
+    const allApproved = approvalSequence.length > 0 &&
+      approvalSequence.every(approverId => approvedSet.has(approverId)) &&
+      approvedSet.size === approvalSequence.length;
+    if (allApproved) {
+      await generatePdfFunction(contentId);
+      await db.execute(`
+        UPDATE ${contentsTable}
+        SET is_approved = 1,
+            approval_status = 'approved',
+            approved_by = ?, 
+            updated_at = NOW()
+        WHERE id = ?
+      `, [approverId, contentId]);
+      // إرسال إشعار لصاحب الملف بأن الملف تم اعتماده من الجميع
+      let [ownerRowsFinal] = await db.execute(`SELECT created_by, title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+      if (ownerRowsFinal.length) {
+        const ownerIdFinal = ownerRowsFinal[0].created_by;
+        const fileTitleFinal = ownerRowsFinal[0].title || '';
+        await insertNotification(
+          ownerIdFinal,
+          approved ? 'تم اعتماد ملفك' : 'تم رفض ملفك',
+          `الملف "${fileTitleFinal}" ${approved ? 'تم اعتماده' : 'تم رفضه'} من قبل الإدارة.`,
+          approved ? 'approval' : 'rejected'
+        );
+      }
     }
 
     // الاستجابة النهائية
@@ -536,6 +541,7 @@ async function generateFinalSignedPDF(contentId) {
 }
 
 
+
 async function getUserPermissions(userId) {
   const [permRows] = await db.execute(`
     SELECT p.permission_key
@@ -569,6 +575,7 @@ const getAssignedApprovals = async (req, res) => {
           d.id AS department_id,
           d.name AS source_name,
           d.approval_sequence AS department_approval_sequence,
+          c.custom_approval_sequence,
           f.name AS folder_name,
           u.username AS created_by_username,
           'department' AS type,
@@ -595,6 +602,7 @@ const getAssignedApprovals = async (req, res) => {
           d.id AS department_id,
           d.name AS source_name,
           d.approval_sequence AS department_approval_sequence,
+          c.custom_approval_sequence,
           f.name AS folder_name,
           u.username AS created_by_username,
           'department' AS type,
@@ -641,6 +649,22 @@ const getAssignedApprovals = async (req, res) => {
       } else {
         row.approval_sequence = [];
       }
+      // تحويل custom_approval_sequence إذا وجد
+      if (row.custom_approval_sequence) {
+        if (Array.isArray(row.custom_approval_sequence)) {
+          // لا شيء
+        } else if (typeof row.custom_approval_sequence === 'string') {
+          try {
+            row.custom_approval_sequence = JSON.parse(row.custom_approval_sequence);
+          } catch {
+            row.custom_approval_sequence = [];
+          }
+        } else {
+          row.custom_approval_sequence = [];
+        }
+      } else {
+        row.custom_approval_sequence = [];
+      }
       // تصحيح approvals_log ليقبل Array أو String أو null
       if (Array.isArray(row.approvals_log)) {
         // لا شيء
@@ -660,18 +684,17 @@ const getAssignedApprovals = async (req, res) => {
       return res.json({ status: 'success', data: rows });
     }
 
-    // لوجات تشخيصية قبل الفلترة
-    console.log('userId:', userId, typeof userId);
-    rows.forEach(row => {
-      console.log('row.approval_sequence:', row.approval_sequence, typeof row.approval_sequence?.[0]);
-      console.log('row.approvals_log:', row.approvals_log);
-      console.log('row.approval_status:', row.approval_status);
-    });
+
     // فلترة الملفات حسب تسلسل الاعتماد للمستخدم العادي فقط
     const filteredRows = rows.filter(row => {
-      // تحويل عناصر السيكونس إلى أرقام مع إزالة الفراغات
-      const sequence = (row.approval_sequence || []).map(x => Number(String(x).trim()));
-      const myIndex = sequence.indexOf(Number(userId));
+      // استخدم custom_approval_sequence إذا كان موجود وغير فارغ، وإلا approval_sequence
+      const sequence = (
+        row.custom_approval_sequence && Array.isArray(row.custom_approval_sequence) && row.custom_approval_sequence.length > 0
+          ? row.custom_approval_sequence
+          : row.approval_sequence
+      ) || [];
+      const sequenceNums = sequence.map(x => Number(String(x).trim()));
+      const myIndex = sequenceNums.indexOf(Number(userId));
       if (myIndex === -1) return false; // المستخدم ليس ضمن السلسلة
       // إذا الملف معتمد أو مرفوض، يظهر للجميع في السلسلة
       if (row.approval_status === 'approved' || row.approval_status === 'rejected') {
@@ -680,7 +703,7 @@ const getAssignedApprovals = async (req, res) => {
       // تحقق من أن كل من قبله اعتمد الملف (فقط إذا كان pending)
       let allPreviousApproved = true;
       for (let i = 0; i < myIndex; i++) {
-        const approverId = sequence[i];
+        const approverId = sequenceNums[i];
         // تأكد أن user_id رقم للمقارنة الصحيحة
         const approved = row.approvals_log?.find(log => Number(log.user_id) === approverId && log.status === 'approved');
         if (!approved) {
@@ -861,10 +884,84 @@ const acceptProxyDelegation = async (req, res) => {
       [contentId, userId]
     );
 
+    // --- منطق استبدال المفوض بالمستخدم الحالي في تسلسل الاعتماد ---
+    // 1. جلب custom_approval_sequence و folder_id
+    const [contentRows] = await db.execute(
+      'SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ?',
+      [contentId]
+    );
 
+    console.log('contentRows:', contentRows);
+    console.log('folder_id:', contentRows.length ? contentRows[0].folder_id : null);
+
+    let sequence = [];
+    let useCustom = false;
+    if (contentRows.length && contentRows[0].custom_approval_sequence) {
+      try {
+        sequence = JSON.parse(contentRows[0].custom_approval_sequence);
+        useCustom = true;
+      } catch { sequence = []; }
+    }
+    console.log('custom_approval_sequence:', contentRows.length ? contentRows[0].custom_approval_sequence : null);
+    console.log('sequence after custom:', sequence);
+
+    if (!useCustom && contentRows.length && contentRows[0].folder_id) {
+      // جلب approval_sequence من القسم
+      const [folderRows] = await db.execute(
+        'SELECT department_id FROM folders WHERE id = ?',
+        [contentRows[0].folder_id]
+      );
+      console.log('folderRows:', folderRows);
+      console.log('departmentId:', folderRows.length ? folderRows[0].department_id : null);
+      if (folderRows.length) {
+        const departmentId = folderRows[0].department_id;
+        const [deptRows] = await db.execute(
+          'SELECT approval_sequence FROM departments WHERE id = ?',
+          [departmentId]
+        );
+        console.log('deptRows:', deptRows);
+        console.log('approval_sequence from department:', deptRows.length ? deptRows[0].approval_sequence : null);
+        if (deptRows.length && deptRows[0].approval_sequence) {
+          if (Array.isArray(deptRows[0].approval_sequence)) {
+            sequence = deptRows[0].approval_sequence;
+            console.log('approval_sequence from department (array):', sequence);
+          } else {
+            try {
+              sequence = JSON.parse(deptRows[0].approval_sequence);
+              console.log('approval_sequence from department (json):', deptRows[0].approval_sequence);
+              console.log('sequence after department:', sequence);
+            } catch {
+              sequence = [];
+            }
+          }
+        }
+      }
+    }
+
+    // 2. جلب delegated_by من approval_logs
+    const [proxyRows] = await db.execute(
+      'SELECT delegated_by FROM approval_logs WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = 1',
+      [contentId, userId]
+    );
+
+    if (proxyRows.length && Array.isArray(sequence) && sequence.length > 0) {
+      const delegatedBy = Number(proxyRows[0].delegated_by);
+      const userIdNum = Number(userId);
+
+      // 3. استبدال كل ظهور لـ delegatedBy بـ userId
+      const newSequence = sequence.map(id => Number(id) === delegatedBy ? userIdNum : Number(id));
+
+      // 4. تحديث custom_approval_sequence في الملف
+      await db.execute(
+        'UPDATE contents SET custom_approval_sequence = ? WHERE id = ?',
+        [JSON.stringify(newSequence), contentId]
+      );
+    }
+    // --- نهاية منطق الاستبدال ---
 
     res.json({ status: 'success', message: 'تم قبول التفويض وستظهر لك في التقارير المكلف بها' });
   } catch (err) {
+         console.error(err)
     res.status(500).json({ status: 'error', message: 'فشل قبول التفويض' });
   }
 };
@@ -877,5 +974,7 @@ module.exports = {
   getProxyApprovals,
   acceptProxyDelegation,
 };
+
+
 
 

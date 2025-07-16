@@ -121,6 +121,7 @@ const getContentsByFolderId = async (req, res) => {
                 c.approved_by,
                 c.approvals_log,
                 c.approvers_required,
+                c.custom_approval_sequence,
                 c.created_at,
                 c.updated_at,
                 c.parent_content_id,
@@ -145,7 +146,21 @@ const getContentsByFolderId = async (req, res) => {
         const filtered = contents.filter(item => {
             if (isAdmin) return true; // الأدمن يرى كل شيء
             if (item.is_approved) return true; // الملفات المعتمدة تظهر للجميع
-            // الملفات غير المعتمدة تظهر فقط إذا كان المستخدم من ضمن approval_sequence
+            // الملفات غير المعتمدة تظهر فقط إذا كان المستخدم من ضمن approval_sequence أو custom_approval_sequence
+            let customSeq = [];
+            if (item.custom_approval_sequence) {
+                if (Array.isArray(item.custom_approval_sequence)) {
+                    customSeq = item.custom_approval_sequence;
+                } else if (typeof item.custom_approval_sequence === 'string') {
+                    try {
+                        customSeq = JSON.parse(item.custom_approval_sequence);
+                    } catch {
+                        customSeq = [];
+                    }
+                }
+                customSeq = (customSeq || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+            }
+            if (customSeq.includes(userId)) return true;
             return approvalSequence.includes(userId);
         });
 
@@ -172,9 +187,11 @@ const getContentsByFolderId = async (req, res) => {
 
 // إضافة محتوى جديد لمجلد معين
 const addContent = async (req, res) => {
+    console.log('--- Start addContent ---');
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('No or invalid token');
         return res.status(401).json({ 
           status: 'error',
           message: 'غير مصرح: لا يوجد توكن أو التوكن غير صالح' 
@@ -186,6 +203,7 @@ const addContent = async (req, res) => {
       try {
         decodedToken = jwt.verify(token, process.env.JWT_SECRET);
       } catch (error) {
+        console.log('Invalid JWT');
         return res.status(401).json({ 
           status: 'error',
           message: 'غير مصرح: توكن غير صالح' 
@@ -200,8 +218,10 @@ const addContent = async (req, res) => {
       const approvedBy = null;
   
       const connection = await db.getConnection();
+      console.log('DB connection acquired');
   
       if (!folderId || !title || !filePath) {
+        console.log('Missing folderId, title, or filePath');
         connection.release();
         return res.status(400).json({ 
           status: 'error',
@@ -214,8 +234,10 @@ const addContent = async (req, res) => {
         'SELECT id, department_id FROM folders WHERE id = ?',
         [folderId]
       );
+      console.log('Checked folder existence');
   
       if (folder.length === 0) {
+        console.log('Folder not found');
         connection.release();
         return res.status(404).json({ 
           status: 'error',
@@ -231,18 +253,15 @@ const addContent = async (req, res) => {
           departmentName = deptRows[0].name;
         }
       }
+      console.log('Got department name');
 
       // منطق ربط الملفات الرئيسية والفرعية
-      // إذا كان الملف الرئيسي: parent_content_id = رقم المجموعة (مثلاً: id نفسه لاحقاً)، related_content_id = NULL
-      // إذا كان ملف فرعي: parent_content_id = NULL، related_content_id = رقم المجموعة
-      // إذا ملف عادي: كلاهما NULL
       let parentIdToInsert = null;
       let relatedIdToInsert = null;
       let insertedContentId = null;
 
-      // إذا كان الملف الرئيسي (is_main_file = true)
       if (is_main_file) {
-        // أضف الملف أولاً بدون parent_content_id
+        console.log('Inserting main file');
         const [result] = await connection.execute(
           `INSERT INTO contents (
             title, 
@@ -282,7 +301,7 @@ const addContent = async (req, res) => {
         parentIdToInsert = insertedContentId;
         relatedIdToInsert = null;
       } else if (related_content_id) {
-        // ملف فرعي مرتبط
+        console.log('Inserting related file');
         parentIdToInsert = null;
         relatedIdToInsert = related_content_id;
         const [result] = await connection.execute(
@@ -317,7 +336,7 @@ const addContent = async (req, res) => {
         );
         insertedContentId = result.insertId;
       } else {
-        // ملف عادي
+        console.log('Inserting normal file');
         parentIdToInsert = null;
         relatedIdToInsert = null;
         const [result] = await connection.execute(
@@ -352,6 +371,7 @@ const addContent = async (req, res) => {
         );
         insertedContentId = result.insertId;
       }
+      console.log('Inserted content record');
 
       // 2) إضافة الـ approvers وربطهم
       if (Array.isArray(approvers_required)) {
@@ -369,9 +389,11 @@ const addContent = async (req, res) => {
           );
         }
       }
+      console.log('Inserted approvers if any');
   
       // ✅ تسجيل اللوق بعد نجاح إضافة المحتوى
       try {
+        console.log('Logging action');
         const userLanguage = getUserLanguageFromToken(token);
         const logDescription = {
             ar: `تم إضافة محتوى: ${getContentNameByLanguage(title, 'ar')} في : ${getDepartmentNameByLanguage(departmentName, 'ar')}`,
@@ -387,8 +409,72 @@ const addContent = async (req, res) => {
       } catch (logErr) {
         console.error('logAction error:', logErr);
       }
+      console.log('Logged action');
+
+      // إرسال إشعار لأول شخص في تسلسل الاعتماد
+      try {
+        console.log('Preparing to send notification');
+        // جلب custom_approval_sequence من السجل الجديد
+        let approvalSequence = [];
+        const [contentRow] = await connection.execute('SELECT custom_approval_sequence, folder_id, title FROM contents WHERE id = ?', [insertedContentId]);
+        console.log('DEBUG custom_approval_sequence (raw):', contentRow[0]?.custom_approval_sequence);
+        if (contentRow.length && contentRow[0].custom_approval_sequence) {
+          try {
+            const parsed = JSON.parse(contentRow[0].custom_approval_sequence);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              approvalSequence = parsed;
+            }
+          } catch (e) {
+            console.error('DEBUG custom_approval_sequence JSON.parse error:', e);
+          }
+        }
+        // إذا لا يوجد custom أو كان فارغًا، استخدم approval_sequence من القسم
+        if (approvalSequence.length === 0 && contentRow.length) {
+          const folderId = contentRow[0].folder_id;
+          const [folderRows] = await connection.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+          if (folderRows.length) {
+            const departmentId = folderRows[0].department_id;
+            const [deptRows] = await connection.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+            if (deptRows.length) {
+              const rawSeq = deptRows[0]?.approval_sequence;
+              console.log('DEBUG approval_sequence (raw from department):', rawSeq);
+              if (Array.isArray(rawSeq)) {
+                approvalSequence = rawSeq;
+              } else if (typeof rawSeq === 'string') {
+                try {
+                  approvalSequence = JSON.parse(rawSeq);
+                } catch (e) {
+                  console.error('DEBUG approval_sequence JSON.parse error:', e);
+                  approvalSequence = [];
+                }
+              } else {
+                approvalSequence = [];
+              }
+            }
+          }
+        }
+        console.log('DEBUG approvalSequence after parse:', approvalSequence);
+        approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+        const firstApproverId = approvalSequence.length > 0 ? approvalSequence[0] : null;
+        console.log('DEBUG notify first approver:', firstApproverId, approvalSequence);
+
+        if (firstApproverId) {
+          const fileTitle = contentRow[0].title || '';
+          console.log('Sending notification to first approver:', firstApproverId);
+          await insertNotification(
+            firstApproverId,
+            'ملف جديد بانتظار اعتمادك',
+            `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
+            'approval'
+          );
+        }
+      } catch (notifyErr) {
+        console.error('notify first approver error:', notifyErr);
+      }
+      console.log('Notification logic done');
   
       connection.release();
+      console.log('DB connection released');
   
       res.status(201).json({
         status: 'success',
@@ -399,6 +485,7 @@ const addContent = async (req, res) => {
         parent_content_id: parentIdToInsert,
         related_content_id: relatedIdToInsert
       });
+      console.log('--- End addContent (success) ---');
     } catch (error) {
       console.error('Error adding content:', error);
       res.status(500).json({ message: 'خطأ في إضافة المحتوى' });
@@ -1100,6 +1187,22 @@ const deleteContentName = async (req, res) => {
   }
 };
 
+// تحديث custom_approval_sequence لملف
+const updateContentApprovalSequence = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approval_sequence } = req.body;
+    if (!Array.isArray(approval_sequence)) {
+      return res.status(400).json({ message: 'approval_sequence must be array' });
+    }
+    // خزنها كنص JSON
+    await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(approval_sequence), id]);
+    res.json({ message: 'Custom approval sequence updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 // دالة مساعدة لاستخراج اسم القسم باللغة المناسبة
 function getDepartmentNameByLanguage(departmentNameData, userLanguage = 'ar') {
     try {
@@ -1310,6 +1413,7 @@ module.exports = {
   deleteContentName,
   upload,
   logContentView,
-  getRejectedContents
+  getRejectedContents,
+  updateContentApprovalSequence
 };
   

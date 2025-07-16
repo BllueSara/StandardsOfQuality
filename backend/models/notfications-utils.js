@@ -179,36 +179,38 @@ async function insertNotification(userId, title, message, type = 'ticket') {
       [userId, title, message, type]
     );
 
-    // 2) إرسال البريد الإلكتروني
-    try {
-      // جلب معلومات المستخدم
-      const [userRows] = await db.execute(
-        'SELECT email, username FROM users WHERE id = ?',
-        [userId]
-      );
+    // 2) إرسال البريد الإلكتروني في الخلفية (بدون await)
+    (async () => {
+      try {
+        // جلب معلومات المستخدم
+        const [userRows] = await db.execute(
+          'SELECT email, username FROM users WHERE id = ?',
+          [userId]
+        );
 
-      if (userRows.length > 0 && userRows[0].email) {
-        const user = userRows[0];
-        const notification = {
-          title,
-          message,
-          type,
-          created_at: new Date(),
-          userName: user.username // تمرير اسم المستخدم
-        };
+        if (userRows.length > 0 && userRows[0].email) {
+          const user = userRows[0];
+          const notification = {
+            title,
+            message,
+            type,
+            created_at: new Date(),
+            userName: user.username // تمرير اسم المستخدم
+          };
 
-        // إرسال البريد الإلكتروني
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER || 'sup.it.system.medical@gmail.com',
-          to: user.email,
-          subject: `إشعار جديد: ${title}`,
-          html: getEmailTemplate(notification)
-        });
+          // إرسال البريد الإلكتروني
+          await transporter.sendMail({
+            from: process.env.EMAIL_USER || 'sup.it.system.medical@gmail.com',
+            to: user.email,
+            subject: `إشعار جديد: ${title}`,
+            html: getEmailTemplate(notification)
+          });
+        }
+      } catch (emailError) {
+        console.error('Error sending email notification:', emailError);
+        // لا نوقف العملية إذا فشل إرسال البريد
       }
-    } catch (emailError) {
-      console.error('Error sending email notification:', emailError);
-      // لا نوقف العملية إذا فشل إرسال البريد
-    }
+    })();
 
     return result.insertId;
   } catch (error) {
@@ -349,6 +351,26 @@ async function sendContentExpiredNotification(userId, row, departmentName, folde
   );
 }
 
+// دالة إرسال إشعار إضافة محتوى جديد (ملف جديد بانتظار اعتمادك)
+async function sendNewContentNotification(userId, fileTitle) {
+  return await insertNotification(
+    userId,
+    'ملف جديد بانتظار اعتمادك',
+    `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
+    'approval'
+  );
+}
+
+// دالة إرسال إشعار تذكير اعتماد (تأخير)
+async function sendApprovalReminderNotification(userId, fileTitle) {
+  return await insertNotification(
+    userId,
+    'تذكير اعتماد ملف',
+    `لديك ملف بعنوان "${fileTitle}" بانتظار اعتمادك منذ أكثر من 3 أيام. يرجى اتخاذ الإجراء المناسب.`,
+    'approval_reminder'
+  );
+}
+
 module.exports = {
   insertNotification,
   sendTicketNotification,
@@ -360,5 +382,7 @@ module.exports = {
   sendOwnerApprovalNotification,
   sendContentExpirySoonMonthNotification,
   sendContentExpirySoonDayNotification,
-  sendContentExpiredNotification
+  sendContentExpiredNotification,
+  sendNewContentNotification,
+  sendApprovalReminderNotification
 };

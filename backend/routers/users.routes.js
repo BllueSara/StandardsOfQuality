@@ -18,12 +18,14 @@ const {
   updateUserStatus,
   getNotificationSettings,
   updateNotificationSettings,
-  resetNotificationSettings
+  resetNotificationSettings,
+  getHospitalManager
 } = require('../controllers/usersController');
 
 const router = express.Router();
 
 // 1) الراوتات العامة
+router.get('/hospital-manager', authenticateToken, getHospitalManager);
 router.get('/', authenticateToken, getUsers);
 router.get('/logs', authenticateToken, getLogs);
 router.get('/action-types', authenticateToken, getActionTypes);

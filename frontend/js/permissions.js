@@ -284,8 +284,13 @@ document.querySelector('.user-profile-header')?.classList.add('active');
 
   // جلب الأدوار للمستخدمين غير Admin
   const roles = await fetchJSON(`${apiBase}/users/roles`);
+  if (isAdmin && !roles.includes('hospital_manager')) {
+    roles.push('hospital_manager');
+  }
   roleSelect.innerHTML = roles.map(r => `
-    <option value=\"${r}\" ${u.role===r?'selected':''}>${r}</option>
+    <option value="${r}" ${u.role===r?'selected':''}>
+      ${r === 'hospital_manager' ? 'مدير المستشفى' : r}
+    </option>
   `).join('');
   btnChangeRole.onclick = () => rolePopup.classList.add('show');
 

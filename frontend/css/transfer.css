@@ -176,17 +176,17 @@ select:focus {
 #personsFields .form-group {
     margin-bottom: 14px;
 }
+/* سلسلة الأشخاص: صفوف متعددة داخل نفس الحاوية */
 .persons-chain {
     background: #f6f7fa;
     border-radius: 14px;
     box-shadow: 0 1px 6px rgba(0,0,0,0.03);
     padding: 28px 10px 18px 10px;
     margin-bottom: 32px;
-    display: flex;
-    justify-content: center;
-    gap: 48px;
-    align-items: flex-end;
+    display: block;
     min-height: 100px;
+    width: 100%;
+    box-sizing: border-box;
 }
 .person-node {
     display: flex;
@@ -194,6 +194,8 @@ select:focus {
     align-items: center;
     gap: 6px;
     min-width: 90px;
+    flex-basis: unset;
+    box-sizing: border-box;
 }
 .person-circle {
     width: 54px;
@@ -222,6 +224,7 @@ select:focus {
 .arrow {
     display: none;
 }
+/* الأسهم بين الأشخاص */
 .arrow-line {
     width: 70px;
     height: 24px;
@@ -299,6 +302,19 @@ select:focus {
 }
 .submit-btn:hover {
     background: #1746a2;
+}
+/* صفوف سلسلة الأشخاص (مثل pending-approvals.css) */
+.persons-chain-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 48px;
+  margin-bottom: 24px;
+}
+/* إزالة التباعد السفلي من آخر صف */
+.persons-chain-row:last-child {
+  margin-bottom: 0;
 }
 @media (max-width: 600px) {
     main {

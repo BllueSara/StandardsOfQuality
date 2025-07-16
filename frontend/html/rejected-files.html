@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-translate="rejected-files-title">رسائل الرفض</title>
     <link rel="stylesheet" href="../css/rejected-files.css">
-            <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/shared.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,8 @@
   </header>
   <div class="header-actions">
     <button class="back-btn" id="backBtn" onclick="history.back()">
-     <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
+      <i class="fas fa-arrow-right" id="backIcon" style="margin-right: 4px; transform: rotate(180deg);"></i>
+     <span data-translate="back">رجوع</span>
     </button>
     <button class="home-btn" onclick="window.location.href='index.html'">
       <i class="fas fa-home"></i>
@@ -37,17 +38,7 @@
             <input type="text" id="search-input" data-translate-placeholder="search-files" placeholder="ابحث باسم الملف أو القسم...">
             <i class="fa fa-search"></i>
         </div>
-        <div class="filters-row">
-            <select id="department-filter"></select>
-            <select id="date-filter">
-                <option value="" data-translate="all-dates">جميع التواريخ</option>
-                <option value="today" data-translate="today">اليوم</option>
-                <option value="week" data-translate="this-week">هذا الأسبوع</option>
-                <option value="month" data-translate="this-month">هذا الشهر</option>
-            </select>
-            <span class="rejected-count-label" data-translate="rejected-files">ملفات مرفوضة</span>
-            <span id="rejected-count">0</span>
-        </div>
+
         <div class="rejected-list" id="rejected-list">
             <!-- سيتم إنشاء الكروت ديناميكياً من JavaScript -->
         </div>

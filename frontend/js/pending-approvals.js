@@ -42,8 +42,18 @@ async function fetchJSON(url, opts = {}) {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
   const res = await fetch(url, opts);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // إذا لم يكن هناك body (مثلاً status 204)
+    data = null;
+  }
+  if (!res.ok) {
+    // إذا الرد فيه رسالة واضحة، استخدمها
+    throw new Error((data && (data.message || data.error)) || await res.text() || 'Request failed');
+  }
+  return data;
 }
 
 function getLocalizedName(name) {
@@ -69,6 +79,7 @@ function setupCloseButtons() {
     });
   });
 }
+console.log('pending-approvals.js loaded');
 document.addEventListener('DOMContentLoaded', async () => {
   if (!token) return alert(getTranslation('please-login'));
   // تعيين اسم المستخدم الحالي من JWT token
@@ -450,6 +461,7 @@ function applyDateFilter(filterType, filterDate) {
 
 
 function initActions() {
+  console.log('[initActions] called');
   document.querySelectorAll('.approval-card .btn-sign').forEach(btn => {
     btn.addEventListener('click', e => {
       const id = e.target.closest('.approval-card').dataset.id;
@@ -551,7 +563,15 @@ else {
 
   // Attach event for transfer file button
   document.querySelectorAll('.approval-card .btn-transfer-file').forEach(btn => {
-    btn.addEventListener('click', openFileTransferModal);
+    console.log('[initActions] ربط زر التحويل', btn);
+    btn.addEventListener('click', function(e) {
+      const card = e.target.closest('.approval-card');
+      if (card) {
+        selectedContentId = card.dataset.id;
+        console.log('[btn-transfer-file] clicked, selectedContentId:', selectedContentId);
+        openFileTransferModal();
+      }
+    });
   });
 }
 
@@ -788,56 +808,346 @@ function disableActionsFor(contentId) {
 }
 
 // === File Transfer Modal Logic ===
-function openFileTransferModal() {
-  document.getElementById('fileTransferModal').style.display = 'flex';
-  loadTransferDepartments();
-  setupPersonCountHandler();
+let currentTransferSequence = [];
+let currentTransferUsers = [];
+let currentTransferDeptId = null;
+let newDeptUsers = [];
+let selectedNewUsers = [];
+
+async function getApprovalSequenceByDept(deptId) {
+  try {
+    const res = await fetch(`${apiBase}/departments/${deptId}/approval-sequence`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    console.log('[getApprovalSequenceByDept]', deptId, data.approval_sequence);
+    return data.approval_sequence || [];
+  } catch (err) {
+    console.error('[getApprovalSequenceByDept] error', err);
+    return [];
+  }
 }
 
-function closeFileTransferModal() {
-  document.getElementById('fileTransferModal').style.display = 'none';
-  // إعادة تعيين الحقول
+async function getUsersByIds(userIds) {
+  if (!userIds.length) return [];
+  try {
+    const res = await fetch(`${apiBase}/users?ids=${userIds.join(',')}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    console.log('[getUsersByIds]', userIds, data.data);
+    return data.data || [];
+  } catch (err) {
+    console.error('[getUsersByIds] error', err);
+    return [];
+  }
+}
+
+async function getUsersByDept(deptId) {
+  try {
+    const res = await fetch(`${apiBase}/users?departmentId=${deptId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    console.log('[getUsersByDept]', deptId, data.data);
+    return data.data || [];
+  } catch (err) {
+    console.error('[getUsersByDept] error', err);
+    return [];
+  }
+}
+
+async function openFileTransferModal() {
+  const modal = document.getElementById('fileTransferModal');
+  modal.style.display = 'flex';
+  // ضبط الاتجاه حسب اللغة
+  const lang = localStorage.getItem('language') || 'ar';
+  if (lang === 'en') {
+    modal.setAttribute('dir', 'ltr');
+    modal.classList.add('ltr-modal');
+    modal.classList.remove('rtl-modal');
+  } else {
+    modal.setAttribute('dir', 'rtl');
+    modal.classList.add('rtl-modal');
+    modal.classList.remove('ltr-modal');
+  }
+  await loadTransferDepartments();
+  // جلب الملف الحالي
+  const item = allItems.find(i => i.id == selectedContentId);
+  if (!item) return;
+  // جلب سلسلة الاعتماد القديمة (approval_sequence)
+  let sequence = [];
+  if (item.approval_sequence && Array.isArray(item.approval_sequence)) {
+    sequence = item.approval_sequence;
+  } else if (item.approval_sequence && typeof item.approval_sequence === 'string') {
+    try { sequence = JSON.parse(item.approval_sequence); } catch { sequence = []; }
+  } else if (item.department_id) {
+    sequence = await getApprovalSequenceByDept(item.department_id);
+  }
+  currentTransferSequence = sequence.slice();
+  console.log('[openFileTransferModal] sequence', sequence);
+  // جلب بيانات المستخدمين
+  currentTransferUsers = await getUsersByIds(sequence);
+  console.log('[openFileTransferModal] currentTransferUsers', currentTransferUsers);
+  // اعرض السلسلة القديمة فقط
+  renderTransferChain(currentTransferSequence, currentTransferUsers, []);
+  // أفرغ الدروب داون
+  document.getElementById('personsFields').innerHTML = '';
   document.getElementById('personCount').value = '';
   document.getElementById('transferDept').value = '';
+  // اربط تغيير القسم أو العدد
+  document.getElementById('transferDept').onchange = handleDeptOrCountChange;
+  document.getElementById('personCount').onchange = handleDeptOrCountChange;
+}
+
+async function handleDeptOrCountChange() {
+  const deptId = document.getElementById('transferDept').value;
+  const count = parseInt(document.getElementById('personCount').value);
   document.getElementById('personsFields').innerHTML = '';
-  document.getElementById('transferPersonsChain').innerHTML = '';
+  console.log('[handleDeptOrCountChange] deptId:', deptId, 'count:', count);
+  if (!deptId || !count) {
+    renderTransferChain(currentTransferSequence, currentTransferUsers, []);
+    return;
+  }
+  // جلب أعضاء القسم الجديد
+  newDeptUsers = await getUsersByDept(deptId);
+  selectedNewUsers = Array(count).fill('');
+  console.log('[handleDeptOrCountChange] newDeptUsers:', newDeptUsers);
+  for (let i = 0; i < count; i++) {
+    const group = document.createElement('div');
+    group.className = 'form-group';
+    const label = document.createElement('label');
+    label.textContent = `${getTranslation('select-person')} ${i+1}`;
+    const select = document.createElement('select');
+    select.className = 'person-select-new';
+    select.innerHTML = `<option value="">${getTranslation('select-person')}</option>`;
+    newDeptUsers.forEach(user => {
+      const opt = document.createElement('option');
+      opt.value = user.id;
+      opt.textContent = user.name;
+      select.appendChild(opt);
+    });
+    select.onchange = function() {
+      selectedNewUsers[i] = select.value;
+      console.log('[person-select-new] selectedNewUsers:', selectedNewUsers);
+      renderTransferChain(currentTransferSequence, currentTransferUsers, selectedNewUsers);
+    };
+    group.appendChild(label);
+    group.appendChild(select);
+    document.getElementById('personsFields').appendChild(group);
+  }
+  renderTransferChain(currentTransferSequence, currentTransferUsers, selectedNewUsers);
 }
 
-function setupPersonCountHandler() {
-  const personCountSelect = document.getElementById('personCount');
-  if (!personCountSelect) return;
-  
-  personCountSelect.addEventListener('change', function() {
-    const count = parseInt(this.value);
-    const personsFields = document.getElementById('personsFields');
-    personsFields.innerHTML = '';
-    
-    if (count > 0) {
-      for (let i = 1; i <= count; i++) {
-        const formGroup = document.createElement('div');
-        formGroup.className = 'form-group';
-        formGroup.innerHTML = `
-          <label>اختر الشخص ${i}</label>
-          <select class="person-select" data-person="${i}" required>
-            <option value="" disabled selected>اختر الشخص</option>
-          </select>
-        `;
-        personsFields.appendChild(formGroup);
-      }
-      
-      // إضافة مستمعي الأحداث للحقول الجديدة
-      setupPersonSelectHandlers();
+// أضف دالة جلب مدير المستشفى
+async function fetchManager() {
+  try {
+    const res = await fetch(`${apiBase}/users/hospital-manager`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.status === 'success' && data.data) {
+      return data.data;
     }
-  });
+  } catch {}
+  return null;
 }
 
-function setupPersonSelectHandlers() {
-  document.querySelectorAll('.person-select').forEach(select => {
-    if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
-    select.addEventListener('change', updatePersonsChainPopup);
+// تعريف واحد فقط لدالة renderTransferChain
+async function renderTransferChain(sequence, users, newUserIdsArr) {
+  console.log('renderTransferChain called, nodes:', sequence, newUserIdsArr);
+  const chainDiv = document.getElementById('transferPersonsChain');
+  chainDiv.innerHTML = '';
+  let oldNodes = [];
+  let newNodes = [];
+
+  // 1. الأشخاص القدامى
+  sequence.forEach((uid) => {
+    const user = users.find(u => u.id == uid);
+    oldNodes.push({
+      id: user ? user.id : uid,
+      name: user ? user.name : uid,
+      departmentId: user ? (user.departmentId || user.department_id) : undefined,
+      isNew: false
+    });
   });
+
+  // 2. الأشخاص الجدد
+  if (Array.isArray(newUserIdsArr)) {
+    newUserIdsArr.forEach((uid) => {
+      if (!uid) return;
+      const user = newDeptUsers.find(u => u.id == uid);
+      newNodes.push({
+        id: user ? user.id : uid,
+        name: user ? user.name : uid,
+        departmentId: user ? (user.departmentId || user.department_id) : undefined,
+        isNew: true
+      });
+    });
+  }
+
+  // 3. فصل أشخاص الجودة عن غيرهم
+  const isQuality = node => node.departmentId == 9;
+  const oldNonQuality = oldNodes.filter(n => !isQuality(n));
+  const oldQuality    = oldNodes.filter(isQuality);
+  const newNonQuality = newNodes.filter(n => !isQuality(n));
+  const newQuality    = newNodes.filter(isQuality);
+
+  // 4. بناء السلسلة: القدامى غير الجودة -> الجدد غير الجودة -> كل الجودة (قدامى وجدد)
+  const nodes = [
+    ...oldNonQuality,
+    ...newNonQuality,
+    ...oldQuality,
+    ...newQuality
+  ];
+
+  // جلب مدير المستشفى من الباك اند أولاً
+  const manager = await fetchManager();
+
+  // إذا وجد المدير، احذفه من أي مكان في nodes
+  let nodesWithoutManager = nodes;
+  if (manager) {
+    nodesWithoutManager = nodes.filter(n => n.id != manager.id);
+  }
+
+  // تقسيم الأشخاص إلى صفوف كل صف فيه 3 أشخاص
+  function chunkArray(arr, size) {
+    const result = [];
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size));
+    }
+    return result;
+  }
+  const rows = chunkArray(nodesWithoutManager, 3);
+
+  // دالة رسم صف
+  function renderRow(rowNodes, container) {
+    rowNodes.forEach((node, idx) => {
+      if (idx > 0) {
+        const arrow = document.createElement('div');
+        arrow.className = 'arrow-line';
+        arrow.innerHTML = '<div class="dashed"></div>';
+        container.appendChild(arrow);
+      }
+      const personNode = document.createElement('div');
+      personNode.className = 'person-node';
+      personNode.innerHTML = `
+        <div class="person-circle"><i class="fa fa-user"></i></div>
+        <div class="person-name">${node.name}</div>
+      `;
+      container.appendChild(personNode);
+    });
+  }
+
+  // رسم كل صف بدون إكمال آخر صف بـ Placeholder
+  rows.forEach((rowNodes) => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'persons-chain-row';
+    renderRow(rowNodes, rowDiv);
+    chainDiv.appendChild(rowDiv);
+  });
+
+  // أضف المدير في النهاية فقط (مع سهم)
+  if (manager && nodesWithoutManager.length > 0) {
+    const lastRowDiv = chainDiv.lastChild;
+    const arrow = document.createElement('div');
+    arrow.className = 'arrow-line';
+    arrow.innerHTML = '<div class="dashed"></div>';
+    lastRowDiv.appendChild(arrow);
+    const managerNode = document.createElement('div');
+    managerNode.className = 'person-node';
+    managerNode.innerHTML = `
+      <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
+      <div class="person-name">${manager.name}</div>
+    `;
+    lastRowDiv.appendChild(managerNode);
+  } else if (!manager && nodesWithoutManager.length > 0) {
+    // fallback: نص ثابت إذا لم يوجد مدير مستشفى
+    const lastRowDiv = chainDiv.lastChild;
+    const arrow = document.createElement('div');
+    arrow.className = 'arrow-line';
+    arrow.innerHTML = '<div class="dashed"></div>';
+    lastRowDiv.appendChild(arrow);
+    const managerNode = document.createElement('div');
+    managerNode.className = 'person-node';
+    managerNode.innerHTML = `
+      <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
+      <div class="person-name">${getTranslation('hospital-manager')}</div>
+    `;
+    lastRowDiv.appendChild(managerNode);
+  }
+
+  // بعد رسم السلسلة، إذا تجاوز عدد الأشخاص 4 أضف كلاس multi-line-chain
+  if (nodesWithoutManager.length > 4) {
+    chainDiv.classList.add('multi-line-chain');
+  } else {
+    chainDiv.classList.remove('multi-line-chain');
+  }
 }
 
+// استدعِ اختيار الجودة عند فتح البوب أب
+const oldOpenFileTransferModal = openFileTransferModal;
+openFileTransferModal = function() {
+    oldOpenFileTransferModal();
+    // اربط تحديث السلسلة
+    setupPersonSelectHandlers = function() {
+        document.querySelectorAll('.person-select').forEach(select => {
+            select.addEventListener('change', updatePersonsChainPopup);
+        });
+    };
+};
+
+document.querySelectorAll('.modal-close[data-modal="fileTransferModal"]').forEach(btn => {
+  btn.addEventListener('click', closeFileTransferModal);
+});
+
+document.getElementById('btnTransferConfirm').addEventListener('click', async function(e) {
+  e.preventDefault();
+  // التسلسل النهائي = القدامى + الجدد (بدون فراغات)
+  const finalSequence = [
+    ...currentTransferSequence,
+    ...selectedNewUsers.filter(Boolean)
+  ];
+  if (!selectedContentId || !finalSequence.length) {
+    alert(getTranslation('all-fields-required'));
+    return;
+  }
+  try {
+    // جلب مدير المستشفى من الباكند وإضافته للسلسلة
+    let managerId = null;
+    try {
+      const res = await fetch(`${apiBase}/users/hospital-manager`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.status === 'success' && data.data && data.data.id) {
+        managerId = data.data.id;
+        finalSequence.push(managerId);
+      }
+    } catch (err) {
+      // إذا فشل الجلب، تجاهل إضافة المدير
+    }
+    await fetch(`${apiBase}/contents/${selectedContentId}/approval-sequence`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ approval_sequence: finalSequence })
+    });
+    closeFileTransferModal();
+    alert(getTranslation('confirm-transfer'));
+  } catch (err) {
+    alert(getTranslation('error-sending'));
+  }
+});
+
+// Example: Add event listener to open modal from a button (replace selector as needed)
+// This block is now moved inside initActions()
+
+// استخدم دالة الترجمة من language.js فقط ولا تكررها هنا
+
+// إعادة تعريف الدوال المفقودة حتى لا تظهر أخطاء undefined
 async function loadTransferDepartments() {
   const deptSelect = document.getElementById('transferDept');
   if (!deptSelect) return;
@@ -846,7 +1156,7 @@ async function loadTransferDepartments() {
     const json = await res.json();
     const departments = Array.isArray(json) ? json : (json.data || []);
     const lang = localStorage.getItem('language') || 'ar';
-    deptSelect.innerHTML = `<option value="" disabled selected>اختر القسم</option>`;
+    deptSelect.innerHTML = `<option value="" disabled selected>${getTranslation('select-department')}</option>`;
     departments.forEach(d => {
       let deptName;
       try {
@@ -859,242 +1169,17 @@ async function loadTransferDepartments() {
       deptSelect.appendChild(opt);
     });
   } catch (err) {
-    deptSelect.innerHTML = `<option value="" disabled selected>اختر القسم</option>`;
+    deptSelect.innerHTML = `<option value="" disabled selected>${getTranslation('select-department')}</option>`;
   }
 }
 
-document.getElementById('transferDept').addEventListener('change', async (e) => {
-  const deptId = e.target.value;
-  try {
-    const res = await fetch(`${apiBase}/users?departmentId=${deptId}`, { headers: { Authorization: `Bearer ${token}` } });
-    const json = await res.json();
-    const users = json.data || [];
-    
-    // تحديث جميع حقول اختيار الأشخاص
-    document.querySelectorAll('.person-select').forEach(select => {
-      if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
-      select.innerHTML = `<option value="" disabled selected>اختر الشخص</option>`;
-      users.forEach(user => {
-        const opt = document.createElement('option');
-        opt.value = user.id;
-        opt.textContent = user.name;
-        select.appendChild(opt);
-      });
-    });
-  } catch (err) {
-    document.querySelectorAll('.person-select').forEach(select => {
-      if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
-      select.innerHTML = `<option value="" disabled selected>اختر الشخص</option>`;
-    });
-  }
+function closeFileTransferModal() {
+  document.getElementById('fileTransferModal').style.display = 'none';
+  document.getElementById('personCount').value = '';
+  document.getElementById('transferDept').value = '';
+  document.getElementById('personsFields').innerHTML = '';
   document.getElementById('transferPersonsChain').innerHTML = '';
-});
-
-function updatePersonsChain() {
-  const chainDiv = document.getElementById('transferPersonsChain');
-  chainDiv.innerHTML = '';
-  
-  const selectedPersons = [];
-  document.querySelectorAll('.person-select').forEach(select => {
-    if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
-    if (select.value) {
-      const userName = select.options[select.selectedIndex].textContent;
-      selectedPersons.push({
-        id: select.value,
-        name: userName,
-        personNum: select.dataset.person
-      });
-    }
-  });
-  
-  if (selectedPersons.length > 0) {
-    selectedPersons.forEach((person, index) => {
-      const node = document.createElement('div');
-      node.className = 'person-node';
-      
-      // إضافة سهم بين الأشخاص (إلا للأول)
-      if (index > 0) {
-        const arrow = document.createElement('div');
-        arrow.className = 'arrow-line';
-        arrow.innerHTML = '<div class="dashed"></div>';
-        chainDiv.appendChild(arrow);
-      }
-      
-      node.innerHTML = `
-        <div class="person-circle"><i class="fa fa-user"></i></div>
-        <div class="person-name">${person.name}</div>
-      `;
-      chainDiv.appendChild(node);
-    });
-  }
 }
 
-// عنصر اختيار شخص من قسم الجودة فوق السلسلة
-let qualityUserSelectDiv = null;
-
-async function renderQualityUserSelectPopup() {
-    // إزالة العنصر القديم إذا وجد
-    if (qualityUserSelectDiv && qualityUserSelectDiv.parentNode) {
-        qualityUserSelectDiv.parentNode.removeChild(qualityUserSelectDiv);
-    }
-    qualityUserSelectDiv = document.createElement('div');
-    qualityUserSelectDiv.className = 'quality-user-select-group';
-    qualityUserSelectDiv.style.marginBottom = '18px';
-    qualityUserSelectDiv.innerHTML = `
-        <label style="font-weight:600;display:block;margin-bottom:8px;">
-            اختيار الشخص المسؤول في قسم الجودة <span style='color:red;'>*</span>
-        </label>
-        <select id="qualityUserSelectPopup" class="person-select" style="width:100%;max-width:300px;" required>
-            <option value="">اختر الشخص</option>
-        </select>
-    `;
-    const chainDiv = document.getElementById('transferPersonsChain');
-    chainDiv.parentNode.insertBefore(qualityUserSelectDiv, chainDiv);
-    // جلب الأشخاص من قسم الجودة (departmentId=9) فقط
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${apiBase}/users?departmentId=9`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'فشل جلب مستخدمي الجودة');
-        const select = qualityUserSelectDiv.querySelector('#qualityUserSelectPopup');
-        (data.data || []).forEach(user => {
-            // فلترة إضافية في الفرونت اند إذا لزم الأمر
-            if (user.departmentId == 9 || user.department_id == 9) {
-                const opt = document.createElement('option');
-                opt.value = user.id;
-                opt.textContent = user.name;
-                select.appendChild(opt);
-            }
-        });
-        select.addEventListener('change', updatePersonsChainPopup);
-    } catch (err) {
-        console.error('فشل جلب مستخدمي الجودة:', err);
-    }
-}
-
-function updatePersonsChainPopup() {
-    const chainDiv = document.getElementById('transferPersonsChain');
-    chainDiv.innerHTML = '';
-    const selectedPersons = [];
-    document.querySelectorAll('.person-select').forEach(select => {
-        if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
-        if (select.value) {
-            const userName = select.options[select.selectedIndex].textContent;
-            selectedPersons.push({
-                id: select.value,
-                name: userName,
-                personNum: select.dataset.person
-            });
-        }
-    });
-    // أضف الأشخاص المختارين من القسم
-    if (selectedPersons.length > 0) {
-        selectedPersons.forEach((person, index) => {
-            // لا تكرر الشخص إذا كان هو نفسه المختار للجودة
-            const qualitySelect = document.getElementById('qualityUserSelectPopup');
-            if (qualitySelect && qualitySelect.value && person.id === qualitySelect.value) return;
-            const node = document.createElement('div');
-            node.className = 'person-node';
-            // إضافة سهم بين الأشخاص (إلا للأول)
-            if (index > 0) {
-                const arrow = document.createElement('div');
-                arrow.className = 'arrow-line';
-                arrow.innerHTML = '<div class="dashed"></div>';
-                chainDiv.appendChild(arrow);
-            }
-            node.innerHTML = `
-                <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
-                <div class="person-name">${person.name}</div>
-            `;
-            chainDiv.appendChild(node);
-        });
-    }
-    // أضف الشخص المختار من الجودة إذا لم يكن مكرر
-    const qualitySelect = document.getElementById('qualityUserSelectPopup');
-    if (qualitySelect && qualitySelect.value) {
-        // تحقق أنه لم يتم عرضه سابقاً
-        if (!selectedPersons.some(p => p.id === qualitySelect.value)) {
-            if (selectedPersons.length > 0) {
-                const arrow = document.createElement('div');
-                arrow.className = 'arrow-line';
-                arrow.innerHTML = '<div class="dashed"></div>';
-                chainDiv.appendChild(arrow);
-            }
-            const qualityNode = document.createElement('div');
-            qualityNode.className = 'person-node';
-            qualityNode.innerHTML = `
-                <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
-                <div class="person-name">${qualitySelect.options[qualitySelect.selectedIndex].textContent}</div>
-            `;
-            chainDiv.appendChild(qualityNode);
-        }
-    }
-    // أضف مدير المستشفى
-    if ((selectedPersons.length > 0 || (qualitySelect && qualitySelect.value))) {
-        const arrow = document.createElement('div');
-        arrow.className = 'arrow-line';
-        arrow.innerHTML = '<div class="dashed"></div>';
-        chainDiv.appendChild(arrow);
-        const managerNode = document.createElement('div');
-        managerNode.className = 'person-node';
-        managerNode.innerHTML = `
-            <div class="person-circle no-bg"><i class="fa fa-user"></i></div>
-            <div class="person-name">مدير المستشفى</div>
-        `;
-        chainDiv.appendChild(managerNode);
-    }
-}
-
-// استدعِ اختيار الجودة عند فتح البوب أب
-const oldOpenFileTransferModal = openFileTransferModal;
-openFileTransferModal = function() {
-    oldOpenFileTransferModal();
-    renderQualityUserSelectPopup();
-    // اربط تحديث السلسلة
-    setupPersonSelectHandlers = function() {
-        document.querySelectorAll('.person-select').forEach(select => {
-            if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
-            select.addEventListener('change', updatePersonsChainPopup);
-        });
-    };
-};
-
-document.querySelectorAll('.modal-close[data-modal="fileTransferModal"]').forEach(btn => {
-  btn.addEventListener('click', closeFileTransferModal);
-});
-
-document.getElementById('btnTransferConfirm').addEventListener('click', function(e) {
-  e.preventDefault();
-  
-  // التحقق من صحة البيانات
-  const personCount = document.getElementById('personCount').value;
-  const deptId = document.getElementById('transferDept').value;
-  const selectedPersons = [];
-  
-  document.querySelectorAll('.person-select').forEach(select => {
-    if (select.id === 'qualityUserSelectPopup') return; // تجاهل دروب داون الجودة
-    if (select.value) {
-      selectedPersons.push({
-        id: select.value,
-        name: select.options[select.selectedIndex].textContent
-      });
-    }
-  });
-  
-  if (!personCount || !deptId || selectedPersons.length === 0) {
-    alert(getTranslation('please-fill-required-fields'));
-    return;
-  }
-  
-  // تنفيذ منطق التحويل هنا
-  console.log('تحويل الملف إلى:', selectedPersons);
-  closeFileTransferModal();
-  alert(getTranslation('transfer-confirmed'));
-});
-
-// Example: Add event listener to open modal from a button (replace selector as needed)
-// This block is now moved inside initActions()
-
-// استخدم دالة الترجمة من language.js فقط ولا تكررها هنا
+// إضافة دالة setupPersonCountHandler لمنع الخطأ
+function setupPersonCountHandler() {}

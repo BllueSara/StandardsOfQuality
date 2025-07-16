@@ -45,7 +45,19 @@ function t(key) {
   return translations[currentLang][key] || key;
 }
 function tStatus(status) {
-  return translations[currentLang].statuses[status] || status;
+  if (
+    translations[currentLang] &&
+    translations[currentLang].statuses &&
+    translations[currentLang].statuses[status]
+  ) {
+    return translations[currentLang].statuses[status];
+  }
+  // fallback: حاول مع العربية
+  if (translations.ar && translations.ar.statuses && translations.ar.statuses[status]) {
+    return translations.ar.statuses[status];
+  }
+  // fallback: النص الأصلي
+  return status;
 }
 
 // أضف مكتبة datalabels
@@ -83,7 +95,7 @@ function renderStatusPie() {
     options: {
       plugins: {
         legend: { display: true, position: 'bottom', labels: { font: { size: 18 } } },
-        title: { display: true, text: 'توزيع الحالات', font: { size: 22 } },
+        title: { display: true, text: t('status'), font: { size: 22 } },
         datalabels: {
           color: '#fff',
           font: { weight: 'bold', size: 24 },
@@ -145,9 +157,9 @@ function renderTable() {
   ths[0].textContent = t('title');
   ths[1].textContent = t('department');
   ths[2].textContent = t('status');
-  ths[3].textContent = lang === 'ar' ? 'تاريخ الإنشاء' : 'Created At';
-  ths[4].textContent = lang === 'ar' ? 'اسم المستخدم' : 'User';
-  document.querySelector('.dashboard-table h2').textContent = lang === 'ar' ? 'أحدث الملفات' : 'Latest Files';
+  ths[3].textContent = lang === 'ar' ? t('created-at') : t('created-at');
+  ths[4].textContent = lang === 'ar' ? t('user') : t('user');
+  document.querySelector('.dashboard-table h2').textContent = lang === 'ar' ? t('latest-files') : t('latest-files');
 }
 
 function updateCards() {
@@ -218,9 +230,50 @@ async function rerenderAll() {
   ths[0].textContent = t('title');
   ths[1].textContent = t('department');
   ths[2].textContent = t('status');
-  ths[3].textContent = lang === 'ar' ? 'تاريخ الإنشاء' : 'Created At';
-  ths[4].textContent = lang === 'ar' ? 'اسم المستخدم' : 'User';
-  document.querySelector('.dashboard-table h2').textContent = lang === 'ar' ? 'أحدث الملفات' : 'Latest Files';
+  ths[3].textContent = lang === 'ar' ? t('created-at') : t('created-at');
+  ths[4].textContent = lang === 'ar' ? t('user') : t('user');
+  document.querySelector('.dashboard-table h2').textContent = lang === 'ar' ? t('latest-files') : t('latest-files');
+
+  // تعبئة جدول نسبة اكتمال الاعتمادات لكل قسم
+  const deptTable = document.querySelector('#departmentCompletionTable tbody');
+  deptTable.innerHTML = '';
+  data.departmentCompletion.forEach(row => {
+    const tr = document.createElement('tr');
+    // معالجة اسم القسم (يدعم JSON)
+    let deptName = row.department;
+    try {
+      const parsed = JSON.parse(row.department);
+      const lang = localStorage.getItem('language') || 'ar';
+      deptName = parsed[lang] || parsed.ar || parsed.en || row.department;
+    } catch {}
+    // تلوين النسبة حسب القيمة
+    let percentColor = '';
+    if (row.percent >= 80) percentColor = 'style="color:#43c97f;font-weight:bold"';
+    else if (row.percent >= 50) percentColor = 'style="color:#ffb300;font-weight:bold"';
+    else percentColor = 'style="color:#e74c3c;font-weight:bold"';
+    tr.innerHTML = `
+      <td>${deptName}</td>
+      <td>${row.total}</td>
+      <td>${row.approved}</td>
+      <td ${percentColor}>${row.percent}%</td>
+    `;
+    deptTable.appendChild(tr);
+  });
+  // تحديث رؤوس الجدول والعنوان حسب اللغة
+  const deptThs = document.querySelectorAll('#departmentCompletionTable th');
+  if (lang === 'ar') {
+    deptThs[0].textContent = t('department');
+    deptThs[1].textContent = t('total-files');
+    deptThs[2].textContent = t('approved-files');
+    deptThs[3].textContent = t('completion-percent');
+    document.getElementById('department-completion-title').textContent = t('department-completion-title');
+  } else {
+    deptThs[0].textContent = t('department');
+    deptThs[1].textContent = t('total-files');
+    deptThs[2].textContent = t('approved-files');
+    deptThs[3].textContent = t('completion-percent');
+    document.getElementById('department-completion-title').textContent = t('department-completion-title');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', rerenderAll);

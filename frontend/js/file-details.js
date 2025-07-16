@@ -63,10 +63,10 @@ document.addEventListener('DOMContentLoaded', function () {
         timeline.forEach(row => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${row.comments || '-'}</td>
-                <td>${actionLabel(row.status)}</td>
-                <td>${row.approver || '-'}</td>
                 <td>${row.created_at ? formatDate(row.created_at) : '-'}</td>
+                <td>${row.approver || '-'}</td>
+                <td>${actionLabel(row.status)}</td>
+                <td>${row.comments || '-'}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -140,10 +140,16 @@ document.addEventListener('DOMContentLoaded', function () {
     
     function actionLabel(status) {
         switch (status) {
-            case 'approved': return getTranslation('reviewed') || 'تمت المراجعة';
-            case 'rejected': return getTranslation('rejected-action') || getTranslation('rejected') || 'تم الرفض';
-            case 'pending': return getTranslation('transferred') || 'تم التحويل';
-            default: return status || '-';
+            case 'approved':
+            case 'reviewed':
+                return getTranslation('reviewed') || 'تمت المراجعة';
+            case 'rejected':
+                return getTranslation('rejected-action') || getTranslation('rejected') || 'تم الرفض';
+            case 'pending':
+            case 'transferred':
+                return getTranslation('transferred') || 'تم التحويل';
+            default:
+                return status || '-';
         }
     }
     

@@ -156,6 +156,7 @@ function getIconAndColor(type) {
     case 'add': return { iconClass: 'fas fa-plus-circle', bg: 'bg-teal' };
     case 'update': return { iconClass: 'fas fa-edit', bg: 'bg-yellow' };
     case 'delete': return { iconClass: 'fas fa-trash-alt', bg: 'bg-red' };
+    case 'approval_reminder': return { iconClass: 'fas fa-clock', bg: 'bg-orange' };
     default: return { iconClass: 'fas fa-bell', bg: 'bg-gray' };
   }
 }
@@ -374,6 +375,14 @@ function getNotificationTranslation(text) {
   const allApprovedMatch = text.match(/^الملف "(.+)" تم اعتماده من جميع أعضاء التسلسل\.$/);
   if (allApprovedMatch) {
     return `The file "${allApprovedMatch[1]}" has been approved by all approvers.`;
+  }
+  if (text === 'تذكير اعتماد ملف') {
+    return 'Approval Reminder';
+  }
+  // ترجمة ديناميكية: لديك ملف بعنوان "xxx" بانتظار اعتمادك منذ أكثر من 3 أيام. يرجى اتخاذ الإجراء المناسب.
+  const approvalReminderMatch = text.match(/^لديك ملف بعنوان "(.+)" بانتظار اعتمادك منذ أكثر من 3 أيام\. يرجى اتخاذ الإجراء المناسب\.$/);
+  if (approvalReminderMatch) {
+    return `You have a file titled "${approvalReminderMatch[1]}" awaiting your approval for more than 3 days. Please take action.`;
   }
   return text;
 }

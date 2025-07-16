@@ -939,6 +939,20 @@ const updateUserStatus = async (req, res) => {
   }
 };
 
+// جلب مدير المستشفى فقط
+const getHospitalManager = async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      `SELECT id, username AS name, email, role FROM users WHERE role = 'hospital_manager' LIMIT 1`
+    );
+    if (!rows.length) {
+      return res.status(404).json({ status: 'error', message: 'مدير المستشفى غير موجود' });
+    }
+    res.status(200).json({ status: 'success', data: rows[0] });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'خطأ في جلب مدير المستشفى' });
+  }
+};
 
 
 module.exports = {
@@ -957,5 +971,5 @@ module.exports = {
   getUnreadCount,
   getActionTypes,
   updateUserStatus,
-
+  getHospitalManager,
 };

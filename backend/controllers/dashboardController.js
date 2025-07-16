@@ -33,6 +33,34 @@ async function getDashboardSummary(req, res) {
       ORDER BY c.created_at DESC
       LIMIT 10
     `);
+    // نسبة اكتمال الاعتمادات لكل قسم
+    const [departments] = await db.execute('SELECT id, name FROM departments');
+    const departmentCompletion = [];
+    for (const dept of departments) {
+      // عدد الملفات الكلي لهذا القسم
+      const [totalRows] = await db.execute(
+        `SELECT COUNT(*) AS total FROM contents c
+         JOIN folders f ON c.folder_id = f.id
+         WHERE f.department_id = ?`,
+        [dept.id]
+      );
+      // عدد الملفات المعتمدة لهذا القسم
+      const [approvedRows] = await db.execute(
+        `SELECT COUNT(*) AS approved FROM contents c
+         JOIN folders f ON c.folder_id = f.id
+         WHERE f.department_id = ? AND c.approval_status = 'approved'`,
+        [dept.id]
+      );
+      const total = totalRows[0].total;
+      const approved = approvedRows[0].approved;
+      const percent = total > 0 ? Math.round((approved / total) * 100) : 0;
+      departmentCompletion.push({
+        department: dept.name,
+        total,
+        approved,
+        percent
+      });
+    }
     res.json({
       status: 'success',
       data: {
@@ -40,7 +68,8 @@ async function getDashboardSummary(req, res) {
         approved: counts[0].approved,
         pending: counts[0].pending,
         rejected: counts[0].rejected,
-        latest: latest
+        latest: latest,
+        departmentCompletion: departmentCompletion
       }
     });
   } catch (err) {

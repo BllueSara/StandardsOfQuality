@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة التحكم - الداشبورد</title>
+  <title data-translate="dashboard">لوحة التحكم - الداشبورد</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,15 +13,16 @@
   <link rel="stylesheet" href="../css/dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-  <div class="header-actions">
-    <button class="back-btn" onclick="window.history.back()">
-      <i class="fa fa-arrow-right"></i> رجوع
+        <div class="header-actions">
+    <button class="back-btn" id="backBtn" onclick="window.location.href='index.html'" style="right: 50px; left: auto; display: flex; align-items: center; gap: 4px;">
+      <i class="fas fa-arrow-right" id="backIcon" style="margin-right: 4px; transform: rotate(180deg);"></i>
+        <span id="backBtnText" data-translate="back">رجوع</span>
     </button>
-    <button class="home-btn" onclick="window.location.href='index.html'">
-      <i class="fa fa-home"></i> الرئيسية
-    </button>
-  </div>
+  <button class="home-btn" onclick="window.location.href='index.html'">
+    <i class="fas fa-home"></i>
+    <span data-translate="home">الرئيسية</span>
+  </button>
+</div>
   <header>
     <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
       <div class="hospital-logo">
@@ -34,39 +35,56 @@
   </header>
   <main>
     <div class="container">
-      <h1 class="page-title">لوحة التحكم</h1>
+      <h1 class="page-title" data-translate="dashboard">لوحة التحكم</h1>
       <div class="dashboard-cards">
         <div class="card total">
           <div class="card-icon"><i class="fa fa-folder-open"></i></div>
-          <div class="card-title">إجمالي الملفات</div>
+          <div class="card-title" data-translate="total-files">إجمالي الملفات</div>
           <div class="card-value" id="total-files">0</div>
         </div>
         <div class="card approved">
           <div class="card-icon"><i class="fa fa-check-circle"></i></div>
-          <div class="card-title">المعتمدة</div>
+          <div class="card-title" data-translate="approved-files">المعتمدة</div>
           <div class="card-value" id="approved-files">0</div>
         </div>
         <div class="card pending">
           <div class="card-icon"><i class="fa fa-hourglass-half"></i></div>
-          <div class="card-title">قيد الانتظار</div>
+          <div class="card-title" data-translate="pending-files">قيد الانتظار</div>
           <div class="card-value" id="pending-files">0</div>
         </div>
         <div class="card rejected">
           <div class="card-icon"><i class="fa fa-times-circle"></i></div>
-          <div class="card-title">المرفوضة</div>
+          <div class="card-title" data-translate="rejected-files">المرفوضة</div>
           <div class="card-value" id="rejected-files">0</div>
         </div>
       </div>
       <div class="dashboard-table">
-        <h2>أحدث الملفات</h2>
+        <h2 data-translate="latest-files">أحدث الملفات</h2>
         <table id="filesTable">
           <thead>
             <tr>
-              <th>العنوان</th>
-              <th>القسم</th>
-              <th>الحالة</th>
-              <th>تاريخ الإنشاء</th>
-              <th>المستخدم</th>
+              <th data-translate="title">العنوان</th>
+              <th data-translate="department">القسم</th>
+              <th data-translate="status">الحالة</th>
+              <th data-translate="created-at">تاريخ الإنشاء</th>
+              <th data-translate="user">المستخدم</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- سيتم تعبئته ديناميكياً -->
+          </tbody>
+        </table>
+      </div>
+      <!-- جدول نسبة اكتمال الاعتمادات لكل قسم -->
+      <div class="dashboard-table" id="department-completion-table-wrapper">
+        <h2 id="department-completion-title" data-translate="department-completion-title">نسبة اكتمال الاعتمادات حسب القسم</h2>
+        <table id="departmentCompletionTable">
+          <thead>
+            <tr>
+              <th data-translate="department">القسم</th>
+              <th data-translate="total-files">عدد الملفات الكلي</th>
+              <th data-translate="approved-files">عدد الملفات المعتمدة</th>
+              <th data-translate="completion-percent">النسبة المئوية</th>
             </tr>
           </thead>
           <tbody>
@@ -76,7 +94,7 @@
       </div>
     </div>
   </main>
-  <script src="../js/dashboard.js"></script>
   <script src="../js/language.js"></script>
+  <script src="../js/dashboard.js"></script>
 </body>
 </html> 

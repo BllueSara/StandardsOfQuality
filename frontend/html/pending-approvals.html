@@ -155,13 +155,13 @@
                 <h2 class="modal-title" data-translate="transfer-file">تحويل الملف</h2>
             </div>
             <div class="modal-body">
-                <p class="page-desc" style="margin-bottom: 24px;" data-translate="transfer-file">قم بتحويل الملف إلى الأشخاص المطلوبين</p>
-                <p class="page-desc" style="margin-bottom: 24px; color: #666; font-size: 0.95rem;" data-translate="transfer-file">سيتم إرسال الملف لغير الأشخاص الأساسيين</p>
+                <p class="page-desc" style="margin-bottom: 24px;" data-translate="transfer-file-desc">قم بتحويل الملف إلى الأشخاص المطلوبين</p>
+                <p class="page-desc" style="margin-bottom: 24px; color: #666; font-size: 0.95rem;" data-translate="transfer-file-sender">سيتم ارسال الملف بعد اعتماده من اخر الشخص في القسم للاشخاص النختارين</p>
                 <form id="fileTransferForm" autocomplete="off">
                     <div class="form-group">
                         <label data-translate="selected-count">حدد عدد الأشخاص</label>
                         <select id="personCount" required>
-                            <option value="">اختر العدد</option>
+                            <option value="" data-translate="select-person-count">اختر العدد</option>
                             <option value="1">1</option>
                             <option value="2">2</option>
                             <option value="3">3</option>
@@ -180,7 +180,7 @@
                 <div id="transferPersonsChain" class="persons-chain"></div>
             </div>
             <div class="modal-footer">
-                <button id="btnTransferConfirm" class="btn-confirm" data-translate="confirm">تأكيد التحويل</button>
+                <button id="btnTransferConfirm" class="btn-confirm" data-translate="confirm-transfer">تأكيد التحويل</button>
                 <button class="btn-cancel modal-close" data-modal="fileTransferModal" data-translate="cancel">إلغاء</button>
             </div>
         </div>
