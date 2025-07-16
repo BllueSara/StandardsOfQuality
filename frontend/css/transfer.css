@@ -2,7 +2,6 @@ body,:placeholder-shown,input,select,textarea,button {
     font-family: 'Tajawal', Arial, sans-serif;
     background: #ffffff;
     margin: 0;
-    direction: rtl;
 }
 
 .header-actions {
@@ -12,10 +11,9 @@ body,:placeholder-shown,input,select,textarea,button {
   width: 100%;
   top: 10px;
 }
-
-/* زرّ الرجوع */
 .back-btn {
   position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -23,14 +21,14 @@ body,:placeholder-shown,input,select,textarea,button {
   gap: 4px;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 18px;      /* حجم يناسب النص */
   color: #1D4ED8;
   cursor: pointer;
-  padding: 0 12px;
-  font-family: inherit;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+  flex-direction: row-reverse;
 }
 
-/* اتجاه زر الرجوع حسب اللغة */
 :lang(ar) .back-btn,
 [dir="rtl"] .back-btn {
   right: 50px;
@@ -53,6 +51,27 @@ body,:placeholder-shown,input,select,textarea,button {
 /* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
 [dir="ltr"] .back-btn .fa-arrow-left {
   transform: none;
+}
+
+
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
+
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
 }
 
 /* زرّ الرئيسية في المنتصف */

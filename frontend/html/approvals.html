@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>اعتماداتي</title>
+    <title data-translate="approvals-title">اعتماداتي</title>
       <link rel="stylesheet" href="../css/shared.css"/>
-
     <link rel="stylesheet" href="../css/approvals.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-
 </head>
 <body>
       <header class="main-header">
@@ -26,7 +24,7 @@
     </div>
   </header>
   <div class="header-actions">
-    <button class="back-btn" onclick="history.back()">
+    <button class="back-btn" id="backBtn" onclick="history.back()">
      <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
     </button>
     <button class="home-btn" onclick="window.location.href='index.html'">
@@ -36,33 +34,32 @@
   </div>
     <main>
         <div class="page-header">
-            <h1>اعتماداتي <span class="files-count">(0)</span></h1>
+            <h1 data-translate="approvals-title">اعتماداتي <span class="files-count">(0)</span></h1>
         </div>
-
         <div class="filters-bar">
             <div class="search-box">
                 <i class="fa fa-search"></i>
-                <input type="text" class="search-input" id="searchInput" placeholder="...البحث عن ملف">
+                <input type="text" class="search-input" id="searchInput" placeholder="...البحث عن ملف" data-translate-placeholder="search">
             </div>
             <select id="statusFilter" class="status-filter">
-                <option value="all">جميع الحالات</option>
-                <option value="pending">بانتظار الاعتماد</option>
-                <option value="approved">معتمد</option>
-                <option value="rejected">مرفوض</option>
+                <option value="all" data-translate="all-statuses">جميع الحالات</option>
+                <option value="pending" data-translate="pending">بانتظار الاعتماد</option>
+                <option value="approved" data-translate="approved">معتمد</option>
+                <option value="rejected" data-translate="rejected">مرفوض</option>
             </select>
             <select id="deptFilter" class="dept-filter">
-                <option value="all">جميع الأقسام</option>
+                <option value="all" data-translate="all-departments">جميع الأقسام</option>
             </select>
         </div>
         <div class="table-container">
             <table class="files-table">
                 <thead>
                     <tr>
-                        <th>اسم الملف</th>
-                        <th>القسم</th>
-                        <th>تاريخ الرفع</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th data-translate="file-name">اسم الملف</th>
+                        <th data-translate="department">القسم</th>
+                        <th data-translate="upload-date">تاريخ الرفع</th>
+                        <th data-translate="status">الحالة</th>
+                        <th data-translate="actions">الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -72,7 +69,7 @@
         </div>
     </main>
 
-
 </body>
 <script src="../js/approvals.js"></script>
+<script src="../js/language.js"></script>
 </html> 

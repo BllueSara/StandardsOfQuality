@@ -12,10 +12,28 @@ body,:placeholder-shown,input,select,textarea,button {
   width: 100%;
   top: 10px;
 }
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
 
-/* زرّ الرجوع */
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
 .back-btn {
   position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -23,14 +41,14 @@ body,:placeholder-shown,input,select,textarea,button {
   gap: 4px;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 18px;      /* حجم يناسب النص */
   color: #1D4ED8;
   cursor: pointer;
-  padding: 0 12px;
-  font-family: inherit;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+  flex-direction: row-reverse;
 }
 
-/* اتجاه زر الرجوع حسب اللغة */
 :lang(ar) .back-btn,
 [dir="rtl"] .back-btn {
   right: 50px;
@@ -42,7 +60,7 @@ body,:placeholder-shown,input,select,textarea,button {
 [dir="ltr"] .back-btn {
   left: 50px;
   right: auto;
-  flex-direction: row;
+  flex-direction: row-reverse;
 }
 
 /* يقلب أيقونات FA داخل back-btn في الوضع LTR */
@@ -79,15 +97,6 @@ body,:placeholder-shown,input,select,textarea,button {
   opacity: 0.7;
 }
 
-.main-header {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 16px 32px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
 .header-container {
   display: flex;
   justify-content: space-between;
@@ -110,6 +119,7 @@ body,:placeholder-shown,input,select,textarea,button {
     padding: 32px 0 18px 0;
     max-width: 800px;
     margin: 0 auto;
+    justify-content: center;
 }
 
 .chat-title {

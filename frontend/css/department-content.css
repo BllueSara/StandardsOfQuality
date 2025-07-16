@@ -190,7 +190,6 @@ main h1 {
     font-size: 1.5em;
     color: #333;
     margin-bottom: 20px;
-    text-align: right; /* Align title to the right */
 }
 
 .file-controls-bar {
@@ -867,6 +866,34 @@ main h1 {
     text-overflow: ellipsis;
 }
 
+/* LTR adjustments for main-label and sub-index badges */
+[dir="ltr"] .main-label {
+    margin-right: 14px;
+    margin-left: 0;
+}
+[dir="ltr"] .sub-index {
+    margin-right: 12px;
+    margin-left: 0;
+}
+
+/* LTR adjustments for file-group-box paddings */
+[dir="ltr"] .file-group-box .file-item.main-file {
+    padding-left: 32px;
+    padding-right: 0;
+}
+[dir="ltr"] .file-group-box .file-item.sub-file-card {
+    margin-left: 40px;
+    margin-right: 0;
+    border-left: 3.5px solid #1D4ED8;
+    border-right: none;
+}
+
+/* LTR: Align file name and info to the left so badge and text are together */
+[dir="ltr"] .file-group-box .file-item .file-info,
+[dir="ltr"] .file-group-box .file-item .file-name {
+    text-align: left;
+    direction: ltr;
+}
 
 
 @media (max-width: 600px) {
@@ -875,6 +902,10 @@ main h1 {
     }
     .file-group-box {
         padding: 0;
+    }
+    [dir="ltr"] .file-group-box .file-item.sub-file-card {
+        margin-left: 12px;
+        margin-right: 0;
     }
 }
 

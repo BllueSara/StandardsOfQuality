@@ -12,10 +12,7 @@ function getTranslation(key) {
 // دالة معالجة النصوص ثنائية اللغة
 function getLocalizedName(name) {
   if (!name) return '';
-  
   const lang = localStorage.getItem('language') || 'ar';
-  
-  // إذا كان النص يحتوي على JSON، حاول تحليله
   if (typeof name === 'string' && name.trim().startsWith('{') && name.trim().endsWith('}')) {
     try {
       const parsed = JSON.parse(name);
@@ -24,12 +21,9 @@ function getLocalizedName(name) {
       return name;
     }
   }
-  
-  // إذا كان object، استخرج النص باللغة المناسبة
   if (typeof name === 'object' && name !== null) {
     return name[lang] || name['ar'] || name['en'] || JSON.stringify(name);
   }
-  
   return name;
 }
 
@@ -39,15 +33,13 @@ async function fetchFileInfo() {
     const res = await fetch(`${apiBase}/contents/${contentId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    
     if (!res.ok) {
-      throw new Error('فشل في جلب معلومات الملف');
+      throw new Error(getTranslation('error-loading-data'));
     }
-    
     const data = await res.json();
     return data.data || {};
   } catch (error) {
-    console.error('خطأ في جلب معلومات الملف:', error);
+    console.error(getTranslation('error-loading-data'), error);
     return {};
   }
 }
@@ -85,7 +77,6 @@ async function sendReply(text) {
 function renderFileInfo(fileInfo) {
   const fileTitle = document.getElementById('file-title');
   const fileDepartment = document.getElementById('file-department');
-  
   if (fileTitle) {
     const fileName = getLocalizedName(fileInfo.title);
     fileTitle.innerHTML = `
@@ -93,7 +84,6 @@ function renderFileInfo(fileInfo) {
       ${fileName || getTranslation('file-not-found')}
     `;
   }
-  
   if (fileDepartment) {
     const departmentName = getLocalizedName(fileInfo.source_name);
     fileDepartment.innerHTML = `
@@ -111,7 +101,7 @@ function renderChat(reason, replies, currentUser) {
     chatMessages.innerHTML += `
       <div class="msg msg-system">
         <div class="msg-text">${reason.reason}</div>
-        <div class="msg-meta">${reason.author || 'النظام'} <span></span></div>
+        <div class="msg-meta">${reason.author || getTranslation('system')} <span></span></div>
       </div>
     `;
   }
@@ -131,8 +121,9 @@ function renderChat(reason, replies, currentUser) {
 function formatTime(dateString) {
   if (!dateString) return '';
   try {
+    const lang = localStorage.getItem('language') || 'ar';
     const date = new Date(dateString);
-    return date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   } catch {
     return dateString;
   }
@@ -145,7 +136,6 @@ function updatePageTexts() {
     const key = element.getAttribute('data-translate');
     element.textContent = getTranslation(key);
   });
-  
   // تحديث placeholders
   document.querySelectorAll('[data-translate-placeholder]').forEach(element => {
     const key = element.getAttribute('data-translate-placeholder');
@@ -162,30 +152,27 @@ async function refreshData() {
       chatMessages.innerHTML = `
         <div class="loading-message">
           <i class="fa fa-spinner fa-spin"></i>
-          <span>${getTranslation('loading-messages')}</span>
+          <span data-translate="loading-messages">${getTranslation('loading-messages')}</span>
         </div>
       `;
     }
-    
     // جلب البيانات
     const [fileInfo, reasonObj, replies] = await Promise.all([
       fetchFileInfo(),
       fetchRejectionReasonWithAuthor(),
       fetchReplies()
     ]);
-    
     // عرض المعلومات
     renderFileInfo(fileInfo);
     renderChat(reasonObj, replies, window.currentUsername);
-    
   } catch (error) {
-    console.error('خطأ في تحديث البيانات:', error);
+    console.error(getTranslation('error-loading-data'), error);
     const chatMessages = document.querySelector('#chat-messages');
     if (chatMessages) {
       chatMessages.innerHTML = `
         <div class="error-message" style="text-align: center; color: #ef4444; padding: 20px;">
           <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-          <p>${getTranslation('error-loading-data')}</p>
+          <p data-translate="error-loading-data">${getTranslation('error-loading-data')}</p>
         </div>
       `;
     }
@@ -194,45 +181,37 @@ async function refreshData() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (!token) {
-    alert(getTranslation('please-login') || 'الرجاء تسجيل الدخول');
+    alert(getTranslation('please-login'));
     window.location.href = 'login.html';
     return;
   }
-  
   if (!contentId) {
-    alert(getTranslation('invalid-file') || 'ملف غير صحيح');
+    alert(getTranslation('invalid-file'));
     history.back();
     return;
   }
-  
   // تحديث النصوص عند التحميل
   updatePageTexts();
-  
   const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
   const currentUserId = payload.id;
   window.currentUserId = currentUserId;
   window.currentUsername = payload.username; // حفظ اسم المستخدم الحالي للمقارنة
-
   // تحميل البيانات
   await refreshData();
-
   // إرسال رد جديد
   const form = document.querySelector('.chat-input-row');
   const input = form.querySelector('input');
   const charCount = document.querySelector('.char-count');
-  
   if (form && input && charCount) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const text = input.value.trim();
       if (!text) return;
-      
       // إظهار حالة الإرسال
       const sendBtn = form.querySelector('.send-btn');
       const originalText = sendBtn.innerHTML;
       sendBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
       sendBtn.disabled = true;
-      
       const ok = await sendReply(text);
       if (ok) {
         // إعادة تحميل البيانات
@@ -240,26 +219,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         input.value = '';
         charCount.textContent = '0/500';
       } else {
-        alert(getTranslation('error-sending-reply') || 'حدث خطأ أثناء إرسال الرد');
+        alert(getTranslation('error-sending-reply'));
       }
-      
       // إعادة تفعيل الزر
       sendBtn.innerHTML = originalText;
       sendBtn.disabled = false;
     });
-    
     // عداد الأحرف
     input.addEventListener('input', function() {
       charCount.textContent = this.value.length + '/500';
     });
   }
-  
   // مراقبة تغيير اللغة
   window.addEventListener('languageChanged', () => {
     updatePageTexts();
     refreshData();
   });
 });
-
 // تصدير الدوال للاستخدام العام
 window.refreshData = refreshData; 

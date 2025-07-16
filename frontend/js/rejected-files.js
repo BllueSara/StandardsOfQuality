@@ -14,7 +14,7 @@ function getTranslation(key) {
 // جلب الملفات المرفوضة من API
 async function fetchRejectedFiles() {
   if (!token) {
-    alert('الرجاء تسجيل الدخول');
+    alert(getTranslation('please-login'));
     window.location.href = 'login.html';
     return;
   }
@@ -25,14 +25,16 @@ async function fetchRejectedFiles() {
         'Content-Type': 'application/json'
       }
     });
-    if (!response.ok) throw new Error('فشل في جلب الملفات المرفوضة');
+    if (!response.ok) throw new Error(getTranslation('error-loading-files'));
     const result = await response.json();
     allRejectedFiles = result.data || [];
     filteredFiles = [...allRejectedFiles];
     renderRejectedFiles();
+    populateDepartmentFilter();
+    updateRejectedCount();
   } catch (error) {
-    console.error('خطأ في جلب الملفات المرفوضة:', error);
-    renderError('حدث خطأ في تحميل الملفات المرفوضة');
+    console.error(getTranslation('error-loading-files'), error);
+    renderError(getTranslation('error-loading-files'));
   }
 }
 
@@ -41,7 +43,7 @@ function renderRejectedFiles() {
   if (!container) return;
   container.innerHTML = '';
   if (filteredFiles.length === 0) {
-    container.innerHTML = `<div style="text-align:center;color:#888;padding:2rem;">لا توجد ملفات مرفوضة</div>`;
+    container.innerHTML = `<div style="text-align:center;color:#888;padding:2rem;" data-translate="no-rejected-files">${getTranslation('no-rejected-files')}</div>`;
     return;
   }
   filteredFiles.forEach(file => {
@@ -58,11 +60,11 @@ function createRejectedCard(file) {
       <div class="file-title"><i class="fa-regular fa-file-lines"></i> ${getLocalizedName(file.title)}</div>
       <div class="file-meta"><i class="fa-regular fa-building"></i> ${getLocalizedName(file.source_name)}</div>
       <div class="file-status-row">
-        <span class="status rejected"><i class="fa fa-xmark"></i> مرفوض</span>
+        <span class="status rejected"><i class="fa fa-xmark"></i> ${getTranslation('rejected')}</span>
         <span class="file-date">${formatDate(file.rejected_at || file.updated_at)}</span>
       </div>
     </div>
-    <button class="details-btn" onclick="viewFileDetails(${file.id})"><i class="fa-regular fa-eye"></i> عرض تفاصيل</button>
+    <button class="details-btn" onclick="viewFileDetails(${file.id})"><i class="fa-regular fa-eye"></i> ${getTranslation('view-details')}</button>
   `;
   return card;
 }
@@ -104,13 +106,22 @@ function renderError(msg) {
 
 function searchRejectedFiles() {
   const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+  const departmentFilter = document.getElementById('department-filter');
+  const dateFilter = document.getElementById('date-filter');
+  const selectedDept = departmentFilter ? departmentFilter.value : '';
+  const selectedDate = dateFilter ? dateFilter.value : '';
+
   filteredFiles = allRejectedFiles.filter(file => {
     const fileName = getLocalizedName(file.title).toLowerCase();
     const departmentName = getLocalizedName(file.source_name).toLowerCase();
     const rejectReason = (file.reject_reason || '').toLowerCase();
-    return fileName.includes(searchTerm) || departmentName.includes(searchTerm) || rejectReason.includes(searchTerm);
+    const matchesSearch = fileName.includes(searchTerm) || departmentName.includes(searchTerm) || rejectReason.includes(searchTerm);
+    const matchesDept = !selectedDept || departmentName === selectedDept;
+    const matchesDate = filterByDate(file.rejected_at || file.updated_at, selectedDate);
+    return matchesSearch && matchesDept && matchesDate;
   });
   renderRejectedFiles();
+  updateRejectedCount();
 }
 
 // دالة فلترة التاريخ
@@ -140,21 +151,25 @@ function populateDepartmentFilter() {
   const departmentFilter = document.querySelector('#department-filter');
   if (!departmentFilter) return;
   
-  // مسح الخيارات الحالية (باستثناء الخيار الافتراضي)
-  const defaultOption = departmentFilter.querySelector('option[value=""]');
+  // مسح الخيارات الحالية
   departmentFilter.innerHTML = '';
-  if (defaultOption) {
-    departmentFilter.appendChild(defaultOption);
-  }
+  // إضافة الخيار الافتراضي المترجم
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = getTranslation('all-departments');
+  defaultOption.setAttribute('data-translate', 'all-departments');
+  departmentFilter.appendChild(defaultOption);
   
   // استخراج الأقسام الفريدة من الملفات
   const departments = [...new Set(allRejectedFiles.map(file => getLocalizedName(file.source_name)))];
   
   departments.forEach(dept => {
-    const option = document.createElement('option');
-    option.value = dept;
-    option.textContent = dept;
-    departmentFilter.appendChild(option);
+    if (dept && dept.trim() !== '') {
+      const option = document.createElement('option');
+      option.value = dept;
+      option.textContent = dept;
+      departmentFilter.appendChild(option);
+    }
   });
 }
 
@@ -179,6 +194,18 @@ function updatePageTexts() {
     const key = element.getAttribute('data-translate-placeholder');
     element.placeholder = getTranslation(key);
   });
+
+  // تحديث خيارات فلتر التاريخ
+  const dateFilter = document.getElementById('date-filter');
+  if (dateFilter) {
+    dateFilter.querySelectorAll('option').forEach(opt => {
+      const key = opt.getAttribute('data-translate');
+      if (key) opt.textContent = getTranslation(key);
+    });
+  }
+
+  // تحديث خيارات فلتر الأقسام
+  populateDepartmentFilter();
 }
 
 // دالة تحديث البيانات

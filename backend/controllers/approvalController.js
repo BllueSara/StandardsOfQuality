@@ -556,7 +556,7 @@ const getAssignedApprovals = async (req, res) => {
     const userRole = decoded.role;
 
     const permsSet = await getUserPermissions(userId);
-    const canViewAll = userRole === 'admin' || permsSet.has('transfer_credits');
+    const canViewAll = userRole === 'admin' 
 
     // جلب كل الملفات (حسب الصلاحية)
     const departmentContentQuery = canViewAll

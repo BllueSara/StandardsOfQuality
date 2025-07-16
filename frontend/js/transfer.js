@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let departmentUsers = [];
 
+    // ترجمة
+    function getTranslation(key) {
+        const lang = localStorage.getItem('language') || 'ar';
+        const translations = window.translations || {};
+        return translations[lang]?.[key] || key;
+    }
+
     async function fetchApprovalSequence(departmentId) {
         const res = await fetch(`${apiBase}/departments/${departmentId}/approval-sequence`);
         const data = await res.json();
@@ -41,41 +48,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'فشل جلب المستخدمين');
+            if (!response.ok) throw new Error(data.message || getTranslation('error-loading'));
             departmentUsers = data.data || [];
         } catch (err) {
-            console.error('فشل جلب المستخدمين:', err);
+            console.error(getTranslation('error-loading'), err);
             departmentUsers = [];
         }
         // جلب التسلسل المحفوظ
         const sequence = await fetchApprovalSequence(deptId);
-        console.log('Fetched approval sequence:', sequence);
         if (sequence.length) {
             // اضبط عدد الأشخاص تلقائيًا حسب التسلسل (آخر عنصر غالبًا للجودة)
             const personsCountValue = sequence.length > 1 ? sequence.length - 1 : 1;
             personCount.value = personsCountValue;
             await renderPersonFields(personsCountValue);
-            console.log('Person fields rendered for count:', personsCountValue);
-            // استخدم setTimeout لضمان أن الحقول جاهزة قبل تعبئة القيم
             setTimeout(() => {
                 document.querySelectorAll('.person-select').forEach((select, idx) => {
                     if (sequence[idx]) select.value = sequence[idx];
                 });
-                console.log('Filled person-selects with sequence:', sequence);
                 const qualitySelect = document.getElementById('qualityUserSelect');
                 if (qualitySelect && sequence.length > document.querySelectorAll('.person-select').length) {
                     qualitySelect.value = sequence[sequence.length - 1];
-                    console.log('Filled qualityUserSelect with:', sequence[sequence.length - 1]);
                 }
                 renderPersonsChain(personsCountValue);
-                console.log('Rendered persons chain for count:', personsCountValue);
             }, 0);
         } else {
             // إذا لا يوجد تسلسل، أبقِ السلوك كما هو
             const count = parseInt(personCount.value);
             if (count > 0) {
                 await renderPersonFields(count);
-                console.log('No sequence found, rendered empty person fields for count:', count);
             }
         }
     });
@@ -86,11 +86,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const group = document.createElement('div');
             group.className = 'form-group';
             const label = document.createElement('label');
-            label.textContent = `اختر اسم الشخص ${i}`;
+            label.textContent = `${getTranslation('select-person')} ${i}`;
             const select = document.createElement('select');
             select.name = `person${i}`;
             select.className = 'person-select';
-            select.innerHTML = `<option value="">اختر الشخص</option>`;
+            select.innerHTML = `<option value="">${getTranslation('select-person')}</option>`;
             // عبئ الخيارات من departmentUsers
             departmentUsers.forEach(user => {
                 const opt = document.createElement('option');
@@ -116,10 +116,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'فشل جلب مستخدمي الجودة');
+            if (!response.ok) throw new Error(data.message || getTranslation('error-loading'));
             return data.data || [];
         } catch (err) {
-            console.error('فشل جلب مستخدمي الجودة:', err);
+            console.error(getTranslation('error-loading'), err);
             return [];
         }
     }
@@ -137,10 +137,10 @@ document.addEventListener('DOMContentLoaded', function() {
         qualityUserSelectDiv.style.marginBottom = '18px';
         qualityUserSelectDiv.innerHTML = `
             <label style="font-weight:600;display:block;margin-bottom:8px;">
-                اختيار الشخص المسؤول في قسم الجودة <span style='color:red;'>*</span>
+                ${getTranslation('select-quality-person')} <span style='color:red;'>*</span>
             </label>
             <select id="qualityUserSelect" class="person-select-quality" style="width:100%;max-width:300px;" required>
-                <option value="">اختر الشخص</option>
+                <option value="">${getTranslation('select-person')}</option>
             </select>
         `;
         personsChain.parentNode.insertBefore(qualityUserSelectDiv, personsChain);
@@ -172,10 +172,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (userObj) {
                     userName = userObj.name;
                 } else {
-                    userName = 'غير معروف';
+                    userName = getTranslation('unknown');
                 }
             }
-            names.push(userName || `الشخص ${names.length+1}`);
+            names.push(userName || `${getTranslation('person')} ${names.length+1}`);
         });
         // أضف الأشخاص المختارين من القسم
         for (let i = 0; i < count; i++) {
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
             node.className = 'person-node';
             node.innerHTML = `
                 <div class=\"person-circle\"><i class=\"fa fa-user\"></i></div>
-                <div class=\"person-name\">${names[i] || `الشخص ${i+1}`}</div>
+                <div class=\"person-name\">${names[i] || `${getTranslation('person')} ${i+1}`}</div>
             `;
             personsChain.appendChild(node);
             // سهم بين الأشخاص
@@ -228,20 +228,9 @@ document.addEventListener('DOMContentLoaded', function() {
             managerNode.className = 'person-node';
             managerNode.innerHTML = `
                 <div class="person-circle"><i class="fa fa-user"></i></div>
-                <div class="person-name">مدير المستشفى</div>
+                <div class="person-name">${getTranslation('hospital-manager')}</div>
             `;
             personsChain.appendChild(managerNode);
-        }
-    }
-
-    function getRole(name) {
-        switch(name) {
-            case 'أحمد محمد': return 'مدير القسم';
-            case 'سارة خالد': return 'مراجع الجودة';
-            case 'محمد عبدالله': return 'منسق القسم';
-            case 'منى علي': return 'مدقق داخلي';
-            case 'عمر يوسف': return 'رئيس شعبة';
-            default: return 'اختر الدور';
         }
     }
 
@@ -252,10 +241,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'فشل جلب الأقسام');
+            if (!response.ok) throw new Error(data.message || getTranslation('error-loading'));
 
             const lang = localStorage.getItem('language') || 'ar';
-            const defaultText = lang === 'ar' ? 'اختر القسم' : 'Select Department';
+            const defaultText = getTranslation('select-department');
             departmentSelect.innerHTML = `<option value="">${defaultText}</option>`;
 
             data.forEach(dept => {
@@ -273,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         } catch (err) {
             console.error(err);
-            departmentSelect.innerHTML = `<option value="">فشل جلب الأقسام</option>`;
+            departmentSelect.innerHTML = `<option value="">${getTranslation('error-loading')}</option>`;
         }
     }
 
@@ -305,19 +294,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         const qualitySelect = document.getElementById('qualityUserSelect');
         if (qualitySelect && qualitySelect.value) sequence.push(qualitySelect.value);
-        
-        // إذا أردت إضافة مدير المستشفى للتسلسل المرسل للسيرفر:
-        // const hospitalManagerId = "هنا_رقم_المدير";
-        // sequence.push(hospitalManagerId);
-        // مثال: إذا كان رقم المدير 1
-        // const hospitalManagerId = "1";
-        // sequence.push(hospitalManagerId);
-
         await saveApprovalSequence(deptId, sequence);
-        alert('تم تأكيد التحويل!');
+        alert(getTranslation('transfer-confirmed'));
         // أكمل منطق التحويل الحالي إذا لزم...
     }
 
     // استدعِ اختيار الجودة عند تحميل الصفحة
     renderQualityUserSelect();
+
+    // تحديث النصوص عند تغيير اللغة
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'language') {
+            // إعادة تعيين النصوص الثابتة
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                element.textContent = getTranslation(key);
+            });
+            document.querySelectorAll('[data-translate-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-translate-placeholder');
+                element.placeholder = getTranslation(key);
+            });
+            fetchDepartments();
+            renderQualityUserSelect();
+            if (personCount.value > 0) renderPersonFields(parseInt(personCount.value));
+        }
+    });
 }); 

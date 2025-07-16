@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const file = mainFileInput.files[0] || null;
         const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
         if (file && !allowedExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
-            alert('فقط الملفات التالية مسموح بها: PDF, DOC, DOCX, XLS, XLSX');
+            alert('Only the following file types are allowed: PDF, DOC, DOCX, XLS, XLSX');
             mainFileInput.value = '';
             selectedMainFile = null;
             renderMainFileList();
@@ -35,8 +35,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     function renderMainFileList() {
         if (selectedMainFile) {
-            mainFileList.innerHTML = `<div class="file-row"><i class="fa-regular fa-file-lines file-icon"></i> <span>${selectedMainFile.name}</span> <button class="delete-btn" title="حذف"><i class="fa-regular fa-trash-can"></i></button></div>`;
-            // زر حذف الملف الرئيسي
+            mainFileList.innerHTML = `<div class="file-row"><i class="fa-regular fa-file-lines file-icon"></i> <span>${selectedMainFile.name}</span> <button class="delete-btn" title="Delete"><i class="fa-regular fa-trash-can"></i></button></div>`;
+            // Delete main file button
             const delBtn = mainFileList.querySelector('.delete-btn');
             if (delBtn) {
                 delBtn.addEventListener('click', function() {
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         } else {
-            mainFileList.innerHTML = '<div class="file-row" style="color:#888"><span>لم يتم اختيار ملف رئيسي بعد</span></div>';
+            mainFileList.innerHTML = '<div class="file-row" style="color:#888"><span>No main file selected yet</span></div>';
         }
     }
     // عرض القائمة دائمًا عند التحميل
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const folderId = urlParams.get('folderId');
     if (!folderId) {
-        alert('لا يمكن رفع الملفات بدون تحديد مجلد. يرجى العودة واختيار المجلد أولاً.');
+        alert('Cannot upload files without selecting a folder. Please go back and select a folder first.');
         // يمكنك إعادة التوجيه تلقائياً إذا أردت:
         // window.location.href = 'departments.html';
     }
@@ -77,15 +77,15 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await response.json();
             if (response.ok) {
-                alert('تم رفع الملف الرئيسي بنجاح!');
+                alert('Main file uploaded successfully!');
                 selectedMainFile = null;
                 mainFileInput.value = '';
                 renderMainFileList();
             } else {
-                alert(data.message || 'حدث خطأ أثناء رفع الملف الرئيسي');
+                alert(data.message || 'An error occurred while uploading the main file');
             }
         } catch (err) {
-            alert('فشل الاتصال بالسيرفر');
+            alert('Failed to connect to the server');
         }
     });
 
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     validFiles.push(file);
                 }
             } else {
-                alert('فقط الملفات التالية مسموح بها: PDF, DOC, DOCX, XLS, XLSX\n' + file.name);
+                alert('Only the following file types are allowed: PDF, DOC, DOCX, XLS, XLSX\n' + file.name);
             }
         });
         selectedFiles = selectedFiles.concat(validFiles);
@@ -128,9 +128,9 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedFiles.forEach((file) => {
                 const row = document.createElement('div');
                 row.className = 'file-row';
-                row.innerHTML = `<i class=\"fa-regular fa-file-lines file-icon\"></i> <span>${file.name}</span> <button class=\"delete-btn\" title=\"حذف\"><i class=\"fa-regular fa-trash-can\"></i></button>`;
+                row.innerHTML = `<i class=\"fa-regular fa-file-lines file-icon\"></i> <span>${file.name}</span> <button class=\"delete-btn\" title=\"Delete\"><i class=\"fa-regular fa-trash-can\"></i></button>`;
                 row.querySelector('.delete-btn').addEventListener('click', function() {
-                    // حذف الملف بناءً على اسمه وحجمه (لضمان الدقة)
+                    // Delete file by name and size (for accuracy)
                     const idx = selectedFiles.findIndex(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified);
                     if (idx !== -1) {
                         selectedFiles.splice(idx, 1);
@@ -140,11 +140,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 filesList.appendChild(row);
             });
         } else {
-            filesList.innerHTML = '<div class="file-row" style="color:#888"><span>لم يتم اختيار ملفات بعد</span></div>';
+            filesList.innerHTML = '<div class="file-row" style="color:#888"><span>No files selected yet</span></div>';
         }
-        // عرض عدد الملفات أسفل القائمة
+        // Show number of files below the list
         if (filesCount) {
-            filesCount.textContent = selectedFiles.length ? `تم رفع ${selectedFiles.length} ملف${selectedFiles.length > 1 ? 'ات' : ''}` : '';
+            filesCount.textContent = selectedFiles.length ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's have' : ' has'} been selected` : '';
         }
     }
     // عرض القائمة دائمًا عند التحميل
@@ -155,20 +155,20 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadAllBtn.addEventListener('click', async function() {
         if (!folderId) return;
         if (!selectedMainFile && !selectedFiles.length) {
-            alert('يرجى اختيار ملف رئيسي أو ملفات فرعية');
+            alert('Please select a main file or sub files');
             return;
         }
         const token = localStorage.getItem('token');
         let mainFileUploaded = false;
         let subFilesUploaded = false;
         let mainFileId = null;
-        // رفع الملف الرئيسي أولاً إذا كان موجودًا
+        // Upload main file first if present
         if (selectedMainFile) {
             const formData = new FormData();
             formData.append('file', selectedMainFile);
             formData.append('notes', '');
             formData.append('title', selectedMainFile.name);
-            formData.append('is_main_file', 'true'); // مهم جداً
+            formData.append('is_main_file', 'true'); // Very important
             try {
                 const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {
                     method: 'POST',
@@ -178,20 +178,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 if (response.ok) {
                     mainFileUploaded = true;
-                    mainFileId = data.contentId; // احفظ id الملف الرئيسي
+                    mainFileId = data.contentId; // Save main file id
                 } else {
-                    alert(data.message || 'حدث خطأ أثناء رفع الملف الرئيسي');
+                    alert(data.message || 'An error occurred while uploading the main file');
                     return;
                 }
             } catch (err) {
-                alert('فشل الاتصال بالسيرفر عند رفع الملف الرئيسي');
+                alert('Failed to connect to the server while uploading the main file');
                 return;
             }
         }
-        // رفع الملفات الفرعية إذا كانت موجودة
+        // Upload sub files if present
         if (selectedFiles.length) {
             if (!mainFileId) {
-                alert('يجب رفع الملف الرئيسي أولاً للحصول على معرفه.');
+                alert('You must upload the main file first to get its ID.');
                 return;
             }
             for (const file of selectedFiles) {
@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('file', file);
                 formData.append('notes', '');
                 formData.append('title', file.name);
-                formData.append('related_content_id', mainFileId); // أرسل id الملف الرئيسي للفرعي
+                formData.append('related_content_id', mainFileId); // Send main file id for sub file
                 try {
                     const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {
                         method: 'POST',
@@ -210,22 +210,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (response.ok) {
                         subFilesUploaded = true;
                     } else {
-                        alert(data.message || 'حدث خطأ أثناء رفع أحد الملفات الفرعية');
+                        alert(data.message || 'An error occurred while uploading one of the sub files');
                         return;
                     }
                 } catch (err) {
-                    alert('فشل الاتصال بالسيرفر عند رفع أحد الملفات الفرعية');
+                    alert('Failed to connect to the server while uploading one of the sub files');
                     return;
                 }
             }
         }
-        // بعد النجاح
+        // After success
         if (mainFileUploaded && subFilesUploaded) {
-            alert('تم رفع الملف الرئيسي والملفات الفرعية بنجاح!');
+            alert('Main file and sub files uploaded successfully!');
         } else if (mainFileUploaded) {
-            alert('تم رفع الملف الرئيسي بنجاح!');
+            alert('Main file uploaded successfully!');
         } else if (subFilesUploaded) {
-            alert('تم رفع الملفات الفرعية بنجاح!');
+            alert('Sub files uploaded successfully!');
         }
         selectedMainFile = null;
         mainFileInput.value = '';
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadDropBtn.addEventListener('dblclick', async function(e) {
             e.preventDefault();
             if (!selectedFiles.length) {
-                alert('يرجى اختيار ملفات');
+                alert('Please select files');
                 return;
             }
             if (!folderId) return;
@@ -262,15 +262,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const data = await response.json();
                 if (response.ok) {
-                    alert('تم رفع الملفات بنجاح!');
+                    alert('Files uploaded successfully!');
                     selectedFiles = [];
                     fileInput.value = '';
                     renderFilesList();
                 } else {
-                    alert(data.message || 'حدث خطأ أثناء رفع الملفات');
+                    alert(data.message || 'An error occurred while uploading the files');
                 }
             } catch (err) {
-                alert('فشل الاتصال بالسيرفر');
+                alert('Failed to connect to the server');
             }
         });
     }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رفع ملفات فرعية</title>
+    <title data-translate="upload-files-title">رفع ملفات فرعية</title>
     <link rel="stylesheet" href="../css/upload-files.css">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,28 +34,30 @@
     <main>
         <div class="upload-container">
             <!-- كارد رفع الملف الرئيسي -->
-                     <h1 style="text-align:center; font-size:2rem; font-weight:bold; margin-bottom:24px; color:#1746a2;">رفع عدة الملفات</h1>
+            <h1 style="text-align:center; font-size:2rem; font-weight:bold; margin-bottom:24px; color:#1746a2;" data-translate="upload-multiple-title">رفع عدة الملفات</h1>
 
             <div class="main-upload-drop">
                 <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                <div class="upload-title">قم بإضافة الملف الرئيسي</div>
-                <div class="upload-desc">اسحب وأفلت الملف هنا أو انقر للتصفح</div>
-                <button class="main-upload-btn">تصفح الملف الرئيسي</button>
+                <div class="upload-title" data-translate="add-main-file">قم بإضافة الملف الرئيسي</div>
+                <div class="upload-desc" data-translate="main-file-desc">اسحب وأفلت الملف هنا أو انقر للتصفح</div>
+                <button class="main-upload-btn" data-translate="browse-main-file">تصفح الملف الرئيسي</button>
                 <div class="main-file-list"></div>
             </div>
             <!-- كارد رفع الملفات الفرعية -->
             <div class="upload-drop">
                 <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                <div class="upload-title">قم بإضافة ملفات فرعية</div>
-                <div class="upload-desc">اسحب وأفلت الملفات هنا أو انقر للتصفح</div>
-                <button class="upload-btn">تصفح الملفات</button>
+                <div class="upload-title" data-translate="add-sub-files">قم بإضافة ملفات فرعية</div>
+                <div class="upload-desc" data-translate="sub-files-desc">اسحب وأفلت الملفات هنا أو انقر للتصفح</div>
+                <button class="upload-btn" data-translate="browse-sub-files">تصفح الملفات</button>
                 <div class="files-list"></div>
                 <div class="files-count"></div>
             </div>
             <!-- زر رفع جميع الملفات مكان اختيار القسم -->
-            <button class="upload-all-btn" style="margin: 18px auto 0 auto; display: block; padding: 14px 48px; font-size: 1.18rem; font-weight: bold; background: #2563eb; color: #fff; border: none; border-radius: 12px; cursor: pointer;">رفع جميع الملفات</button>
+            <button class="upload-all-btn" style="margin: 18px auto 0 auto; display: block; padding: 14px 48px; font-size: 1.18rem; font-weight: bold; background: #2563eb; color: #fff; border: none; border-radius: 12px; cursor: pointer;" data-translate="upload-all-files">رفع جميع الملفات</button>
         </div>
     </main>
+            <script src="../js/language.js"></script>
+
     <script src="../js/upload-files.js"></script>
 </body>
 </html> 

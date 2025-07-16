@@ -1,4 +1,4 @@
-* {
+body,:placeholder-shown,input,select,textarea,button {
     font-family: 'Tajawal', Arial, sans-serif;
     background: #ffffff;
     margin: 0;
@@ -11,7 +11,25 @@
   width: 100%;
   top: 10px;
 }
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
 
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
 /* زرّ الرجوع */
 .back-btn {
   position: absolute;
@@ -78,14 +96,7 @@
   opacity: 0.7;
 }
 
-.main-header {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 16px 32px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+
 
 .header-container {
   display: flex;
@@ -115,7 +126,7 @@ main {
     padding: 48px 38px 28px 38px;
     max-width: 700px;
     width: 100%;
-    margin: 60px auto;
+    margin: 100px auto;
     display: flex;
     flex-direction: column;
     gap: 32px;

@@ -22,7 +22,7 @@
     </div>
   </header>
   <div class="header-actions">
-    <button class="back-btn" onclick="history.back()">
+    <button class="back-btn" id="backBtn" onclick="history.back()">
      <i class="fas fa-arrow-right" id="backIcon"></i>      <span data-translate="back">رجوع</span>
     </button>
     <button class="home-btn" onclick="window.location.href='index.html'">
@@ -34,19 +34,19 @@
         <h1 class="page-title" data-translate="track-request-title">تتبع الملف</h1>
         <div class="request-info" id="request-info">
             <div class="info-item">
-                <span class="info-label"><i class="fa-regular fa-file-lines"></i> رقم الطلب</span>
+                <span class="info-label" data-translate="file-id"><i class="fa-regular fa-file-lines"></i> رقم الطلب</span>
                 <span class="info-value"><i class="fa-regular fa-file-lines"></i> #--</span>
             </div>
             <div class="info-item">
-                <span class="info-label"><i class="fa-regular fa-file"></i> العنوان</span>
+                <span class="info-label" data-translate="title"><i class="fa-regular fa-file"></i> العنوان</span>
                 <span class="info-value">--</span>
             </div>
             <div class="info-item">
-                <span class="info-label"><i class="fa-regular fa-calendar"></i> تاريخ الإنشاء</span>
+                <span class="info-label" data-translate="created-at"><i class="fa-regular fa-calendar"></i> تاريخ الإنشاء</span>
                 <span class="info-value">--</span>
             </div>
             <div class="info-item">
-                <span class="info-label"><i class="fa-regular fa-user"></i> أنشئ بواسطة</span>
+                <span class="info-label" data-translate="created-by"><i class="fa-regular fa-user"></i> أنشئ بواسطة</span>
                 <span class="info-value">--</span>
             </div>
         </div>
@@ -60,12 +60,14 @@
         </div>
         <div class="footer-info" id="footer-info">
             <div class="footer-row">
-                <span>تاريخ آخر تحديث:</span>
+                <span data-translate="last-update">تاريخ آخر تحديث:</span>
                 <div>--</div>
             </div>
             <div class="footer-update">--</div>
         </div>
     </main>
+        <script src="../js/language.js"></script>
+
     <script src="../js/track-request.js"></script>
 </body>
 </html> 

@@ -19,10 +19,10 @@ document.addEventListener('DOMContentLoaded', function () {
             renderTimeline(data.timeline, data.pending);
             renderFooterInfo(data.content);
         } else {
-            showError('تعذر جلب بيانات الطلب');
+            showError(getTranslation('failed-to-load-request'));
         }
     })
-    .catch(() => showError('حدث خطأ أثناء الاتصال بالخادم'));
+    .catch(() => showError(getTranslation('error-loading-data')));
 
     function getContentId() {
         // استخراج من الرابط (?id=) أو استخدم رقم افتراضي
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="track-user">${stage.approver || '-'}</div>
                     <div class="track-date"><i class="fa-regular fa-calendar"></i> -</div>
                 </div>
-                <div class="track-status pending">قيد المراجعة</div>
+                <div class="track-status pending">${getTranslation('under-review')}</div>
             `;
             trackList.appendChild(card);
         });
@@ -110,9 +110,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function getStatusText(status) {
-        if (status === 'approved') return 'تمت الموافقة';
-        if (status === 'rejected') return 'مرفوض';
-        return 'قيد المراجعة';
+        if (status === 'approved') return getTranslation('approved');
+        if (status === 'rejected') return getTranslation('rejected');
+        return getTranslation('under-review');
     }
 
     function showError(msg) {

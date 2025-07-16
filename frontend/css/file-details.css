@@ -11,10 +11,28 @@
   width: 100%;
   top: 10px;
 }
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
 
-/* زرّ الرجوع */
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
 .back-btn {
   position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -22,14 +40,14 @@
   gap: 4px;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 18px;      /* حجم يناسب النص */
   color: #1D4ED8;
   cursor: pointer;
-  padding: 0 12px;
-  font-family: inherit;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+  flex-direction: row-reverse;
 }
 
-/* اتجاه زر الرجوع حسب اللغة */
 :lang(ar) .back-btn,
 [dir="rtl"] .back-btn {
   right: 50px;
@@ -41,7 +59,7 @@
 [dir="ltr"] .back-btn {
   left: 50px;
   right: auto;
-  flex-direction: row;
+  flex-direction: row-reverse;
 }
 
 /* يقلب أيقونات FA داخل back-btn في الوضع LTR */
@@ -53,6 +71,7 @@
 [dir="ltr"] .back-btn .fa-arrow-left {
   transform: none;
 }
+
 
 /* زرّ الرئيسية في المنتصف */
 .home-btn {

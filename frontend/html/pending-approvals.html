@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ملفات بانتظار الاعتماد</title>
+    <title data-translate="pending-approvals-title">ملفات بانتظار الاعتماد</title>
     <link rel="stylesheet" href="../css/pending-approvals.css">
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
@@ -24,107 +24,38 @@
         </div>
     </header>
     <div class="header-actions">
-        <button class="back-btn" onclick="history.back()">
+        <button class="back-btn" id="backBtn" onclick="history.back()">
             <i class="fas fa-arrow-right" id="backIcon"></i>
-            <span>رجوع</span>
+            <span data-translate="back">رجوع</span>
         </button>
         <button class="home-btn" onclick="window.location.href='index.html'">
             <i class="fas fa-home"></i>
-            <span>الرئيسية</span>
+            <span data-translate="home">الرئيسية</span>
         </button>
     </div>
     <main>
         <div class="page-header">
             <div class="pending-title">
-                <span>ملفات بانتظار الاعتماد</span>
-                <span class="pending-count">12</span>
+                <span data-translate="pending-approvals">ملفات بانتظار الاعتماد</span>
+                <span class="pending-count">0</span>
             </div>
         </div>
         <div class="filters-bar">
             <div class="search-box">
-                <i class="fa fa-search"></i>
-                <input type="text" class="search-input" id="searchInput" placeholder="...البحث عن ملف">
+                <input type="text" class="search-input" id="searchInput" data-translate-placeholder="search-files" placeholder="...البحث عن ملف">
             </div>
-            <button class="filter-btn"><i class="fa-regular fa-calendar"></i> التاريخ</button>
             <select id="statusFilter" class="filter-select">
-                <option value="all">جميع الحالات</option>
-                <option value="pending">قيد الاعتماد</option>
-                <option value="approved">معتمد</option>
-                <option value="rejected">مرفوض</option>
+                <option value="all" data-translate="all-statuses">جميع الحالات</option>
+                <option value="pending" data-translate="pending">قيد الاعتماد</option>
+                <option value="approved" data-translate="approved">معتمد</option>
+                <option value="rejected" data-translate="rejected">مرفوض</option>
             </select>
             <select id="deptFilter" class="filter-select">
-                <option>جميع الأقسام</option>
+                <option value="all" data-translate="all-departments">جميع الأقسام</option>
             </select>
         </div>
         <div class="approvals-list">
-            <!-- بطاقة 1 -->
-            <div class="approval-card">
-                <div class="card-header">
-                    <span class="file-title">طلب الموافقة على الميزانية</span>
-                </div>
-                <div class="card-body">
-                    <div class="user-info">
-                        <div class="user-details">
-                            <span class="user-name">سارة خالد</span>
-                            <span class="user-meta"><i class="fa fa-building"></i> قسم المالية</span>
-                            <span class="user-meta"><i class="fa-regular fa-calendar"></i> 21 يناير 2024</span>
-                        </div>
-                    </div>
-                    <div class="actions"></div>
-                    <div class="status approved">معتمد</div>
-                    <div class="status-info approved"><i class="fa fa-check-circle"></i> تم الاعتماد في 22 يناير 2024</div>
-                </div>
-            </div>
-            <!-- بطاقة 2 -->
-            <div class="approval-card">
-                <div class="card-header">
-                    <span class="file-title">تقرير المبيعات الشهري</span>
-                </div>
-                <div class="card-body">
-                    <div class="user-info">
-                        <div class="user-details">
-                            <span class="user-name">محمد أحمد</span>
-                            <span class="user-meta"><i class="fa fa-building"></i> قسم المبيعات</span>
-                            <span class="user-meta"><i class="fa-regular fa-calendar"></i> 22 يناير 2024</span>
-                        </div>
-                    </div>
-                    <div class="actions"></div>
-                </div>
-            </div>
-            <!-- بطاقة 3 -->
-            <div class="approval-card">
-                <div class="card-header">
-                    <span class="file-title">تقرير المبيعات الشهري</span>
-                </div>
-                <div class="card-body">
-                    <div class="user-info">
-                        <div class="user-details">
-                            <span class="user-name">محمد أحمد</span>
-                            <span class="user-meta"><i class="fa fa-building"></i> قسم المبيعات</span>
-                            <span class="user-meta"><i class="fa-regular fa-calendar"></i> 22 يناير 2024</span>
-                        </div>
-                    </div>
-                    <div class="actions"></div>
-                </div>
-            </div>
-            <!-- بطاقة 4 -->
-            <div class="approval-card">
-                <div class="card-header">
-                    <span class="file-title">خطة التسويق الربع سنوية</span>
-                </div>
-                <div class="card-body">
-                    <div class="user-info">
-                        <div class="user-details">
-                            <span class="user-name">عمر محمد</span>
-                            <span class="user-meta"><i class="fa fa-building"></i> قسم التسويق</span>
-                            <span class="user-meta"><i class="fa-regular fa-calendar"></i> 20 يناير 2024</span>
-                        </div>
-                    </div>
-                    <div class="actions"></div>
-                    <div class="status rejected">مرفوض</div>
-                    <div class="status-info rejected"><i class="fa fa-times-circle"></i> يحتاج إلى مراجعة الأهداف</div>
-                </div>
-            </div>
+            <!-- سيتم توليد البطاقات ديناميكياً من جافاسكريبت -->
         </div>
     </main>
         
@@ -221,14 +152,14 @@
         <div class="modal">
             <div class="modal-header">
                 <button class="modal-close" data-modal="fileTransferModal">&times;</button>
-                <h2 class="modal-title">تحويل الملف</h2>
+                <h2 class="modal-title" data-translate="transfer-file">تحويل الملف</h2>
             </div>
             <div class="modal-body">
-                <p class="page-desc" style="margin-bottom: 24px;">قم بتحويل الملف إلى الأشخاص المطلوبين</p>
-                <p class="page-desc" style="margin-bottom: 24px; color: #666; font-size: 0.95rem;">سيتم إرسال الملف لغير الأشخاص الأساسيين</p>
+                <p class="page-desc" style="margin-bottom: 24px;" data-translate="transfer-file">قم بتحويل الملف إلى الأشخاص المطلوبين</p>
+                <p class="page-desc" style="margin-bottom: 24px; color: #666; font-size: 0.95rem;" data-translate="transfer-file">سيتم إرسال الملف لغير الأشخاص الأساسيين</p>
                 <form id="fileTransferForm" autocomplete="off">
                     <div class="form-group">
-                        <label>حدد عدد الأشخاص</label>
+                        <label data-translate="selected-count">حدد عدد الأشخاص</label>
                         <select id="personCount" required>
                             <option value="">اختر العدد</option>
                             <option value="1">1</option>
@@ -239,9 +170,9 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>اختر القسم</label>
+                        <label data-translate="department">اختر القسم</label>
                         <select id="transferDept" required>
-                            <option value="" disabled selected>اختر القسم</option>
+                            <option value="" disabled selected data-translate="select-department">اختر القسم</option>
                         </select>
                     </div>
                     <div id="personsFields"></div>
@@ -249,12 +180,14 @@
                 <div id="transferPersonsChain" class="persons-chain"></div>
             </div>
             <div class="modal-footer">
-                <button id="btnTransferConfirm" class="btn-confirm">تأكيد التحويل</button>
-                <button class="btn-cancel modal-close" data-modal="fileTransferModal">إلغاء</button>
+                <button id="btnTransferConfirm" class="btn-confirm" data-translate="confirm">تأكيد التحويل</button>
+                <button class="btn-cancel modal-close" data-modal="fileTransferModal" data-translate="cancel">إلغاء</button>
             </div>
         </div>
     </div>
 </body>
+        <script src="../js/language.js"></script>
+
       <script src="/frontend/js/check-status.js"></script>
       <script src="/frontend/js/pending-approvals.js"></script>
 

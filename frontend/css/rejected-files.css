@@ -11,7 +11,25 @@
   width: 100%;
   top: 10px;
 }
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
 
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
 /* زرّ الرجوع */
 .back-btn {
   position: absolute;
@@ -78,14 +96,7 @@
   opacity: 0.7;
 }
 
-.main-header {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 16px 32px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+
 
 .header-container {
   display: flex;
@@ -111,8 +122,8 @@ main {
     font-size: 1.5rem;
     font-weight: 700;
     color: #111827;
-    margin-bottom: 24px;
-    margin-top: 0;
+    margin-bottom: 50px;
+    margin-top: 100px;
 }
 .search-bar {
     position: relative;
@@ -270,4 +281,61 @@ main {
         padding: 12px 6px 10px 6px;
         gap: 8px;
     }
+} 
+
+/* Dropdown (select) styles for filters-row */
+.filters-row select {
+  font-family: 'Tajawal', Arial, sans-serif;
+  font-size: 1rem;
+  padding: 0.5rem 2.5rem 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: #fff url('data:image/svg+xml;utf8,<svg fill="%23666" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z"/></svg>') no-repeat;
+  background-position: left 0.75rem center;
+  background-size: 1.2em;
+  color: #222;
+  margin-inline-end: 1rem;
+  min-width: 160px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+}
+
+html[dir="rtl"] .filters-row select {
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  background-position: right 0.75rem center;
+  margin-inline-end: 0;
+  margin-inline-start: 1rem;
+}
+
+.filters-row select:focus {
+  border-color: #38b6ff;
+  box-shadow: 0 0 0 2px #38b6ff33;
+  outline: none;
+}
+
+.filters-row select:hover {
+  border-color: #38b6ff;
+}
+
+.filters-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0 1rem 0;
+  flex-wrap: wrap;
+}
+
+.rejected-count-label {
+  font-weight: 600;
+  color: #444;
+  margin-inline-end: 0.25rem;
+}
+
+#rejected-count {
+  font-weight: bold;
+  color: #38b6ff;
+  font-size: 1.1em;
 } 

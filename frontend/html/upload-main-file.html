@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>رفع ملف جديد</title>
     <link rel="stylesheet" href="../css/upload-main-file.css">
+            <link rel="stylesheet" href="../css/shared.css">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
@@ -36,18 +38,20 @@
         <form class="upload-form">
             <div class="upload-drop">
                 <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                <div class="upload-title">قم بسحب وإفلات الملفات هنا</div>
-                <div class="upload-or">أو</div>
-                <button class="upload-btn" type="button">اختر ملفًا</button>
+                <div class="upload-title" data-translate="upload-drop-title">قم بسحب وإفلات الملفات هنا</div>
+                <div class="upload-or" data-translate="upload-or">أو</div>
+                <button class="upload-btn" type="button" data-translate="choose-file-btn">اختر ملفًا</button>
             </div>
             <div class="upload-info">
-                <div>الملفات المدعومة: <span>PDF فقط</span></div>
+                <div data-translate="supported-files-label">الملفات المدعومة</div>
             </div>
             <!-- مكان عرض اسم الملف وحجمه بعد الاختيار -->
             <div class="file-info"></div>
-            <button class="main-upload-btn" type="submit">رفع الملف</button>
+            <button class="main-upload-btn" type="submit" data-translate="upload-file-btn">رفع الملف</button>
         </form>
     </main>
+        <script src="../js/language.js"></script>
+
     <script src="../js/upload-main-file.js"></script>
 </body>
 </html> 

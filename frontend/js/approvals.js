@@ -21,9 +21,18 @@ function getLocalizedDepartmentName(deptName) {
   }
 }
 
+// دالة ترجمة النصوص
+function getTranslation(key) {
+  const lang = localStorage.getItem('language') || 'ar';
+  if (window.translations && window.translations[lang] && window.translations[lang][key]) {
+    return window.translations[lang][key];
+  }
+  return key;
+}
+
 // Fetch approvals from backend
 async function fetchApprovals() {
-  if (!token) return alert('الرجاء تسجيل الدخول');
+  if (!token) return alert(getTranslation('please-login'));
   try {
     const res = await fetch(`${apiBase}/contents/my-uploads`, {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -37,7 +46,7 @@ async function fetchApprovals() {
     await setupFilters();
   } catch (err) {
     console.error('Error fetching approvals:', err);
-    alert('حدث خطأ أثناء جلب طلباتك');
+    alert(getTranslation('error-fetching-files'));
   }
 }
 
@@ -60,7 +69,7 @@ async function setupFilters() {
     const departments = Array.isArray(data) ? data : (data.data || []);
     const currentLang = localStorage.getItem('language') || 'ar';
     
-    deptFilter.innerHTML = '<option value="all">جميع الأقسام</option>';
+    deptFilter.innerHTML = `<option value="all" data-translate="all-departments">${getTranslation('all-departments')}</option>`;
     departments.forEach(dept => {
       const opt = document.createElement('option');
       opt.value = dept.id;
@@ -76,7 +85,7 @@ async function setupFilters() {
 function renderApprovals() {
   tableBody.innerHTML = '';
   if (filteredApprovals.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="5">لا توجد بيانات</td></tr>';
+    tableBody.innerHTML = `<tr><td colspan="5" data-translate="no-uploaded-files">${getTranslation('no-uploaded-files')}</td></tr>`;
     return;
   }
   filteredApprovals.forEach(item => {
@@ -87,8 +96,8 @@ function renderApprovals() {
       <td>${formatDate(item.created_at)}</td>
       <td><span class="status ${item.approval_status}">${statusLabel(item.approval_status)}</span></td>
       <td>
-        <button class="track-btn" data-id="${item.id}">تتبع الملف</button>
-        <i class="fa-regular fa-eye fa-blue action-icon" title="عرض" data-id="${item.id}" data-file="${item.file_path}"></i>
+        <button class="track-btn" data-id="${item.id}" data-translate="track">${getTranslation('track')}</button>
+        <i class="fa-regular fa-eye fa-blue action-icon" title="${getTranslation('view')}" data-id="${item.id}" data-file="${item.file_path}"></i>
       </td>
     `;
     tableBody.appendChild(tr);
@@ -103,12 +112,13 @@ function formatDate(dateStr) {
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Status label in Arabic
+// Status label in current language
 function statusLabel(status) {
+  const lang = localStorage.getItem('language') || 'ar';
   switch (status) {
-    case 'pending': return 'قيد الاعتماد';
-    case 'approved': return 'معتمد';
-    case 'rejected': return 'مرفوض';
+    case 'pending': return getTranslation('pending');
+    case 'approved': return getTranslation('approved');
+    case 'rejected': return getTranslation('rejected');
     default: return status;
   }
 }

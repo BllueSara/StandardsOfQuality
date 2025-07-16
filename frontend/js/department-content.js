@@ -43,7 +43,7 @@ const permissions = {
   canEditContentName: false,
   canDeleteContent: false,
   canDeleteContentName: false,
-  canAddOldContent: false
+  canAddManyContent: false // جديد
 };
 function getToken() {
   const token = localStorage.getItem('token');
@@ -782,6 +782,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 
   await fetchPermissions();
+  renderAddSubContentButton(); // ← أضف هذا السطر بعد جلب الصلاحيات
   // أخف أو أظهر الأزرار العامّة
   if (!permissions.canAddFolder && addFolderBtn) addFolderBtn.style.display = 'none';
   if (!permissions.canAddContent && addContentBtn) addContentBtn.style.display = 'none';
@@ -830,13 +831,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (keys.includes('delete_folder_name')) permissions.canDeleteFolderName = true;
     // وبالمثل لمحتوى الملفات:
     if (keys.includes('add_content')) permissions.canAddContent = true;
+    if (keys.includes('add_many_content')) permissions.canAddManyContent = true; // جديد
     if (keys.includes('edit_content')) permissions.canEditContent = true;
     if (keys.includes('delete_content')) permissions.canDeleteContent = true;
     if (keys.includes('add_content_name')) permissions.canAddContentName = true;
     if (keys.includes('edit_content_name')) permissions.canEditContentName = true;
     if (keys.includes('delete_content_name')) permissions.canDeleteContentName = true;
 
-    if (keys.includes('add_old_content')) permissions.canAddOldContent = true;
   }
 
   // دالة لجلب مجلدات القسم بناءً على departmentId
@@ -1063,8 +1064,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             // بادج رئيسي أو رقم فرعي
             let badge = '';
+            const lang = localStorage.getItem('language') || 'ar';
+            let mainFileBadgeText = 'ملف رئيسي';
+            if (window.translations && window.translations[lang] && window.translations[lang]['main-file']) {
+              mainFileBadgeText = window.translations[lang]['main-file'];
+            } else if (lang === 'en') {
+              mainFileBadgeText = 'Main File';
+            }
             if (isMain) {
-              badge = `<span class="main-label" style="color:#fff;background:#1D4ED8;padding:2px 8px;border-radius:4px;margin-left:8px;">ملف رئيسي</span>`;
+              badge = `<span class="main-label" style="color:#fff;background:#1D4ED8;padding:2px 8px;border-radius:4px;margin-left:8px;">${mainFileBadgeText}</span>`;
             } else if (subIndex) {
               badge = `<span class="sub-index" style="color:#fff;background:#1D4ED8;padding:2px 8px;border-radius:4px;margin-left:8px;">${subIndex}</span>`;
             }
@@ -1081,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                                     <img src="../images/delet.svg" alt="حذف">
                                   </a>`;
             }
-            if (isMain) {
+            if (isMain && permissions.canAddManyContent) {
               icons += `<button class="add-subfile-btn" title="إضافة ملف فرعي" style="margin-right:6px;">
               <i class="fa fa-plus"></i>
             </button>`;
@@ -1777,7 +1785,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       if (response.ok) {
         showToast(data.message || 'تم حذف المجلد بنجاح!', 'success');
         closeDeleteFolderModal();
-        currentFolderId = null; // ⬅️ أضف هذا
+        currentFolderId = null; // ⬅️ أضف هذا السطر
         fetchFolders(currentDepartmentId);
 
 
@@ -2408,48 +2416,76 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Remove old content mode and modal logic for add content/add old content
   // Create new buttons for Add Content and Add Sub Content
-  const addContentBtnDynamic = document.createElement('button');
-  addContentBtnDynamic.className = 'btn-primary';
-  addContentBtnDynamic.id = 'addContentBtnDynamic';
-  addContentBtnDynamic.type = 'button';
-  addContentBtnDynamic.innerHTML = `<span data-translate="add-content">إضافة محتوى</span>`;
-  addContentBtnDynamic.style.marginRight = '8px';
 
-  const addSubContentBtnDynamic = document.createElement('button');
-  addSubContentBtnDynamic.className = 'btn-primary';
-  addSubContentBtnDynamic.id = 'addSubContentBtnDynamic';
-  addSubContentBtnDynamic.type = 'button';
-  addSubContentBtnDynamic.innerHTML = `<span data-translate="add-sub-content">إضافة محتويات فرعية</span>`;
-  addSubContentBtnDynamic.style.marginRight = '8px';
 
-  // Insert the new buttons into the file-controls-bar
-  const fileControlsBar = document.querySelector('.file-controls-bar');
-  if (fileControlsBar) {
-    // Remove any existing dynamic buttons if present
-    const oldAddContentBtnDynamic = document.getElementById('addContentBtnDynamic');
-    if (oldAddContentBtnDynamic) oldAddContentBtnDynamic.remove();
-    const oldAddSubContentBtnDynamic = document.getElementById('addSubContentBtnDynamic');
-    if (oldAddSubContentBtnDynamic) oldAddSubContentBtnDynamic.remove();
-    // Insert new buttons
-    fileControlsBar.appendChild(addContentBtnDynamic);
-    fileControlsBar.appendChild(addSubContentBtnDynamic);
+  // زر إضافة محتوى
+  if (permissions.canAddContent) {
+    const addContentBtnDynamic = document.createElement('button');
+    addContentBtnDynamic.className = 'btn-primary';
+    addContentBtnDynamic.id = 'addContentBtnDynamic';
+    addContentBtnDynamic.type = 'button';
+    // ترجمة الزر حسب اللغة
+    const lang = localStorage.getItem('language') || 'ar';
+    let addContentText = 'إضافة محتوى';
+    if (window.translations && window.translations[lang] && window.translations[lang]['add-content']) {
+      addContentText = window.translations[lang]['add-content'];
+    } else if (lang === 'en') {
+      addContentText = 'Add Content';
+    }
+    addContentBtnDynamic.innerHTML = `<span data-translate="add-content">${addContentText}</span>`;
+    addContentBtnDynamic.style.marginRight = '8px';
+    const fileControlsBar = document.querySelector('.file-controls-bar');
+    if (fileControlsBar) {
+      const oldAddContentBtnDynamic = document.getElementById('addContentBtnDynamic');
+      if (oldAddContentBtnDynamic) oldAddContentBtnDynamic.remove();
+      fileControlsBar.appendChild(addContentBtnDynamic);
+    }
+    addContentBtnDynamic.addEventListener('click', function () {
+      if (!selectedFolderId) {
+        showToast(lang === 'en' ? 'Please select a folder first' : 'يرجى اختيار مجلد أولاً', 'error');
+        return;
+      }
+      window.location.href = 'upload-main-file.html?folderId=' + selectedFolderId;
+    });
   }
 
-  // Redirect logic for the new buttons
-  addContentBtnDynamic.addEventListener('click', function () {
-    if (!selectedFolderId) {
-      showToast('يرجى اختيار مجلد أولاً', 'error');
-      return;
+  // زر إضافة محتويات فرعية
+  // اجعل الزر يظهر فقط إذا كانت الصلاحية canAddManyContent مفعلة
+  function renderAddSubContentButton() {
+    if (permissions.canAddManyContent) {
+      const addSubContentBtnDynamic = document.createElement('button');
+      addSubContentBtnDynamic.className = 'btn-primary';
+      addSubContentBtnDynamic.id = 'addSubContentBtnDynamic';
+      addSubContentBtnDynamic.type = 'button';
+      // ترجمة الزر حسب اللغة
+      const lang = localStorage.getItem('language') || 'ar';
+      let addSubContentText = 'إضافة محتويات فرعية';
+      if (window.translations && window.translations[lang] && window.translations[lang]['add-sub-content']) {
+        addSubContentText = window.translations[lang]['add-sub-content'];
+      } else if (lang === 'en') {
+        addSubContentText = 'Add Sub Files';
+      }
+      addSubContentBtnDynamic.innerHTML = `<span data-translate="add-sub-content">${addSubContentText}</span>`;
+      addSubContentBtnDynamic.style.marginRight = '8px';
+      const fileControlsBar = document.querySelector('.file-controls-bar');
+      if (fileControlsBar) {
+        const oldAddSubContentBtnDynamic = document.getElementById('addSubContentBtnDynamic');
+        if (oldAddSubContentBtnDynamic) oldAddSubContentBtnDynamic.remove();
+        fileControlsBar.appendChild(addSubContentBtnDynamic);
+      }
+      addSubContentBtnDynamic.addEventListener('click', function () {
+        if (!selectedFolderId) {
+          showToast(lang === 'en' ? 'Please select a folder first' : 'يرجى اختيار مجلد أولاً', 'error');
+          return;
+        }
+        window.location.href = 'upload-files.html?folderId=' + selectedFolderId;
+      });
+    } else {
+      // إذا لم تكن الصلاحية متوفرة، احذف الزر إن وجد
+      const oldAddSubContentBtnDynamic = document.getElementById('addSubContentBtnDynamic');
+      if (oldAddSubContentBtnDynamic) oldAddSubContentBtnDynamic.remove();
     }
-    window.location.href = 'upload-main-file.html?folderId=' + selectedFolderId;
-  });
-  addSubContentBtnDynamic.addEventListener('click', function () {
-    if (!selectedFolderId) {
-      showToast('يرجى اختيار مجلد أولاً', 'error');
-      return;
-    }
-    window.location.href = 'upload-files.html?folderId=' + selectedFolderId;
-  });
+  }
 
 }); // End of DOMContentLoaded 
 

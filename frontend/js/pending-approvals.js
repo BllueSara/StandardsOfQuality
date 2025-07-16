@@ -139,7 +139,7 @@ async function setupFilters(items) {
     departments = [];
   }
   const lang = localStorage.getItem('language') || 'ar';
-  deptFilter.innerHTML = `<option value="all">${lang === 'ar' ? 'جميع الأقسام' : 'All Departments'}</option>`;
+  deptFilter.innerHTML = `<option value="all" data-translate="all-departments">${getTranslation('all-departments')}</option>`;
   // استخدم الأقسام من قاعدة البيانات إذا وجدت، وإلا من العناصر
   if (departments.length > 0) {
     departments.forEach(dept => {
@@ -225,10 +225,14 @@ function renderApprovals(items) {
   });
   const pageItems = sorted.slice(startIdx, endIdx);
 
-  // 3) إنشاء البطاقات
-  const canSign = permissionsKeys.includes('*') || permissionsKeys.includes('sign');
-  const canDel  = permissionsKeys.includes('*') || permissionsKeys.includes('sign_on_behalf');
+  // صلاحيات الأزرار
+  const isAdmin = permissionsKeys.includes('*');
+  const canSign = isAdmin || permissionsKeys.includes('sign');
+  const canSignOnBehalf = isAdmin || permissionsKeys.includes('sign_on_behalf');
+  const canSignElectronic = isAdmin || permissionsKeys.includes('sign_electronic');
+  const canTransfer = isAdmin || permissionsKeys.includes('transfer_credits');
 
+  // 3) إنشاء البطاقات
   pageItems.forEach(item => {
     const card = document.createElement('div');
     card.className = 'approval-card';
@@ -240,21 +244,24 @@ function renderApprovals(items) {
     let actions = '';
     if (item.approval_status === 'pending' || item.approval_status === 'rejected') {
       actions += `<button class="btn-sign">${getTranslation('sign')}</button>`;
-      actions += `<button class="btn-delegate">${getTranslation('delegate')}</button>`;
-      actions += `<button class="btn-qr">${getTranslation('electronic')}</button>`;
-      
+      if (canSignOnBehalf) {
+        actions += `<button class="btn-delegate">${getTranslation('delegate')}</button>`;
+      }
+      if (canSignElectronic) {
+        actions += `<button class="btn-qr">${getTranslation('electronic')}</button>`;
+      }
       // إخفاء زر الرفض إذا كان الملف مرفوض والمرسل الحالي هو من رفضه
       const currentUsername = window.currentUsername || '';
       const isRejectedByCurrentUser = item.approval_status === 'rejected' && 
                                      item.rejected_by_username && 
                                      item.rejected_by_username.toLowerCase() === currentUsername.toLowerCase();
-      
       if (!isRejectedByCurrentUser) {
         actions += `<button class="btn-reject">${getTranslation('reject')}</button>`;
       }
-      
       actions += `<button class="btn-preview">${getTranslation('preview')}</button>`;
-      actions += `<button class="btn-transfer-file">${getTranslation('transfer-file')}</button>`;
+      if (canTransfer) {
+        actions += `<button class="btn-transfer-file">${getTranslation('transfer-file')}</button>`;
+      }
     }
 
     const contentType = item.type === 'committee'
@@ -270,7 +277,7 @@ function renderApprovals(items) {
           <div class="user-details">
             <span class="user-name">${getLocalizedName(item.created_by_name || '')}</span>
             <span class="user-meta"><i class="fa fa-building"></i> ${getLocalizedName(item.source_name)}</span>
-            <span class="user-meta"><i class="fa-regular fa-calendar"></i> ${item.created_at ? new Date(item.created_at).toLocaleDateString('ar-EG') : ''}</span>
+            <span class="user-meta"><i class="fa-regular fa-calendar"></i> ${item.created_at ? new Date(item.created_at).toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US') : ''}</span>
           </div>
         </div>
         <div class="actions">${actions}</div>
@@ -335,11 +342,11 @@ function setupDateFilter() {
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     
     const dateOptions = [
-      { label: 'اليوم', value: 'today', date: today },
-      { label: 'أمس', value: 'yesterday', date: yesterday },
-      { label: 'آخر أسبوع', value: 'lastWeek', date: lastWeek },
-      { label: 'آخر شهر', value: 'lastMonth', date: lastMonth },
-      { label: 'الكل', value: 'all', date: null }
+      { label: getTranslation('today'), value: 'today', date: today },
+      { label: getTranslation('yesterday'), value: 'yesterday', date: yesterday },
+      { label: getTranslation('this-week'), value: 'lastWeek', date: lastWeek },
+      { label: getTranslation('this-month'), value: 'lastMonth', date: lastMonth },
+      { label: getTranslation('all-dates'), value: 'all', date: null }
     ];
     
     // إنشاء قائمة منسدلة للتاريخ
@@ -1077,44 +1084,17 @@ document.getElementById('btnTransferConfirm').addEventListener('click', function
   });
   
   if (!personCount || !deptId || selectedPersons.length === 0) {
-    alert('يرجى ملء جميع الحقول المطلوبة');
+    alert(getTranslation('please-fill-required-fields'));
     return;
   }
   
   // تنفيذ منطق التحويل هنا
   console.log('تحويل الملف إلى:', selectedPersons);
   closeFileTransferModal();
-  alert('تم تأكيد التحويل!');
+  alert(getTranslation('transfer-confirmed'));
 });
 
 // Example: Add event listener to open modal from a button (replace selector as needed)
 // This block is now moved inside initActions()
 
-// دالة ترجمة مؤقتة لتفادي الخطأ
-function getTranslation(key) {
-  const translations = {
-    'please-login': 'الرجاء تسجيل الدخول',
-    'error-loading': 'حدث خطأ أثناء التحميل',
-    'success-rejected': 'تم الرفض بنجاح',
-    'please-enter-reason': 'يرجى إدخال سبب الرفض',
-    'success-approved': 'تم الاعتماد بنجاح',
-    'success-sent': 'تم الإرسال بنجاح',
-    'error-sending': 'حدث خطأ أثناء الإرسال',
-    'sign': 'اعتماد',
-    'delegate': 'تفويض',
-    'electronic': 'اعتماد إلكتروني',
-    'reject': 'رفض',
-    'preview': 'عرض',
-    'transfer-file': 'تحويل الملف',
-    'committee-file': 'ملف لجنة',
-    'department-report': 'تقرير قسم',
-    'approved': 'معتمد',
-    'rejected': 'مرفوض',
-    'pending': 'قيد الاعتماد',
-    'no-content': 'لا يوجد محتوى',
-    'select-department': 'اختر القسم',
-    'select-user': 'اختر المستخدم',
-    'success-delegated': 'تم التفويض بنجاح',
-  };
-  return translations[key] || key;
-}
+// استخدم دالة الترجمة من language.js فقط ولا تكررها هنا

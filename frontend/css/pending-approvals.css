@@ -5,7 +5,25 @@ body,:placeholder-shown,input,select,textarea,button {
     margin: 0;
     direction: rtl;
 }
+:lang(ar) body, 
+:lang(ar) input, 
+:lang(ar) select, 
+:lang(ar) button, 
+:lang(ar) textarea, 
+:lang(ar) .header-title, 
+:lang(ar) .page-title {
+  font-family: 'Tajawal', sans-serif;
+}
 
+:lang(en) body, 
+:lang(en) input, 
+:lang(en) select, 
+:lang(en) button, 
+:lang(en) textarea, 
+:lang(en) .header-title, 
+:lang(en) .page-title {
+  font-family: Arial, sans-serif;
+}
 .main-header {
     background-color: #fff;
     border-bottom: 1px solid #e0e0e0;
@@ -505,38 +523,47 @@ body,:placeholder-shown,input,select,textarea,button {
     top: 10px;
 }
 .back-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: #2563eb;
-    cursor: pointer;
-    padding: 0 12px;
-    font-family: inherit;
+  position: absolute;
+  left: 50px;              /* flush لأقصى يسار */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 18px;      /* حجم يناسب النص */
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 0 12px;      /* مسافة داخلية مناسبة */
+  font-family: inherit; /* يرث ستايل الخط */
+  flex-direction: row-reverse;
 }
+
 :lang(ar) .back-btn,
 [dir="rtl"] .back-btn {
-    right: 50px;
-    left: auto;
-    flex-direction: row;
+  right: 50px;
+  left: auto;
+  flex-direction: row;
 }
+
 :lang(en) .back-btn,
 [dir="ltr"] .back-btn {
-    left: 50px;
-    right: auto;
-    flex-direction: row;
+  left: 50px;
+  right: auto;
+  flex-direction: row-reverse;
 }
+
+/* يقلب أيقونات FA داخل back-btn في الوضع LTR */
 [dir="ltr"] .back-btn .fa-arrow-right {
-    transform: scaleX(-1);
+  transform: scaleX(-1);
 }
+
+/* بأي حال، لو LTR خلي الأيقونة بلا تقليب */
 [dir="ltr"] .back-btn .fa-arrow-left {
-    transform: none;
+  transform: none;
 }
+
 .home-btn {
     position: absolute;
     left: 50%;
@@ -564,7 +591,6 @@ main {
 }
 .page-header {
     display: flex;
-    justify-content: flex-end;
     align-items: center;
     margin-bottom: 24px;
 }

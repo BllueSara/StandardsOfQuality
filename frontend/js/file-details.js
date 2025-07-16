@@ -23,10 +23,10 @@ document.addEventListener('DOMContentLoaded', function () {
             renderAttachments(data.attachments);
             updateCounters(data.timeline, data.attachments);
         } else {
-            showError('تعذر جلب بيانات الملف');
+            showError(getTranslation('error-loading-data'));
         }
     })
-    .catch(() => showError('حدث خطأ أثناء الاتصال بالخادم'));
+    .catch(() => showError(getTranslation('connection-error')));
 
     function getContentId() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const tbody = document.getElementById('history-tbody');
         tbody.innerHTML = '';
         if (!timeline || timeline.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">لا توجد مراجعات</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="4">${getTranslation('no-logs-found')}</td></tr>`;
             return;
         }
         timeline.forEach(row => {
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = document.getElementById('attachments-list');
         container.innerHTML = '';
         if (!attachments || attachments.length === 0) {
-            container.innerHTML = '<div>لا توجد ملفات مرتبطة</div>';
+            container.innerHTML = `<div>${getTranslation('no-contents')}</div>`;
             return;
         }
         
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // تحديد نوع الملف (رئيسي أو فرعي)
             const isMainFile = att.file_type === 'main';
             const iconClass = isMainFile ? 'fa-solid fa-file-circle-check' : 'fa-regular fa-file-lines';
-            const fileTypeLabel = isMainFile ? '<span class="main-file-label">الملف الرئيسي</span>' : '';
+            const fileTypeLabel = isMainFile ? `<span class="main-file-label">${getTranslation('main-file') || (getTranslation('main-file-ar') || 'الملف الرئيسي')}</span>` : '';
             
             console.log('File:', att.title, 'Type:', att.file_type, 'IsMain:', isMainFile);
             
@@ -131,18 +131,18 @@ document.addEventListener('DOMContentLoaded', function () {
     
     function statusLabel(status) {
         switch (status) {
-            case 'pending': return 'قيد المراجعة';
-            case 'approved': return 'معتمد';
-            case 'rejected': return 'مرفوض';
+            case 'pending': return getTranslation('under-review');
+            case 'approved': return getTranslation('approved');
+            case 'rejected': return getTranslation('rejected');
             default: return status || '-';
         }
     }
     
     function actionLabel(status) {
         switch (status) {
-            case 'approved': return 'تمت المراجعة';
-            case 'rejected': return 'تم الرفض';
-            case 'pending': return 'تم التحويل';
+            case 'approved': return getTranslation('reviewed') || 'تمت المراجعة';
+            case 'rejected': return getTranslation('rejected-action') || getTranslation('rejected') || 'تم الرفض';
+            case 'pending': return getTranslation('transferred') || 'تم التحويل';
             default: return status || '-';
         }
     }

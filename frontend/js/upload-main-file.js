@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const folderId = urlParams.get('folderId');
     if (!folderId) {
-        alert('لا يمكن رفع الملف بدون تحديد مجلد. يرجى العودة واختيار المجلد أولاً.');
+        alert(getTranslation('no-folder-selected'));
         // يمكنك إعادة التوجيه تلقائياً إذا أردت:
         // window.location.href = 'departments.html';
     }
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const file = fileInput.files[0];
             const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
             if (!allowedExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
-                alert('فقط الملفات التالية مسموح بها: PDF, DOC, DOCX, XLS, XLSX');
+                alert(getTranslation('file-type-not-allowed'));
                 fileInput.value = '';
                 fileInfoDiv.innerHTML = '';
                 selectedFile = null;
@@ -52,8 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // تحديث واجهة المستخدم باسم الملف وحجمه فقط
             const sizeMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
             fileInfoDiv.innerHTML = `
-                <div>اسم الملف: ${selectedFile.name}</div>
-                <div>حجم الملف: ${sizeMB} ميجابايت</div>
+                <div>${getTranslation('file-name-label')}: ${selectedFile.name}</div>
+                <div>${getTranslation('file-size-label')}: ${sizeMB} ${getTranslation('mb-label')}</div>
             `;
         } else {
             fileInfoDiv.innerHTML = '';
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         if (!folderId) return;
         if (!selectedFile) {
-            alert('يرجى اختيار ملف');
+            alert(getTranslation('select-file-alert'));
             return;
         }
         const token = localStorage.getItem('token');
@@ -83,15 +83,15 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await response.json();
             if (response.ok) {
-                alert('تم رفع الملف بنجاح!');
+                alert(getTranslation('file-upload-success'));
                 uploadForm.reset();
                 selectedFile = null;
                 fileInfoDiv.innerHTML = '';
             } else {
-                alert(data.message || 'حدث خطأ أثناء رفع الملف');
+                alert(data.message || getTranslation('file-upload-error'));
             }
         } catch (err) {
-            alert('فشل الاتصال بالسيرفر');
+            alert(getTranslation('server-connection-failed'));
         }
     });
 }); 
