@@ -31,6 +31,7 @@ const folderRouter           = require('./routers/folder.Routes');
 const folderContentRouter    = require('./routers/folderContentRoutes');
 const contentRouter          = require('./routers/contentRoutes');
 const approvalRouter         = require('./routers/approvalRoutes');
+const dashboardRouter = require('./routers/dashboardRoutes');
 
 app.use(cors());
 app.use(express.json());
@@ -41,6 +42,7 @@ app.use('/api/auth',        authRouter);
 app.use('/api/users', permsRouter);
 app.use('/api/users',       usersRouter);
 app.use('/api/permissions/definitions', permissionsDefRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 app.use('/api/departments', departmentsRouter);
 // folders nested under departments

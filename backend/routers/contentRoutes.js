@@ -18,6 +18,7 @@ const { deleteContent } = require('../controllers/contentController');
 const { logContentView } = require('../controllers/contentController');
 const { getRejectedContents } = require('../controllers/contentController');
 const { rejectContent, addRejectionReply, getRejectionReplies, getRejectionReason } = require('../controllers/rejectionController');
+const dashboardController = require('../controllers/dashboardController');
 
 
 const router = express.Router();
@@ -204,6 +205,8 @@ router.post('/rejections/:contentId', rejectContent);
 router.post('/:contentId/rejection-reply', addRejectionReply);
 router.get('/:contentId/rejection-replies', getRejectionReplies);
 router.get('/:contentId/rejection-reason', getRejectionReason);
+
+router.get('/dashboard/summary', dashboardController.getDashboardSummary);
 
 
 module.exports = router;
