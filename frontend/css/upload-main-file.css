@@ -229,6 +229,51 @@ main {
     font-weight: 600;
     margin-right: 4px;
 }
+
+/* تنسيق حقول التاريخ */
+.date-fields {
+    display: flex;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.date-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.date-field label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.date-input {
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fafbfc;
+    color: #444;
+    outline: none;
+    transition: border 0.2s;
+}
+
+.date-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* تحسين التخطيط للشاشات الصغيرة */
+@media (max-width: 600px) {
+    .date-fields {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+
 .section-select {
     margin-bottom: 2px;
 }

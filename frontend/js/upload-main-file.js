@@ -68,12 +68,30 @@ document.addEventListener('DOMContentLoaded', function() {
             alert(getTranslation('select-file-alert'));
             return;
         }
+
+        // جمع قيم التاريخ
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        // التحقق من صحة التواريخ
+        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+            alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+            return;
+        }
+
         const token = localStorage.getItem('token');
         const formData = new FormData();
         formData.append('title', selectedFile.name);
         formData.append('file', selectedFile);
         formData.append('notes', ''); // يمكن إضافة ملاحظات من حقل آخر إذا أردت
-        // يمكنك إضافة حقول أخرى حسب الحاجة
+        
+        // إضافة التواريخ إذا تم تحديدها
+        if (startDate) {
+            formData.append('start_date', startDate);
+        }
+        if (endDate) {
+            formData.append('end_date', endDate);
+        }
 
         try {
             const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {

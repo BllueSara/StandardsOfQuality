@@ -806,38 +806,47 @@ document.addEventListener('DOMContentLoaded', async function () {
       return null;
     }
   }
-  async function fetchPermissions() {
-    const userId = JSON.parse(atob(getToken().split('.')[1])).id;
-    const headers = { 'Authorization': `Bearer ${getToken()}` };
-    // كالمعتاد: جلب role
-    const userRes = await fetch(`${apiBase}/users/${userId}`, { headers });
-    const { data: user } = await userRes.json();
-    if (['admin'].includes(user.role)) {
-      // للمسؤولين: صلاحيات كاملة
-      Object.keys(permissions).forEach(k => permissions[k] = true);
+    async function fetchPermissions() {
+    const token = getToken();
+    if (!token) {
+      console.error('No token found, cannot fetch permissions');
       return;
     }
-    // ثم جلب قائمة المفاتيح
-    const permsRes = await fetch(`${apiBase}/users/${userId}/permissions`, { headers });
-    const { data: perms } = await permsRes.json();
-    const keys = perms.map(p =>
-      (typeof p === 'string' ? p : p.permission)
-    );  // منها `add_section` و `edit_section` و `delete_section`
-    if (keys.includes('add_folder')) permissions.canAddFolder = true;
-    if (keys.includes('edit_folder')) permissions.canEditFolder = true;
-    if (keys.includes('delete_folder')) permissions.canDeleteFolder = true;
-    if (keys.includes('add_folder_name')) permissions.canAddFolderName = true;
-    if (keys.includes('edit_folder_name')) permissions.canEditFolderName = true;
-    if (keys.includes('delete_folder_name')) permissions.canDeleteFolderName = true;
-    // وبالمثل لمحتوى الملفات:
-    if (keys.includes('add_content')) permissions.canAddContent = true;
-    if (keys.includes('add_many_content')) permissions.canAddManyContent = true; // جديد
-    if (keys.includes('edit_content')) permissions.canEditContent = true;
-    if (keys.includes('delete_content')) permissions.canDeleteContent = true;
-    if (keys.includes('add_content_name')) permissions.canAddContentName = true;
-    if (keys.includes('edit_content_name')) permissions.canEditContentName = true;
-    if (keys.includes('delete_content_name')) permissions.canDeleteContentName = true;
-
+    
+    try {
+      const userId = JSON.parse(atob(token.split('.')[1])).id;
+      const headers = { 'Authorization': `Bearer ${getToken()}` };
+      // كالمعتاد: جلب role
+      const userRes = await fetch(`${apiBase}/users/${userId}`, { headers });
+      const { data: user } = await userRes.json();
+      if (['admin'].includes(user.role)) {
+        // للمسؤولين: صلاحيات كاملة
+        Object.keys(permissions).forEach(k => permissions[k] = true);
+        return;
+      }
+      // ثم جلب قائمة المفاتيح
+      const permsRes = await fetch(`${apiBase}/users/${userId}/permissions`, { headers });
+      const { data: perms } = await permsRes.json();
+      const keys = perms.map(p =>
+        (typeof p === 'string' ? p : p.permission)
+      );  // منها `add_section` و `edit_section` و `delete_section`
+      if (keys.includes('add_folder')) permissions.canAddFolder = true;
+      if (keys.includes('edit_folder')) permissions.canEditFolder = true;
+      if (keys.includes('delete_folder')) permissions.canDeleteFolder = true;
+      if (keys.includes('add_folder_name')) permissions.canAddFolderName = true;
+      if (keys.includes('edit_folder_name')) permissions.canEditFolderName = true;
+      if (keys.includes('delete_folder_name')) permissions.canDeleteFolderName = true;
+      // وبالمثل لمحتوى الملفات:
+      if (keys.includes('add_content')) permissions.canAddContent = true;
+      if (keys.includes('add_many_content')) permissions.canAddManyContent = true; // جديد
+      if (keys.includes('edit_content')) permissions.canEditContent = true;
+      if (keys.includes('delete_content')) permissions.canDeleteContent = true;
+      if (keys.includes('add_content_name')) permissions.canAddContentName = true;
+      if (keys.includes('edit_content_name')) permissions.canEditContentName = true;
+      if (keys.includes('delete_content_name')) permissions.canDeleteContentName = true;
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+    }
   }
 
   // دالة لجلب مجلدات القسم بناءً على departmentId
@@ -992,6 +1001,11 @@ document.addEventListener('DOMContentLoaded', async function () {
           // --- تصنيف الملفات وتجميعها للعرض بستايل الكروت القديم مع تمييز المجموعات ---
           const allContents = data.data;
           console.log('allContents:', allContents); // لمساعدتك في الديباغ
+          
+          // تصحيح للتحقق من وجود التواريخ
+          allContents.forEach(content => {
+            console.log(`📅 Content: ${content.title} - start_date: ${content.start_date}, end_date: ${content.end_date}`);
+          });
           // الملفات الرئيسية: لها parent_content_id وليس لها related_content_id
           const mainFiles = allContents.filter(item => Number(item.parent_content_id) && !Number(item.related_content_id));
           // الملفات الفرعية: لها related_content_id وليس لها parent_content_id
@@ -1064,6 +1078,30 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             // بادج رئيسي أو رقم فرعي
             let badge = '';
+            let expiredBadge = '';
+            // --- بادج برتقالي إذا باقي شهر أو أقل ---
+            let soonExpireBadge = '';
+    if (file.end_date) {
+      const now = new Date();
+      const endDate = new Date(file.end_date);
+      const diffMs = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+      console.log(`🎯 ${file.title} → diffDays=${diffDays} expired=${file.extra?.expired}`);
+    
+      // 🔥 برتقالي يظهر دائمًا إذا باقي 0-30
+      if (diffDays <= 30 && diffDays >= 0) {
+        soonExpireBadge = `<span class="soon-expire-badge" style="color: #fff; background: orange; border-radius: 4px; padding: 2px 8px; margin-right: 8px; font-size: 12px;">${getTranslation('soon-expire') || 'اقترب انتهاء الصلاحية'}</span>`;
+          console.log("🟠 showing soonExpireBadge for:", displayTitle);
+    
+      }
+    
+      // 🔥 أحمر يظهر فقط لو extra.expired = true (يرجعه السيرفر للأدمن فقط)
+      if (file.extra && file.extra.expired) {
+        expiredBadge = `<span class="expired-badge" style="color: #fff; background: #d9534f; border-radius: 4px; padding: 2px 8px; margin-right: 8px; font-size: 12px;">${getTranslation('expired-content') || 'منتهي الصلاحية'}</span>`;
+      }
+    }
+    
             const lang = localStorage.getItem('language') || 'ar';
             let mainFileBadgeText = 'ملف رئيسي';
             if (window.translations && window.translations[lang] && window.translations[lang]['main-file']) {
@@ -1079,11 +1117,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             // الأزرار
             let icons = '<div class="item-icons">';
-            // if (permissions.canEditContent) {
-            //   icons += `<a href="#" class="edit-icon" data-id="${file.id}">
-            //               <img src="../images/edit.svg" alt="تعديل">
-            //             </a>`;
-            // }
+            
+            // إضافة البادجات للتاريخ
+            icons += expiredBadge + soonExpireBadge;
+
             if (permissions.canDeleteContent) {
               icons += `<a href="#" class="delete-icon" data-id="${file.id}">
                                     <img src="../images/delet.svg" alt="حذف">
@@ -1096,12 +1133,27 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
             icons += '</div>';
 
+            const rawDate = file.end_date;              // "2025-06-30T21:00:00.000Z"
+            console.log('🔍 Debug - file.end_date:', rawDate, 'for file:', file.title);
+            const displayDate = rawDate ? rawDate.split('T')[0] : 'لا يوجد تاريخ انتهاء';     // "2025-06-30"
+            console.log('🔍 Debug - displayDate:', displayDate);
+            
+            // إضافة تاريخ البداية أيضاً
+            const startDate = file.start_date;
+            const displayStartDate = startDate ? startDate.split('T')[0] : '';
+            console.log('🔍 Debug - start_date:', startDate, 'displayStartDate:', displayStartDate);
             card.innerHTML = `
                         ${icons}
                         <img src="../images/pdf.svg" alt="ملف PDF">
                         <div class="file-info">
                           <div class="file-name">${badge} ${displayTitle}</div>
                           <div class="approval-status ${approvalClass}">${approvalStatus}</div>
+                          <div class="file-date">
+                            ${displayStartDate ? `من: ${displayStartDate}` : ''}
+                            ${displayStartDate && displayDate ? ' - ' : ''}
+                            ${displayDate ? `إلى: ${displayDate}` : ''}
+                            ${!displayStartDate && !displayDate ? 'لا يوجد تاريخ محدد' : ''}
+                          </div>
                         </div>
                       `;
             if (isMain) {
@@ -2880,20 +2932,123 @@ window.translations = window.translations || {};
 // --- أضف دالة مساعدة لرفع ملف فرعي جديد لمجموعة ---
 async function addSubFile(mainFileId, folderId) {
   const token = localStorage.getItem('token');
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = '.pdf'; // فقط PDF
-  fileInput.style.display = 'none';
-  document.body.appendChild(fileInput);
-  fileInput.click();
-  fileInput.addEventListener('change', async function handler(e) {
+  
+  // إنشاء مودال لاختيار الملف والتواريخ
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  `;
+  
+  const modalContent = document.createElement('div');
+  modalContent.className = 'modal-content';
+  modalContent.style.cssText = `
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+  `;
+  
+  const lang = localStorage.getItem('language') || 'ar';
+  const isRTL = lang === 'ar';
+  
+  modalContent.innerHTML = `
+    <div class="modal-header" style="margin-bottom: 20px; text-align: ${isRTL ? 'right' : 'left'};">
+      <h3 style="margin: 0; color: #333;">${isRTL ? 'إضافة ملف فرعي' : 'Add Sub File'}</h3>
+      <button class="close-button" style="position: absolute; top: 15px; ${isRTL ? 'left' : 'right'}: 15px; background: none; border: none; font-size: 20px; cursor: pointer;">×</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">
+          ${isRTL ? 'اختر الملف:' : 'Select File:'}
+        </label>
+        <input type="file" id="subFileInput" accept=".pdf" style="width: 100%; padding: 10px; border: 2px dashed #ddd; border-radius: 4px;">
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">
+          ${isRTL ? 'تاريخ البداية:' : 'Start Date:'}
+        </label>
+        <input type="date" id="subFileStartDate" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">
+          ${isRTL ? 'تاريخ النهاية:' : 'End Date:'}
+        </label>
+        <input type="date" id="subFileEndDate" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+    </div>
+    
+    <div class="modal-footer" style="text-align: ${isRTL ? 'left' : 'right'}; margin-top: 20px;">
+      <button id="cancelSubFile" style="margin-${isRTL ? 'right' : 'left'}: 10px; padding: 10px 20px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 4px; cursor: pointer;">
+        ${isRTL ? 'إلغاء' : 'Cancel'}
+      </button>
+      <button id="uploadSubFile" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        ${isRTL ? 'رفع الملف' : 'Upload File'}
+      </button>
+    </div>
+  `;
+  
+  modal.appendChild(modalContent);
+  document.body.appendChild(modal);
+  
+  // إغلاق المودال
+  const closeModal = () => {
+    document.body.removeChild(modal);
+  };
+  
+  modal.querySelector('.close-button').addEventListener('click', closeModal);
+  modal.querySelector('#cancelSubFile').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+  
+  // رفع الملف
+  modal.querySelector('#uploadSubFile').addEventListener('click', async () => {
+    const fileInput = modal.querySelector('#subFileInput');
+    const startDateInput = modal.querySelector('#subFileStartDate');
+    const endDateInput = modal.querySelector('#subFileEndDate');
+    
     const file = fileInput.files[0];
-    if (!file) return;
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    
+    if (!file) {
+      alert(isRTL ? 'يرجى اختيار ملف' : 'Please select a file');
+      return;
+    }
+    
+    if (!startDate || !endDate) {
+      alert(isRTL ? 'يرجى تحديد تاريخ البداية والنهاية' : 'Please select start and end dates');
+      return;
+    }
+    
+    if (new Date(startDate) >= new Date(endDate)) {
+      alert(isRTL ? 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية' : 'End date must be after start date');
+      return;
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('notes', '');
     formData.append('title', file.name);
     formData.append('related_content_id', mainFileId);
+    formData.append('start_date', startDate);
+    formData.append('end_date', endDate);
+    
     try {
       const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {
         method: 'POST',
@@ -2902,13 +3057,15 @@ async function addSubFile(mainFileId, folderId) {
       });
       const data = await response.json();
       if (response.ok) {
-        alert('تم إضافة الملف الفرعي بنجاح!');
-        fetchFolderContents(); // أعد تحميل الملفات
+        showToast(isRTL ? 'تم إضافة الملف الفرعي بنجاح!' : 'Sub file added successfully!', 'success');
+        closeModal();
+        await fetchFolderContents(folderId); // أعد تحميل الملفات
       } else {
-        alert(data.message || 'حدث خطأ أثناء رفع الملف الفرعي');
+        showToast(data.message || (isRTL ? 'حدث خطأ أثناء رفع الملف الفرعي' : 'Error uploading sub file'), 'error');
       }
     } catch (err) {
+      console.error('Error uploading sub file:', err);
+      showToast(isRTL ? 'حدث خطأ في الاتصال' : 'Connection error', 'error');
     }
-    fileInput.remove();
-  }, { once: true });
+  });
 }

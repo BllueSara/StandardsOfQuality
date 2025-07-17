@@ -41,13 +41,175 @@ const upload = multer({
         fileSize: 10 * 1024 * 1024 // 10MB max file size
     }
 });
-// 1. احذف notifyExpiredContents و maybeNotifyExpiredContents وكل ما يتعلق بـ end_date
-// 2. احذف end_date و start_date و is_old_content من جميع الاستعلامات والشروط والمتغيرات
-// 3. احذف أي منطق أو متغيرات أو ردود مرتبطة بهذه الحقول
+
+const THROTTLE_INTERVAL = 0;  // بدل 24h بثانية للتجربة
+let lastRunTs = 0;
+
+async function maybeNotifyExpiredContents() {
+  const now = Date.now();
+  if (now - lastRunTs < THROTTLE_INTERVAL) return;
+  await notifyExpiredContents();
+  lastRunTs = now;
+}
+
+// دالة تفحص صلاحية المحتوى وترسل إشعار إذا انتهت
+
+async function notifyExpiredContents() {
+  const today = new Date().toISOString().split('T')[0]; // yyyy-mm-dd
+  const now = new Date();
+  const connection = await db.getConnection();
+
+  try {
+    // جلب كل المحتويات التي لها end_date
+    const [contents] = await connection.execute(`
+      SELECT c.id, c.title, c.created_by, c.end_date, c.folder_id
+      FROM contents c
+      WHERE c.end_date IS NOT NULL
+    `);
+
+    for (const row of contents) {
+      if (!row.end_date) continue;
+      const endDate = new Date(row.end_date);
+      if (isNaN(endDate.getTime())) continue;
+      const diffMs = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      // جلب أسماء القسم والمجلد
+      const [folderRows] = await connection.execute(
+        `SELECT f.name AS folder_name, d.name AS department_name
+         FROM folders f
+         JOIN departments d ON f.department_id = d.id
+         WHERE f.id = ?`,
+        [row.folder_id]
+      );
+      const folderName = folderRows[0]?.folder_name || '';
+      const departmentName = folderRows[0]?.department_name || '';
+  const formattedDate = new Date(row.end_date).toISOString().split('T')[0];
+
+      // إشعار قبل شهر (30 يوم)
+      if (diffDays === 30) {
+        // تحقق إذا أُرسل إشعار الشهر مسبقًا
+        const [notMonth] = await connection.execute(
+          `SELECT id FROM notifications WHERE type = ? AND user_id = ?`,
+          [
+            `content_expiry_soon_month_${row.id}`,
+            row.created_by
+          ]
+        );
+        if (!notMonth.length) {
+          const notificationMsg =
+            `اقترب انتهاء صلاحية المحتوى "${row.title}" في  "${departmentName}"، مجلد "${folderName}" بتاريخ ${formattedDate}. يرجى تحديثه أو رفع نسخة جديدة.`;
+          await insertNotification(
+            row.created_by,
+            'اقترب انتهاء صلاحية المحتوى',
+            notificationMsg,
+            `content_expiry_soon_month_${row.id}`
+          );
+          // سجل في اللوقز
+          const logDescription = {
+            ar: `إشعار اقتراب انتهاء صلاحية المحتوى (شهر): ${row.title} في  ${departmentName}، مجلد ${folderName}`,
+            en: `Sent 1-month expiry soon notification for content: ${row.title} in  ${departmentName}, folder ${folderName}`
+          };
+          try {
+            await logAction(
+              row.created_by,
+              'notify_content_expiry_soon_month',
+              JSON.stringify(logDescription),
+              'content',
+              row.id
+            );
+          } catch (err) {
+            console.error('❌ logAction failed for month notification content ID', row.id, err);
+          }
+        }
+      }
+
+      // إشعار ليلة الانتهاء (قبل يوم)
+      if (diffDays === 1) {
+        // تحقق إذا أُرسل إشعار اليوم مسبقًا
+        const [notDay] = await connection.execute(
+          `SELECT id FROM notifications WHERE type = ? AND user_id = ?`,
+          [
+            `content_expiry_soon_day_${row.id}`,
+            row.created_by
+          ]
+        );
+        if (!notDay.length) {
+          const notificationMsg =
+            `غدًا تنتهي صلاحية المحتوى "${row.title}" في  "${departmentName}"، مجلد "${folderName}" بتاريخ ${formattedDate}. يرجى تحديثه أو رفع نسخة جديدة.`;
+          await insertNotification(
+            row.created_by,
+            'غدًا تنتهي صلاحية المحتوى',
+            notificationMsg,
+            `content_expiry_soon_day_${row.id}`
+          );
+          // سجل في اللوقز
+          const logDescription = {
+            ar: `إشعار اقتراب انتهاء صلاحية المحتوى (ليلة الانتهاء): ${row.title} في  ${departmentName}، مجلد ${folderName}`,
+            en: `Sent 1-day expiry soon notification for content: ${row.title} in  ${departmentName}, folder ${folderName}`
+          };
+          try {
+            await logAction(
+              row.created_by,
+              'notify_content_expiry_soon_day',
+              JSON.stringify(logDescription),
+              'content',
+              row.id
+            );
+          } catch (err) {
+            console.error('❌ logAction failed for day notification content ID', row.id, err);
+          }
+        }
+      }
+
+      // إشعار الانتهاء الفعلي (الأحمر) كما هو سابقًا
+      if (diffDays < 0) {
+        // تحقق إذا أُرسل إشعار الانتهاء مسبقًا
+        const [notExpired] = await connection.execute(
+          `SELECT id FROM notifications WHERE type = ? AND user_id = ?`,
+          [
+            `content_expired_${row.id}`,
+            row.created_by
+          ]
+        );
+        if (!notExpired.length) {
+          const notificationMsg =
+            `انتهت صلاحية المحتوى "${row.title}" في  "${departmentName}"، مجلد "${folderName}" بتاريخ ${formattedDate}. يرجى تحديثه أو رفع نسخة جديدة.`;
+          await insertNotification(
+            row.created_by,
+            'انتهت صلاحية المحتوى',
+            notificationMsg,
+            `content_expired_${row.id}`
+          );
+          // سجل في اللوقز
+          const logDescription = {
+            ar: `إشعار لانتهاء صلاحية المحتوى: ${row.title} في  ${departmentName}، مجلد ${folderName}`,
+            en: `Sent expiration notification for content: ${row.title} in  ${departmentName}, folder ${folderName}`
+          };
+          try {
+            await logAction(
+              row.created_by,
+              'notify_content_expired',
+              JSON.stringify(logDescription),
+              'content',
+              row.id
+            );
+          } catch (err) {
+            console.error('❌ logAction failed for content ID', row.id, err);
+          }
+        }
+      }
+    }
+  } finally {
+    connection.release();
+  }
+}
 
 // جلب جميع المحتويات لمجلد معين
 const getContentsByFolderId = async (req, res) => {
     try {
+              await maybeNotifyExpiredContents();
+
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ 
@@ -124,6 +286,9 @@ const getContentsByFolderId = async (req, res) => {
                 c.custom_approval_sequence,
                 c.created_at,
                 c.updated_at,
+                c.start_date,
+                c.end_date,
+
                 c.parent_content_id,
                 c.related_content_id,
                 u.username as created_by_username,
@@ -138,14 +303,34 @@ const getContentsByFolderId = async (req, res) => {
 
         const [contents] = await connection.execute(query, params);
         connection.release();
-
+        // منطق الفلترة حسب الصلاحية
+        const now = new Date();
+        const nowMs = now.getTime();
+        const oneDayMs = 24 * 60 * 60 * 1000;
         const isAdmin = decodedToken.role === 'admin';
         const userId = Number(decodedToken.id);
 
         // فلترة النتائج حسب الصلاحية
         const filtered = contents.filter(item => {
+            const isAdmin = decodedToken.role === 'admin';
+            const userId = Number(decodedToken.id);
             if (isAdmin) return true; // الأدمن يرى كل شيء
-            if (item.is_approved) return true; // الملفات المعتمدة تظهر للجميع
+
+            // تحقق من تاريخ الانتهاء
+            if (item.end_date) {
+                const endDate = new Date(item.end_date);
+                if (!isNaN(endDate.getTime())) {
+                    const diffDays = Math.ceil((endDate.getTime() - nowMs) / (1000 * 60 * 60 * 24));
+                    if (diffDays < 0) {
+                        // إذا انتهى المحتوى، لا يظهر للمستخدم العادي
+                        return false;
+                    }
+                }
+            }
+
+            // الملفات المعتمدة تظهر للجميع
+            if (item.is_approved) return true;
+
             // الملفات غير المعتمدة تظهر فقط إذا كان المستخدم من ضمن approval_sequence أو custom_approval_sequence
             let customSeq = [];
             if (item.custom_approval_sequence) {
@@ -211,7 +396,7 @@ const addContent = async (req, res) => {
       }
   
       const folderId = req.params.folderId;
-      const { title, notes, approvers_required, parent_content_id, related_content_id, is_main_file } = req.body;
+      const { title, notes, approvers_required, parent_content_id, related_content_id, is_main_file, start_date, end_date } = req.body;
       const filePath = req.file ? path.posix.join('content_files', req.file.filename) : null;
       const approvalStatus = 'pending';
       const isApproved = 0;
@@ -221,7 +406,7 @@ const addContent = async (req, res) => {
       console.log('DB connection acquired');
   
       if (!folderId || !title || !filePath) {
-        console.log('Missing folderId, title, or filePath');
+        console.log('--- addContent: شرط مفقود ---', {folderId, title, filePath});
         connection.release();
         return res.status(400).json({ 
           status: 'error',
@@ -261,7 +446,7 @@ const addContent = async (req, res) => {
       let insertedContentId = null;
 
       if (is_main_file) {
-        console.log('Inserting main file');
+        console.log('--- addContent: قبل إدراج main file ---');
         const [result] = await connection.execute(
           `INSERT INTO contents (
             title, 
@@ -275,9 +460,11 @@ const addContent = async (req, res) => {
             approvals_log,
             parent_content_id,
             related_content_id,
+            start_date,
+            end_date,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [
             title, 
             filePath, 
@@ -289,7 +476,9 @@ const addContent = async (req, res) => {
             approvers_required ? JSON.stringify(approvers_required) : null,
             JSON.stringify([]),
             null, // parent_content_id مؤقتاً
-            null  // related_content_id
+            null,  // related_content_id
+            start_date || null,
+            end_date || null
           ]
         );
         insertedContentId = result.insertId;
@@ -300,8 +489,9 @@ const addContent = async (req, res) => {
         );
         parentIdToInsert = insertedContentId;
         relatedIdToInsert = null;
+        console.log('--- addContent: بعد إدراج main file ---', insertedContentId);
       } else if (related_content_id) {
-        console.log('Inserting related file');
+        console.log('--- addContent: قبل إدراج related file ---');
         parentIdToInsert = null;
         relatedIdToInsert = related_content_id;
         const [result] = await connection.execute(
@@ -317,9 +507,11 @@ const addContent = async (req, res) => {
             approvals_log,
             parent_content_id,
             related_content_id,
+            start_date,
+            end_date,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [
             title, 
             filePath, 
@@ -331,12 +523,15 @@ const addContent = async (req, res) => {
             approvers_required ? JSON.stringify(approvers_required) : null,
             JSON.stringify([]),
             null, // parent_content_id
-            related_content_id
+            related_content_id,
+            start_date || null,
+            end_date || null
           ]
         );
         insertedContentId = result.insertId;
+        console.log('--- addContent: بعد إدراج related file ---', insertedContentId);
       } else {
-        console.log('Inserting normal file');
+        console.log('--- addContent: قبل إدراج normal file ---');
         parentIdToInsert = null;
         relatedIdToInsert = null;
         const [result] = await connection.execute(
@@ -352,9 +547,11 @@ const addContent = async (req, res) => {
             approvals_log,
             parent_content_id,
             related_content_id,
+            start_date,
+            end_date,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [
             title, 
             filePath, 
@@ -366,30 +563,57 @@ const addContent = async (req, res) => {
             approvers_required ? JSON.stringify(approvers_required) : null,
             JSON.stringify([]),
             null, // parent_content_id
-            null  // related_content_id
+            null,  // related_content_id
+            start_date || null,
+            end_date || null
           ]
         );
         insertedContentId = result.insertId;
+        console.log('--- addContent: بعد إدراج normal file ---', insertedContentId);
       }
-      console.log('Inserted content record');
-
-      // 2) إضافة الـ approvers وربطهم
-      if (Array.isArray(approvers_required)) {
-        for (const userId of approvers_required) {
-          await connection.execute(
-            `INSERT INTO content_approvers (content_id, user_id, assigned_at)
-             VALUES (?, ?, NOW())`,
-            [insertedContentId, userId]
-          );
-  
-          await connection.execute(
-            `INSERT INTO approval_logs (content_id, approver_id)
-             VALUES (?, ?)`,
-            [insertedContentId, userId]
-          );
+      console.log('--- addContent: قبل إضافة approval_logs ---');
+      // 2) إضافة الـ approvers وربطهم (من التسلسل الفعلي)
+      let approvalSequence = [];
+      // جلب التسلسل الفعلي من السطر الجديد
+      const [contentRow] = await connection.execute(
+        'SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ?',
+        [insertedContentId]
+      );
+      if (contentRow.length && contentRow[0].custom_approval_sequence) {
+        try {
+          approvalSequence = JSON.parse(contentRow[0].custom_approval_sequence);
+        } catch { approvalSequence = []; }
+      }
+      if (!Array.isArray(approvalSequence) || approvalSequence.length === 0) {
+        // جلب من القسم
+        const folderId = contentRow[0].folder_id;
+        const [folderRows] = await connection.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+        if (folderRows.length) {
+          const departmentId = folderRows[0].department_id;
+          const [deptRows] = await connection.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+          if (deptRows.length) {
+            let rawSeq = deptRows[0].approval_sequence;
+            console.log('القيمة الخام approval_sequence:', rawSeq);
+            if (typeof rawSeq !== 'string') rawSeq = JSON.stringify(rawSeq);
+            try {
+              approvalSequence = JSON.parse(rawSeq);
+            } catch (e) {
+              console.log('خطأ في JSON.parse approval_sequence:', rawSeq, e);
+              approvalSequence = [];
+            }
+          }
         }
       }
-      console.log('Inserted approvers if any');
+      approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+
+      for (const userId of approvalSequence) {
+        await connection.execute(
+          `INSERT INTO approval_logs (content_id, approver_id, status, created_at)
+           VALUES (?, ?, 'pending', NOW())`,
+          [insertedContentId, userId]
+        );
+      }
+      console.log('انتهى من إضافة approval_logs');
   
       // ✅ تسجيل اللوق بعد نجاح إضافة المحتوى
       try {
@@ -416,7 +640,7 @@ const addContent = async (req, res) => {
         console.log('Preparing to send notification');
         // جلب custom_approval_sequence من السجل الجديد
         let approvalSequence = [];
-        const [contentRow] = await connection.execute('SELECT custom_approval_sequence, folder_id, title FROM contents WHERE id = ?', [insertedContentId]);
+        const [contentRow] = await connection.execute('SELECT custom_approval_sequence, folder_id, title, start_date, end_date FROM contents WHERE id = ?', [insertedContentId]);
         console.log('DEBUG custom_approval_sequence (raw):', contentRow[0]?.custom_approval_sequence);
         if (contentRow.length && contentRow[0].custom_approval_sequence) {
           try {
@@ -513,7 +737,7 @@ const updateContent = async (req, res) => {
   
       // جلب المحتوى القديم (بما في ذلك approvers_required وfolder_id)
       const [oldContent] = await connection.execute(
-        'SELECT folder_id, approvers_required, title FROM contents WHERE id = ?',
+        'SELECT folder_id, approvers_required, title, start_date, end_date FROM contents WHERE id = ?',
         [originalId]
       );
       if (!oldContent.length) {
@@ -623,7 +847,7 @@ const deleteContent = async (req, res) => {
 
         // التحقق من صلاحيات المستخدم
         const [content] = await connection.execute(
-            'SELECT file_path, created_by, is_approved, title, folder_id FROM contents WHERE id = ?',
+            'SELECT file_path, created_by, is_approved, title, folder_id, start_date, end_date FROM contents WHERE id = ?',
             [contentId]
         );
 
@@ -712,7 +936,7 @@ const downloadContent = async (req, res) => {
         const connection = await db.getConnection();
 
         const [content] = await connection.execute(
-            'SELECT file_path, title FROM contents WHERE id = ?',
+            'SELECT file_path, title, start_date, end_date FROM contents WHERE id = ?',
             [contentId]
         );
 
@@ -956,6 +1180,8 @@ const getMyUploadedContent = async (req, res) => {
            c.created_at AS createdAt,
            c.is_approved,
            c.approval_status,
+           c.start_date,
+           c.end_date,
            f.name AS folderName,
            COALESCE(d.name, '-') AS source_name
          FROM contents c
@@ -973,6 +1199,8 @@ const getMyUploadedContent = async (req, res) => {
         createdAt:      r.createdAt,
         is_approved:    r.is_approved,
         approval_status: r.approval_status,
+        start_date:     r.start_date,
+        end_date:       r.end_date,
         folderName:     r.folderName,
         source_name:    r.source_name,
         type:           'department'

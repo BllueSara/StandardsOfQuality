@@ -130,24 +130,44 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     function statusLabel(status) {
+        const lang = localStorage.getItem('language') || 'ar';
+        
         switch (status) {
-            case 'pending': return getTranslation('under-review');
-            case 'approved': return getTranslation('approved');
-            case 'rejected': return getTranslation('rejected');
-            default: return status || '-';
+            case 'pending': 
+                return lang === 'ar' ? 'قيد المراجعة' : 'Under Review';
+            case 'approved': 
+                return lang === 'ar' ? 'تمت الموافقة' : 'Approved';
+            case 'rejected': 
+                return lang === 'ar' ? 'تم الرفض' : 'Rejected';
+            default: 
+                return status || '-';
         }
     }
     
     function actionLabel(status) {
+        const lang = localStorage.getItem('language') || 'ar';
+        
         switch (status) {
             case 'approved':
             case 'reviewed':
-                return getTranslation('reviewed') || 'تمت المراجعة';
+                if (lang === 'ar') {
+                    return 'تمت المراجعة';
+                } else {
+                    return 'Reviewed';
+                }
             case 'rejected':
-                return getTranslation('rejected-action') || getTranslation('rejected') || 'تم الرفض';
+                if (lang === 'ar') {
+                    return 'تم الرفض';
+                } else {
+                    return 'Rejected';
+                }
             case 'pending':
             case 'transferred':
-                return getTranslation('transferred') || 'تم التحويل';
+                if (lang === 'ar') {
+                    return 'تم التحويل';
+                } else {
+                    return 'Transferred';
+                }
             default:
                 return status || '-';
         }

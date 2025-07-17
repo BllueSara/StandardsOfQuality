@@ -4,6 +4,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const sectionSelect = document.querySelector('.section-select select');
     const apiBase = 'http://localhost:3006/api';
 
+    // دالة لجمع قيم التاريخ والتحقق من صحتها
+    function getDateValues() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        // التحقق من صحة التواريخ
+        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+            alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+            return null;
+        }
+
+        return { startDate, endDate };
+    }
+
+    // دالة لإضافة التواريخ إلى FormData
+    function addDatesToFormData(formData, dates) {
+        if (dates && dates.startDate) {
+            formData.append('start_date', dates.startDate);
+        }
+        if (dates && dates.endDate) {
+            formData.append('end_date', dates.endDate);
+        }
+    }
 
     // تجهيز رفع الملف الرئيسي
     const mainUploadBtn = document.querySelector('.main-upload-btn');
@@ -65,10 +88,16 @@ document.addEventListener('DOMContentLoaded', function() {
     mainFileList.addEventListener('dblclick', async function(e) {
         if (!selectedMainFile) return;
         if (!folderId) return;
+        
+        const dates = getDateValues();
+        if (dates === null) return; // تم إلغاء العملية بسبب خطأ في التواريخ
+        
         const token = localStorage.getItem('token');
         const formData = new FormData();
         formData.append('file', selectedMainFile);
         formData.append('notes', '');
+        addDatesToFormData(formData, dates);
+        
         try {
             const response = await fetch(`${apiBase}/folders/${folderId}/main-file`, {
                 method: 'POST',
@@ -158,6 +187,10 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Please select a main file or sub files');
             return;
         }
+        
+        const dates = getDateValues();
+        if (dates === null) return; // تم إلغاء العملية بسبب خطأ في التواريخ
+        
         const token = localStorage.getItem('token');
         let mainFileUploaded = false;
         let subFilesUploaded = false;
@@ -169,6 +202,8 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('notes', '');
             formData.append('title', selectedMainFile.name);
             formData.append('is_main_file', 'true'); // Very important
+            addDatesToFormData(formData, dates);
+            
             try {
                 const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {
                     method: 'POST',
@@ -200,6 +235,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('notes', '');
                 formData.append('title', file.name);
                 formData.append('related_content_id', mainFileId); // Send main file id for sub file
+                addDatesToFormData(formData, dates);
+                
                 try {
                     const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {
                         method: 'POST',
@@ -248,12 +285,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (!folderId) return;
+            
+            const dates = getDateValues();
+            if (dates === null) return; // تم إلغاء العملية بسبب خطأ في التواريخ
+            
             const token = localStorage.getItem('token');
             const formData = new FormData();
             selectedFiles.forEach(file => {
                 formData.append('files', file);
             });
             formData.append('notes', '');
+            addDatesToFormData(formData, dates);
+            
             try {
                 const response = await fetch(`${apiBase}/folders/${folderId}/contents`, {
                     method: 'POST',
