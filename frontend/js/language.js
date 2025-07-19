@@ -229,6 +229,9 @@ const translations = {
         'disable_departments': 'اخفاء الاقسام',
         'disable_approvals': 'اخفاء الاعتمادات',
         'disable_comittees': 'اخفاء اللجان',
+        'disable_notifications': 'إلغاء الإشعارات',
+        'disable_emails': 'إلغاء الإيميلات',
+        'disable_logs': 'إلغاء اللوقز',
 
         // Register specific
         'employee-number': 'الرقم الوظيفي',
@@ -1894,6 +1897,10 @@ const translations = {
         'accounts-group': 'Accounts',
         // Permissions Page (Permission Titles)
         'grant_permissions': 'Grant Permissions',
+
+                'disable_notifications': 'Disable Notifications',
+        'disable_emails': 'Disable Emails',
+        'disable_logs': 'Disable Logs',
         'view_logs': 'View Logs',
         'view_dashboard': 'View Dashboard',
         'add_section': 'Add Department',

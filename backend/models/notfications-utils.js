@@ -50,6 +50,40 @@ function extractAllArabic(str) {
   return str.replace(/\{"ar":"(.*?)","en":"(.*?)"\}/g, '$1');
 }
 
+// دالة التحقق من صلاحيات المستخدم
+async function getUserPermissions(userId) {
+  try {
+    const [rows] = await db.execute(`
+      SELECT p.permission_key
+      FROM permissions p
+      JOIN user_permissions up ON p.id = up.permission_id
+      WHERE up.user_id = ?
+    `, [userId]);
+    return new Set(rows.map(r => r.permission_key));
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    return new Set();
+  }
+}
+
+// دالة التحقق من صلاحية إلغاء الإشعارات
+async function canDisableNotifications(userId) {
+  const permissions = await getUserPermissions(userId);
+  return permissions.has('disable_notifications') || permissions.has('admin');
+}
+
+// دالة التحقق من صلاحية إلغاء الإيميلات
+async function canDisableEmails(userId) {
+  const permissions = await getUserPermissions(userId);
+  return permissions.has('disable_emails') || permissions.has('admin');
+}
+
+// دالة التحقق من صلاحية إلغاء اللوقز
+async function canDisableLogs(userId) {
+  const permissions = await getUserPermissions(userId);
+  return permissions.has('disable_logs') || permissions.has('admin');
+}
+
 // تصميم HTML احترافي للإشعارات
 function getEmailTemplate(notification) {
   const { title, message, type, created_at, userName } = notification;
@@ -171,6 +205,13 @@ function getEmailTemplate(notification) {
 // دالة إدراج إشعار مع إرسال بريد إلكتروني
 async function insertNotification(userId, title, message, type = 'ticket', messageData = null) {
   try {
+    // التحقق من صلاحية إلغاء الإشعارات
+    const canDisableNotifs = await canDisableNotifications(userId);
+    if (canDisableNotifs) {
+      console.log(`User ${userId} has disabled notifications, skipping notification insertion`);
+      return null;
+    }
+
     // 1) إدراج الإشعار في قاعدة البيانات
     const [result] = await db.execute(
       `INSERT INTO notifications 
@@ -182,6 +223,13 @@ async function insertNotification(userId, title, message, type = 'ticket', messa
     // 2) إرسال البريد الإلكتروني في الخلفية (بدون await)
     (async () => {
       try {
+        // التحقق من صلاحية إلغاء الإيميلات
+        const canDisableEmail = await canDisableEmails(userId);
+        if (canDisableEmail) {
+          console.log(`User ${userId} has disabled emails, skipping email sending`);
+          return;
+        }
+
         // جلب معلومات المستخدم
         const [userRows] = await db.execute(
           'SELECT email, username FROM users WHERE id = ?',
@@ -384,5 +432,8 @@ module.exports = {
   sendContentExpirySoonDayNotification,
   sendContentExpiredNotification,
   sendNewContentNotification,
-  sendApprovalReminderNotification
+  sendApprovalReminderNotification,
+  canDisableNotifications,
+  canDisableEmails,
+  canDisableLogs
 };

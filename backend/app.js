@@ -3,7 +3,8 @@ const express = require('express');
 const mysql = require('mysql2');
 const path    = require('path');
 const cors    = require('cors');
-const { insertNotification } = require('./models/notfications-utils');
+const { insertNotification, canDisableNotifications, canDisableEmails } = require('./models/notfications-utils');
+const { logAction, canDisableLogs } = require('./models/logger');
 const mysql2Promise = require('mysql2/promise');
 
 const app = express();
