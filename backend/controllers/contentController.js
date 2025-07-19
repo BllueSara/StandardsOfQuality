@@ -606,6 +606,10 @@ const addContent = async (req, res) => {
       }
       approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
 
+      // === منطق التفويض الدائم: استبدل أي عضو مفوض له وأضف سجلات بالنيابة ===
+      // خزّن التسلسل النهائي في الملف الجديد
+      await connection.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(approvalSequence), insertedContentId]);
+
       for (const userId of approvalSequence) {
         await connection.execute(
           `INSERT INTO approval_logs (content_id, approver_id, status, created_at)
@@ -1626,6 +1630,35 @@ const getRejectedContents = async (req, res) => {
     }
 };
 
+// مثال: دالة إنشاء ملف جديد مع دعم التفويض الدائم
+async function createContentWithDelegation(req, res) {
+  try {
+    // 1. استخرج بيانات الملف الجديد من الطلب
+    const { departmentId, title, ...rest } = req.body;
+    // 2. أنشئ الملف في قاعدة البيانات (بدون تسلسل الاعتماد بعد)
+    const [result] = await db.execute(
+      'INSERT INTO contents (title, department_id, ...) VALUES (?, ?, ...)',
+      [title, departmentId /*, ...rest*/]
+    );
+    const contentId = result.insertId;
+    // 3. جلب تسلسل الاعتماد من القسم
+    const [deptRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+    let approvalSequence = [];
+    if (deptRows.length && deptRows[0].approval_sequence) {
+      approvalSequence = JSON.parse(deptRows[0].approval_sequence);
+    }
+    // 4. طبق التفويضات الدائمة وأضف سجلات بالنيابة إذا لزم
+    approvalSequence = await applyPermanentDelegationsAndCreateProxyLogs(contentId, approvalSequence);
+    // 5. خزّن التسلسل النهائي في الملف الجديد
+    await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(approvalSequence), contentId]);
+    // 6. أرجع استجابة النجاح
+    res.status(201).json({ status: 'success', contentId });
+  } catch (err) {
+    console.error('Error in createContentWithDelegation:', err);
+    res.status(500).json({ status: 'error', message: 'فشل إنشاء الملف مع التفويضات الدائمة' });
+  }
+}
+
 module.exports = {
   getMyUploadedContent,
   getContentsByFolderId,
@@ -1642,6 +1675,7 @@ module.exports = {
   upload,
   logContentView,
   getRejectedContents,
-  updateContentApprovalSequence
+  updateContentApprovalSequence,
+  createContentWithDelegation
 };
   

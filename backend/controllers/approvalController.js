@@ -70,7 +70,7 @@ const getUserPendingApprovals = async (req, res) => {
 // اعتماد/رفض ملف
 const handleApproval = async (req, res) => {
   let { contentId: originalContentId } = req.params;
-  const { approved, signature, notes, electronic_signature, on_behalf_of, } = req.body;
+  const { approved, signature, notes, electronic_signature, on_behalf_of } = req.body;
 
   let contentId;
 
@@ -104,31 +104,157 @@ const handleApproval = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const currentUserId = decoded.id;
 
-// ——— fallback لحفظ التفويض القديم إذا ما جالنا on_behalf_of ———
-// أولاً حدد القيم الواردة من الـ body
-let delegatedBy = on_behalf_of || null;
-let isProxy    = Boolean(on_behalf_of);
+    // تمييز نوع الاعتماد بناءً على on_behalf_of
+    let isProxy = false;
+    let delegatedBy = null;
+    if (on_behalf_of) {
+      isProxy = true;
+      delegatedBy = on_behalf_of;
+    } else {
+      isProxy = false;
+      delegatedBy = null;
+    }
 
-// إذا ما وصلنا on_behalf_of نقرأ من القاعدة السجل القديم
-if (!on_behalf_of) {
-  const [existing] = await db.execute(`
-    SELECT delegated_by, signed_as_proxy
-    FROM approval_logs
-    WHERE content_id = ? AND approver_id = ?
-    LIMIT 1
-  `, [contentId, currentUserId]);
+    // تحقق من وجود تفويض دائم
+    let permanentDelegator = null;
+    const [permDelegRows] = await db.execute(
+      'SELECT user_id FROM active_delegations WHERE delegate_id = ?',
+      [currentUserId]
+    );
+    console.log('[PERM-DELEG] Checking permanent delegation for user', currentUserId, 'rows:', permDelegRows);
+    if (permDelegRows.length) {
+      permanentDelegator = permDelegRows[0].user_id;
+      console.log('[PERM-DELEG] Found permanent delegator:', permanentDelegator, 'for user:', currentUserId);
+    }
 
-  if (existing.length && existing[0].signed_as_proxy === 1) {
-    // احتفظ بقيم التفويض القديمة بدل مسحها
-    delegatedBy = existing[0].delegated_by;
-    isProxy    = true;
-  }
-}
-
-// بعدين استخدم currentUserId كموقّع فعلي
-const approverId = currentUserId;
-// ————————————————————————————————————————————————
-
+    // إذا كان هناك تفويض دائم، سجّل سجل بالنيابة دائماً، وإذا كان للمستخدم موقع أصلي سجّل سجل شخصي أيضًا
+    if (approved && permanentDelegator) {
+      // جلب التسلسل
+      let approvalSequence = [];
+      const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+      console.log('[PERM-DELEG] custom_approval_sequence for content', contentId, ':', customRows);
+      if (customRows.length && customRows[0].custom_approval_sequence) {
+        try {
+          const parsed = JSON.parse(customRows[0].custom_approval_sequence);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            approvalSequence = parsed;
+          }
+        } catch (e) { console.log('[PERM-DELEG] Error parsing custom_approval_sequence:', e); }
+      }
+      if (approvalSequence.length === 0) {
+        // جلب من القسم
+        const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [contentId]);
+        console.log('[PERM-DELEG] folderRows:', folderRows);
+        if (folderRows.length) {
+          const folderId = folderRows[0].folder_id;
+          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+          console.log('[PERM-DELEG] deptRows:', deptRows);
+          if (deptRows.length) {
+            const departmentId = deptRows[0].department_id;
+            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+            console.log('[PERM-DELEG] seqRows:', seqRows);
+            if (seqRows.length) {
+              let approvalSequenceRaw = seqRows[0].approval_sequence;
+              if (Array.isArray(approvalSequenceRaw)) {
+                approvalSequence = approvalSequenceRaw;
+                console.log('[PERM-DELEG] approval_sequence is Array:', approvalSequenceRaw);
+              } else if (typeof approvalSequenceRaw === 'string') {
+                try {
+                  approvalSequence = JSON.parse(approvalSequenceRaw);
+                  console.log('[PERM-DELEG] approval_sequence parsed from string:', approvalSequence);
+                } catch (e) {
+                  console.log('[PERM-DELEG] Error parsing dept approval_sequence:', e);
+                  approvalSequence = [];
+                }
+              } else {
+                approvalSequence = [];
+                console.log('[PERM-DELEG] approval_sequence unknown type:', typeof approvalSequenceRaw);
+              }
+            }
+          }
+        }
+      }
+      approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+      console.log('[PERM-DELEG] Final approvalSequence:', approvalSequence);
+      // تحقق هل للمستخدم موقع أصلي
+      const hasSelf = approvalSequence.some(id => Number(id) === Number(currentUserId));
+      console.log('[PERM-DELEG] hasSelf:', hasSelf, 'permanentDelegator:', permanentDelegator);
+      // سجل شخصي إذا كان له موقع أصلي
+      if (hasSelf) {
+        try {
+          await db.execute(`
+            INSERT INTO approval_logs (
+              content_id, approver_id, delegated_by, signed_as_proxy, status, signature, electronic_signature, comments, created_at
+            ) VALUES (?, ?, NULL, 0, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+              status = VALUES(status),
+              signature = VALUES(signature),
+              electronic_signature = VALUES(electronic_signature),
+              comments = VALUES(comments),
+              created_at = NOW()
+          `, [
+            contentId,
+            currentUserId,
+            approved ? 'approved' : 'rejected',
+            signature || null,
+            electronic_signature || null,
+            notes || ''
+          ]);
+          console.log('[PERM-DELEG] Inserted self approval log for user', currentUserId, 'content', contentId);
+        } catch (e) {
+          console.log('[PERM-DELEG] Error inserting self approval log:', e);
+        }
+      }
+      // سجل بالنيابة دائماً إذا كان هناك تفويض دائم
+      try {
+        await db.execute(`
+          INSERT INTO approval_logs (
+            content_id, approver_id, delegated_by, signed_as_proxy, status, signature, electronic_signature, comments, created_at
+          ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, NOW())
+          ON DUPLICATE KEY UPDATE
+            status = VALUES(status),
+            signature = VALUES(signature),
+            electronic_signature = VALUES(electronic_signature),
+            comments = VALUES(comments),
+            created_at = NOW()
+        `, [
+          contentId,
+          currentUserId,
+          permanentDelegator,
+          approved ? 'approved' : 'rejected',
+          signature || null,
+          electronic_signature || null,
+          notes || ''
+        ]);
+        console.log('[PERM-DELEG] Inserted proxy approval log for user', currentUserId, 'on behalf of', permanentDelegator, 'content', contentId);
+      } catch (e) {
+        console.log('[PERM-DELEG] Error inserting proxy approval log:', e);
+      }
+      // أكمل الدالة ولا تنفذ الإدخال الافتراضي بالأسفل
+      // تحديث ملف PDF مباشرة بعد كل عملية اعتماد
+      try {
+        await generateFinalSignedPDF(contentId);
+        console.log('[PERM-DELEG] PDF generated for content', contentId);
+      } catch (e) {
+        console.log('[PERM-DELEG] Error generating PDF:', e);
+      }
+      // تحديث حقل approvals_log في جدول contents ليعكس آخر حالة من جدول approval_logs
+      try {
+        const [allLogs] = await db.execute(
+          `SELECT approver_id AS user_id, status, signature, electronic_signature, comments, created_at FROM approval_logs WHERE content_id = ?`,
+          [contentId]
+        );
+        await db.execute(
+          `UPDATE contents SET approvals_log = ? WHERE id = ?`,
+          [JSON.stringify(allLogs), contentId]
+        );
+        console.log('[PERM-DELEG] Updated approvals_log for content', contentId);
+      } catch (e) {
+        console.log('[PERM-DELEG] Error updating approvals_log:', e);
+      }
+      // الاستجابة النهائية
+      return res.status(200).json({ status: 'success', message: 'تم تسجيل اعتمادك بنجاح (شخصي و/أو نيابة)' });
+    }
 
     if (approved === true && !signature && !electronic_signature) {
       return res.status(400).json({ status: 'error', message: 'التوقيع مفقود' });
@@ -139,6 +265,7 @@ const approverId = currentUserId;
     const contentsTable = 'contents';
     const generatePdfFunction = generateFinalSignedPDF;
 
+    // أولاً: نفذ جملة الإدخال كما كانت سابقاً (بدون WHERE)
     await db.execute(`
       INSERT INTO ${approvalLogsTable} (
         content_id,
@@ -153,9 +280,6 @@ const approverId = currentUserId;
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE
-       delegated_by    = COALESCE(VALUES(delegated_by), delegated_by),
-
-signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
         status = VALUES(status),
         signature = VALUES(signature),
         electronic_signature = VALUES(electronic_signature),
@@ -163,7 +287,7 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
         created_at = NOW()
     `, [
       contentId,
-      approverId,
+      currentUserId,
       delegatedBy,
       isProxy ? 1 : 0,
       approved ? 'approved' : 'rejected',
@@ -171,6 +295,24 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       electronic_signature || null,
       notes || ''
     ]);
+
+    // ثانياً: نفذ جملة UPDATE منفصلة لتحديث السجل الصحيح فقط
+    await db.execute(
+      `UPDATE ${approvalLogsTable}
+       SET status = ?, signature = ?, electronic_signature = ?, comments = ?, created_at = NOW()
+       WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = ? AND (delegated_by = ? OR (? IS NULL AND delegated_by IS NULL))`,
+      [
+        approved ? 'approved' : 'rejected',
+        signature || null,
+        electronic_signature || null,
+        notes || '',
+        contentId,
+        currentUserId,
+        isProxy ? 1 : 0,
+        delegatedBy,
+        delegatedBy
+      ]
+    );
 
     // تحديث ملف PDF مباشرة بعد كل عملية اعتماد
     await generatePdfFunction(contentId);
@@ -230,26 +372,36 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
           }
         }
         approvalSequence2 = (approvalSequence2 || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
-        // حدد ترتيب المعتمد الحالي
-        const idx = approvalSequence2.findIndex(x => Number(x) === Number(approverId));
-        // إشعار للشخص الأول في التسلسل إذا كان هو المعتمد الحالي
+        // ابحث عن كل المواقع التي يظهر فيها approverId في التسلسل
+        const allIndexes = [];
+        approvalSequence2.forEach((id, i) => {
+          if (Number(id) === Number(currentUserId)) allIndexes.push(i);
+        });
+        // تحقق أن عدد سجلات الاعتماد (approved) لهذا المستخدم يساوي عدد مرات ظهوره في التسلسل
+        const approvedLogsCount = allLogs.filter(log =>
+          Number(log.user_id) === Number(currentUserId) &&
+          log.status === 'approved'
+        ).length;
 
-        if (idx !== -1 && idx < approvalSequence2.length - 1) {
-          const nextApproverId = approvalSequence2[idx + 1];
-          // تحقق إذا كان التالي لم يعتمد بعد
-          const [logNext] = await db.execute(`SELECT status FROM approval_logs WHERE content_id = ? AND approver_id = ?`, [contentId, nextApproverId]);
-          if (!logNext.length || logNext[0].status !== 'approved') {
-            // أضف التالي إلى content_approvers إذا لم يكن موجودًا
-            await db.execute(`INSERT IGNORE INTO ${contentApproversTable} (content_id, user_id) VALUES (?, ?)`, [contentId, nextApproverId]);
-            // إرسال إشعار للشخص التالي
-            const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
-            const fileTitle = contentRows.length ? contentRows[0].title : '';
-            await insertNotification(
-              nextApproverId,
-              'ملف جديد بانتظار اعتمادك',
-              `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
-              'approval'
-            );
+        if (approvedLogsCount >= allIndexes.length && allIndexes.length > 0) {
+          // انتقل للشخص التالي في التسلسل
+          const maxIdx = Math.max(...allIndexes);
+          if (maxIdx < approvalSequence2.length - 1) {
+            const nextApproverId = approvalSequence2[maxIdx + 1];
+            // تحقق إذا كان التالي لم يعتمد بعد
+            const [logNext] = await db.execute(`SELECT status FROM approval_logs WHERE content_id = ? AND approver_id = ?`, [contentId, nextApproverId]);
+            if (!logNext.length || logNext[0].status !== 'approved') {
+              await db.execute(`INSERT IGNORE INTO ${contentApproversTable} (content_id, user_id) VALUES (?, ?)`, [contentId, nextApproverId]);
+              // إرسال إشعار للشخص التالي
+              const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+              const fileTitle = contentRows.length ? contentRows[0].title : '';
+              await insertNotification(
+                nextApproverId,
+                'ملف جديد بانتظار اعتمادك',
+                `لديك ملف بعنوان "${fileTitle}" بحاجة لاعتمادك.`,
+                'approval'
+              );
+            }
           }
         }
       } catch (e) {
@@ -261,6 +413,7 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       await db.execute(`
         UPDATE ${contentsTable}
         SET approval_status = 'rejected',
+            is_approved = 0,
             updated_at = NOW()
         WHERE id = ?
       `, [contentId]);
@@ -283,7 +436,7 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       contentId
     );
 
-    if (isProxy && approverId) {
+    if (isProxy && currentUserId) {
       // لم يعد هناك إشعار هنا
     }
 
@@ -292,7 +445,7 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       await db.execute(`
         INSERT IGNORE INTO ${contentApproversTable} (content_id, user_id)
         VALUES (?, ?)
-      `, [contentId, approverId]);
+      `, [contentId, currentUserId]);
     }
 
     // تحقق من اكتمال الاعتماد من جميع أعضاء التسلسل (custom أو department)
@@ -337,13 +490,20 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
       }
     }
     approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
-    // تحقق أن كل من في approvalSequence اعتمد الملف فعلاً
-    const [logs] = await db.execute(`SELECT approver_id, status FROM approval_logs WHERE content_id = ?`, [contentId]);
-    const approvedSet = new Set(logs.filter(l => l.status === 'approved').map(l => Number(l.approver_id)));
-    const allApproved = approvalSequence.length > 0 &&
-      approvalSequence.every(approverId => approvedSet.has(approverId)) &&
-      approvedSet.size === approvalSequence.length;
-    if (allApproved) {
+    // جلب كل السجلات من approval_logs لهذا الملف
+    const [logs] = await db.execute(`SELECT approver_id, status, signed_as_proxy, delegated_by FROM approval_logs WHERE content_id = ?`, [contentId]);
+    // لكل موقع في التسلسل، يجب أن يكون هناك سجل معتمد (status = 'approved') سواء self أو proxy
+    let allApproved = true;
+    for (let i = 0; i < approvalSequence.length; i++) {
+      const approverId = Number(approvalSequence[i]);
+      // ابحث عن أي سجل معتمد (سواء self أو proxy) لهذا الموقع
+      const hasApproved = logs.some(log => Number(log.approver_id) === approverId && log.status === 'approved');
+      if (!hasApproved) {
+        allApproved = false;
+        break;
+      }
+    }
+    if (allApproved && approvalSequence.length > 0) {
       await generatePdfFunction(contentId);
       await db.execute(`
         UPDATE ${contentsTable}
@@ -352,7 +512,7 @@ signed_as_proxy = COALESCE(VALUES(signed_as_proxy), signed_as_proxy),
             approved_by = ?, 
             updated_at = NOW()
         WHERE id = ?
-      `, [approverId, contentId]);
+      `, [currentUserId, contentId]);
       // إرسال إشعار لصاحب الملف بأن الملف تم اعتماده من الجميع
       let [ownerRowsFinal] = await db.execute(`SELECT created_by, title FROM ${contentsTable} WHERE id = ?`, [contentId]);
       if (ownerRowsFinal.length) {
@@ -461,73 +621,144 @@ async function generateFinalSignedPDF(contentId) {
   y -= 40;
 
   // 6) رسم كل توقيع
+  const uniqueSelf = new Set();
   for (const log of logs) {
-    if (y < 200) {
-      page = pdfDoc.addPage();
-      y = 750;
-      page.drawText(signatureTitle + ' (continued)', {
-        x: 200,
-        y,
-        size: 20,
-        font,
-        color: rgb(0, 0, 0)
-      });
-      y -= 40;
-    }
-    const label = log.signed_as_proxy
-      ? `Signed by ${log.actual_signer} on behalf of ${log.original_user}`
-      : `Signed by ${log.actual_signer}`;
-    page.drawText(label, {
-      x: 50, y, size: 14, font, color: rgb(0, 0, 0)
-    });
-    y -= 25;
-    if (log.signature?.startsWith('data:image')) {
-      try {
-        const base64Data = log.signature.split(',')[1];
-        const imgBytes = Buffer.from(base64Data, 'base64');
-        const img = await pdfDoc.embedPng(imgBytes);
-        const dims = img.scale(0.4);
-        page.drawImage(img, {
-          x: 150,
-          y: y - dims.height + 10,
-          width: dims.width,
-          height: dims.height
+    if (log.signed_as_proxy) {
+      // اعرض كل proxy
+      if (y < 200) {
+        page = pdfDoc.addPage();
+        y = 750;
+        page.drawText(signatureTitle + ' (continued)', {
+          x: 200,
+          y,
+          size: 20,
+          font,
+          color: rgb(0, 0, 0)
         });
-        y -= dims.height + 20;
-      } catch (err) {
+        y -= 40;
+      }
+      const label = `Signed by ${log.actual_signer} on behalf of ${log.original_user}`;
+      page.drawText(label, {
+        x: 50, y, size: 14, font, color: rgb(0, 0, 0)
+      });
+      y -= 25;
+      if (log.signature?.startsWith('data:image')) {
+        try {
+          const base64Data = log.signature.split(',')[1];
+          const imgBytes = Buffer.from(base64Data, 'base64');
+          const img = await pdfDoc.embedPng(imgBytes);
+          const dims = img.scale(0.4);
+          page.drawImage(img, {
+            x: 150,
+            y: y - dims.height + 10,
+            width: dims.width,
+            height: dims.height
+          });
+          y -= dims.height + 20;
+        } catch (err) {
+          y -= 20;
+        }
+      }
+      if (log.electronic_signature) {
+        try {
+          const stampPath = path.join(__dirname, '../e3teamdelc.png');
+          const stampBytes = fs.readFileSync(stampPath);
+          const stampImg = await pdfDoc.embedPng(stampBytes);
+          const dims = stampImg.scale(0.5);
+          page.drawImage(stampImg, {
+            x: 150,
+            y: y - dims.height + 10,
+            width: dims.width,
+            height: dims.height
+          });
+          y -= dims.height + 20;
+        } catch (err) {
+          y -= 20;
+        }
+      }
+      if (log.comments) {
+        page.drawText(`Comments: ${log.comments}`, {
+          x: 50, y, size: 12, font, color: rgb(0.3, 0.3, 0.3)
+        });
         y -= 20;
       }
-    }
-    if (log.electronic_signature) {
-      try {
-        const stampPath = path.join(__dirname, '../e3teamdelc.png');
-        const stampBytes = fs.readFileSync(stampPath);
-        const stampImg = await pdfDoc.embedPng(stampBytes);
-        const dims = stampImg.scale(0.5);
-        page.drawImage(stampImg, {
-          x: 150,
-          y: y - dims.height + 10,
-          width: dims.width,
-          height: dims.height
+      page.drawLine({
+        start: { x: 50, y },
+        end:   { x: 550, y },
+        thickness: 1,
+        color: rgb(0.8, 0.8, 0.8)
+      });
+      y -= 30;
+    } else {
+      // self: اعرض فقط أول توقيع لكل شخص
+      if (!uniqueSelf.has(log.actual_signer)) {
+        uniqueSelf.add(log.actual_signer);
+        if (y < 200) {
+          page = pdfDoc.addPage();
+          y = 750;
+          page.drawText(signatureTitle + ' (continued)', {
+            x: 200,
+            y,
+            size: 20,
+            font,
+            color: rgb(0, 0, 0)
+          });
+          y -= 40;
+        }
+        const label = `Signed by ${log.actual_signer}`;
+        page.drawText(label, {
+          x: 50, y, size: 14, font, color: rgb(0, 0, 0)
         });
-        y -= dims.height + 20;
-      } catch (err) {
-        y -= 20;
+        y -= 25;
+        if (log.signature?.startsWith('data:image')) {
+          try {
+            const base64Data = log.signature.split(',')[1];
+            const imgBytes = Buffer.from(base64Data, 'base64');
+            const img = await pdfDoc.embedPng(imgBytes);
+            const dims = img.scale(0.4);
+            page.drawImage(img, {
+              x: 150,
+              y: y - dims.height + 10,
+              width: dims.width,
+              height: dims.height
+            });
+            y -= dims.height + 20;
+          } catch (err) {
+            y -= 20;
+          }
+        }
+        if (log.electronic_signature) {
+          try {
+            const stampPath = path.join(__dirname, '../e3teamdelc.png');
+            const stampBytes = fs.readFileSync(stampPath);
+            const stampImg = await pdfDoc.embedPng(stampBytes);
+            const dims = stampImg.scale(0.5);
+            page.drawImage(stampImg, {
+              x: 150,
+              y: y - dims.height + 10,
+              width: dims.width,
+              height: dims.height
+            });
+            y -= dims.height + 20;
+          } catch (err) {
+            y -= 20;
+          }
+        }
+        if (log.comments) {
+          page.drawText(`Comments: ${log.comments}`, {
+            x: 50, y, size: 12, font, color: rgb(0.3, 0.3, 0.3)
+          });
+          y -= 20;
+        }
+        page.drawLine({
+          start: { x: 50, y },
+          end:   { x: 550, y },
+          thickness: 1,
+          color: rgb(0.8, 0.8, 0.8)
+        });
+        y -= 30;
       }
     }
-    if (log.comments) {
-      page.drawText(`Comments: ${log.comments}`, {
-        x: 50, y, size: 12, font, color: rgb(0.3, 0.3, 0.3)
-      });
-      y -= 20;
-    }
-    page.drawLine({
-      start: { x: 50, y },
-      end:   { x: 550, y },
-      thickness: 1,
-      color: rgb(0.8, 0.8, 0.8)
-    });
-    y -= 30;
   }
 
   // 7) حفظ التعديلات
@@ -552,7 +783,6 @@ async function getUserPermissions(userId) {
   return new Set(permRows.map(r => r.permission_key));
 }
 
-// جلب الملفات المكلف بها المستخدم
 const getAssignedApprovals = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -562,7 +792,7 @@ const getAssignedApprovals = async (req, res) => {
     const userRole = decoded.role;
 
     const permsSet = await getUserPermissions(userId);
-    const canViewAll = userRole === 'admin' 
+    const canViewAll = userRole === 'admin';
 
     // جلب كل الملفات (حسب الصلاحية)
     const departmentContentQuery = canViewAll
@@ -631,13 +861,11 @@ const getAssignedApprovals = async (req, res) => {
 
     // تحويل الحقول من نص JSON إلى مصفوفة
     rows.forEach(row => {
-      console.log('raw department_approval_sequence:', row.department_approval_sequence);
       try {
         row.approvers_required = JSON.parse(row.approvers_required);
       } catch {
         row.approvers_required = [];
       }
-      // تصحيح التحويل لقبول array أو string
       if (Array.isArray(row.department_approval_sequence)) {
         row.approval_sequence = row.department_approval_sequence;
       } else if (typeof row.department_approval_sequence === 'string') {
@@ -649,7 +877,6 @@ const getAssignedApprovals = async (req, res) => {
       } else {
         row.approval_sequence = [];
       }
-      // تحويل custom_approval_sequence إذا وجد
       if (row.custom_approval_sequence) {
         if (Array.isArray(row.custom_approval_sequence)) {
           // لا شيء
@@ -665,7 +892,6 @@ const getAssignedApprovals = async (req, res) => {
       } else {
         row.custom_approval_sequence = [];
       }
-      // تصحيح approvals_log ليقبل Array أو String أو null
       if (Array.isArray(row.approvals_log)) {
         // لا شيء
       } else if (typeof row.approvals_log === 'string') {
@@ -679,43 +905,50 @@ const getAssignedApprovals = async (req, res) => {
       }
     });
 
-    if (canViewAll) {
-      // الأدمن أو من لديه صلاحية يرى كل الملفات
-      return res.json({ status: 'success', data: rows });
-    }
-
-
-    // فلترة الملفات حسب تسلسل الاعتماد للمستخدم العادي فقط
-    const filteredRows = rows.filter(row => {
-      // استخدم custom_approval_sequence إذا كان موجود وغير فارغ، وإلا approval_sequence
-      const sequence = (
-        row.custom_approval_sequence && Array.isArray(row.custom_approval_sequence) && row.custom_approval_sequence.length > 0
-          ? row.custom_approval_sequence
-          : row.approval_sequence
-      ) || [];
-      const sequenceNums = sequence.map(x => Number(String(x).trim()));
-      const myIndex = sequenceNums.indexOf(Number(userId));
-      if (myIndex === -1) return false; // المستخدم ليس ضمن السلسلة
-      // إذا الملف معتمد أو مرفوض، يظهر للجميع في السلسلة
-      if (row.approval_status === 'approved' || row.approval_status === 'rejected') {
-        return true;
-      }
-      // تحقق من أن كل من قبله اعتمد الملف (فقط إذا كان pending)
-      let allPreviousApproved = true;
-      for (let i = 0; i < myIndex; i++) {
-        const approverId = sequenceNums[i];
-        // تأكد أن user_id رقم للمقارنة الصحيحة
-        const approved = row.approvals_log?.find(log => Number(log.user_id) === approverId && log.status === 'approved');
-        if (!approved) {
-          allPreviousApproved = false;
-          break;
+    // تجهيز الملفات للمستخدم الحالي بحيث يظهر الملف لكل من هو في التسلسل أو مفوض له
+    const assignedApprovals = [];
+    for (const row of rows) {
+      const sequence = Array.isArray(row.approval_sequence) ? row.approval_sequence : [];
+      const logs = Array.isArray(row.approvals_log) ? row.approvals_log : [];
+      const userInSequence = sequence.some(id => Number(id) === Number(userId));
+      // دعم التفويض: هل المستخدم مفوض له من أحد أعضاء التسلسل؟
+      let isProxy = false;
+      let delegatedBy = null;
+      const [delegationRows] = await db.execute(
+        'SELECT user_id FROM active_delegations WHERE delegate_id = ?',
+        [userId]
+      );
+      if (delegationRows.length) {
+        for (const delegation of delegationRows) {
+          const originalUserId = delegation.user_id;
+          if (sequence.some(id => Number(id) === Number(originalUserId))) {
+            isProxy = true;
+            delegatedBy = originalUserId;
+            break;
+          }
         }
       }
-      // إذا كل من قبله اعتمد، يعرض له الملف
-      return allPreviousApproved && row.approval_status === 'pending';
-    });
-
-    return res.json({ status: 'success', data: filteredRows });
+      // إذا كان المستخدم في التسلسل أو مفوض له من أحد أعضاء التسلسل
+      if (userInSequence || isProxy) {
+        // حدد إذا كان هو الدور الحالي (أول شخص لم يعتمد بعد)
+        let firstPendingUser = null;
+        for (let i = 0; i < sequence.length; i++) {
+          const approverId = Number(sequence[i]);
+          const hasApproved = logs.some(log => Number(log.user_id) === approverId && log.status === 'approved');
+          if (!hasApproved) {
+            firstPendingUser = approverId;
+            break;
+          }
+        }
+        assignedApprovals.push({
+          ...row,
+          isProxy,
+          delegatedBy,
+          isCurrentTurn: Number(firstPendingUser) === Number(userId) || (isProxy && Number(firstPendingUser) === Number(delegatedBy))
+        });
+      }
+    }
+    return res.json({ status: 'success', data: assignedApprovals });
   } catch (err) {
     console.error('Error in getAssignedApprovals:', err);
     return res.status(500).json({ status: 'error', message: 'Internal Server Error' });
@@ -878,90 +1111,163 @@ const acceptProxyDelegation = async (req, res) => {
   const userId = decoded.id;
 
   try {
+    console.log('[ACCEPT PROXY] Start for contentId:', contentId, 'userId:', userId);
     // أضف المستخدم لجدول المعيّنين
     await db.execute(
       'INSERT IGNORE INTO content_approvers (content_id, user_id) VALUES (?, ?)',
       [contentId, userId]
     );
 
-    // --- منطق استبدال المفوض بالمستخدم الحالي في تسلسل الاعتماد ---
-    // 1. جلب custom_approval_sequence و folder_id
+    // جلب تسلسل الاعتماد (custom أو department)
     const [contentRows] = await db.execute(
       'SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ?',
       [contentId]
     );
-
-    console.log('contentRows:', contentRows);
-    console.log('folder_id:', contentRows.length ? contentRows[0].folder_id : null);
-
     let sequence = [];
     let useCustom = false;
     if (contentRows.length && contentRows[0].custom_approval_sequence) {
       try {
         sequence = JSON.parse(contentRows[0].custom_approval_sequence);
         useCustom = true;
+        console.log('[ACCEPT PROXY] Got custom_approval_sequence:', sequence);
       } catch { sequence = []; }
     }
-    console.log('custom_approval_sequence:', contentRows.length ? contentRows[0].custom_approval_sequence : null);
-    console.log('sequence after custom:', sequence);
-
     if (!useCustom && contentRows.length && contentRows[0].folder_id) {
-      // جلب approval_sequence من القسم
       const [folderRows] = await db.execute(
         'SELECT department_id FROM folders WHERE id = ?',
         [contentRows[0].folder_id]
       );
-      console.log('folderRows:', folderRows);
-      console.log('departmentId:', folderRows.length ? folderRows[0].department_id : null);
       if (folderRows.length) {
         const departmentId = folderRows[0].department_id;
         const [deptRows] = await db.execute(
           'SELECT approval_sequence FROM departments WHERE id = ?',
           [departmentId]
         );
-        console.log('deptRows:', deptRows);
-        console.log('approval_sequence from department:', deptRows.length ? deptRows[0].approval_sequence : null);
         if (deptRows.length && deptRows[0].approval_sequence) {
           if (Array.isArray(deptRows[0].approval_sequence)) {
             sequence = deptRows[0].approval_sequence;
-            console.log('approval_sequence from department (array):', sequence);
           } else {
             try {
               sequence = JSON.parse(deptRows[0].approval_sequence);
-              console.log('approval_sequence from department (json):', deptRows[0].approval_sequence);
-              console.log('sequence after department:', sequence);
             } catch {
               sequence = [];
             }
           }
+          console.log('[ACCEPT PROXY] Got department approval_sequence:', sequence);
         }
       }
     }
 
-    // 2. جلب delegated_by من approval_logs
-    const [proxyRows] = await db.execute(
-      'SELECT delegated_by FROM approval_logs WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = 1',
-      [contentId, userId]
+    // جلب المفوض الأصلي من جدول التفويضات الدائمة
+    let delegatedBy = null;
+    const [delegationRows] = await db.execute(
+      'SELECT user_id FROM active_delegations WHERE delegate_id = ?',
+      [userId]
     );
-
-    if (proxyRows.length && Array.isArray(sequence) && sequence.length > 0) {
-      const delegatedBy = Number(proxyRows[0].delegated_by);
-      const userIdNum = Number(userId);
-
-      // 3. استبدال كل ظهور لـ delegatedBy بـ userId
-      const newSequence = sequence.map(id => Number(id) === delegatedBy ? userIdNum : Number(id));
-
-      // 4. تحديث custom_approval_sequence في الملف
-      await db.execute(
-        'UPDATE contents SET custom_approval_sequence = ? WHERE id = ?',
-        [JSON.stringify(newSequence), contentId]
+    if (delegationRows.length) {
+      delegatedBy = delegationRows[0].user_id;
+      console.log('[ACCEPT PROXY] Found permanent delegation from:', delegatedBy, 'to:', userId);
+    } else {
+      // fallback: جلب delegated_by من approval_logs إذا كان تفويض يدوي
+      const [proxyRows] = await db.execute(
+        'SELECT delegated_by FROM approval_logs WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = 1',
+        [contentId, userId]
       );
+      if (proxyRows.length) {
+        delegatedBy = Number(proxyRows[0].delegated_by);
+        console.log('[ACCEPT PROXY] Found manual delegation from:', delegatedBy, 'to:', userId);
+      }
     }
-    // --- نهاية منطق الاستبدال ---
 
-    res.json({ status: 'success', message: 'تم قبول التفويض وستظهر لك في التقارير المكلف بها' });
+    if (delegatedBy && Array.isArray(sequence) && sequence.length > 0) {
+      // أضف سجل بالنيابة وسجل عادي إذا كان للمستخدم موقع أصلي
+      for (let i = 0; i < sequence.length; i++) {
+        if (Number(sequence[i]) === Number(delegatedBy)) {
+          // سجل بالنيابة
+          const [existingProxy] = await db.execute(
+            `SELECT * FROM approval_logs WHERE content_id = ? AND approver_id = ? AND delegated_by = ? AND signed_as_proxy = 1`,
+            [contentId, userId, delegatedBy]
+          );
+          if (!existingProxy.length) {
+            await db.execute(
+              `INSERT INTO approval_logs (
+                content_id, approver_id, delegated_by, signed_as_proxy, status, created_at
+              ) VALUES (?, ?, ?, 1, 'pending', NOW())`,
+              [contentId, userId, delegatedBy]
+            );
+            console.log('[ACCEPT PROXY] Added proxy log for user:', userId, 'on behalf of:', delegatedBy);
+          }
+        }
+        if (Number(sequence[i]) === Number(userId)) {
+          // سجل عادي
+          const [existingSelf] = await db.execute(
+            `SELECT * FROM approval_logs WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = 0`,
+            [contentId, userId]
+          );
+          if (!existingSelf.length) {
+            await db.execute(
+              `INSERT INTO approval_logs (
+                content_id, approver_id, delegated_by, signed_as_proxy, status, created_at
+              ) VALUES (?, ?, NULL, 0, 'pending', NOW())`,
+              [contentId, userId]
+            );
+            console.log('[ACCEPT PROXY] Added self log for user:', userId);
+          }
+        }
+      }
+      // تحديث التسلسل إذا لزم
+      let changed = false;
+      for (let i = 0; i < sequence.length; i++) {
+        if (Number(sequence[i]) === Number(delegatedBy)) {
+          sequence[i] = Number(userId);
+          changed = true;
+        }
+      }
+      if (changed) {
+        if (useCustom) {
+          await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(sequence), contentId]);
+          console.log('[ACCEPT PROXY] Updated custom_approval_sequence:', sequence);
+        } else if (contentRows.length && contentRows[0].folder_id) {
+          const folderId = contentRows[0].folder_id;
+          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+          if (deptRows.length) {
+            const departmentId = deptRows[0].department_id;
+            await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(sequence), departmentId]);
+            console.log('[ACCEPT PROXY] Updated department approval_sequence:', sequence);
+          }
+        }
+      }
+      // جلب اسم المفوض الأصلي
+      let delegatedByName = '';
+      if (delegatedBy) {
+        const [delegatedByRows] = await db.execute('SELECT username FROM users WHERE id = ?', [delegatedBy]);
+        delegatedByName = delegatedByRows.length ? delegatedByRows[0].username : '';
+      }
+      console.log('[ACCEPT PROXY] Done for contentId:', contentId, 'userId:', userId);
+      return res.json({
+        status: 'success',
+        message: 'تم قبول التفويض وستظهر لك في التقارير المكلف بها',
+        proxy: true,
+        delegated_by: delegatedBy,
+        delegated_by_name: delegatedByName
+      });
+    }
+    // fallback القديم إذا لم يوجد delegatedBy
+    let delegatedByName = '';
+    if (delegatedBy) {
+      const [delegatedByRows] = await db.execute('SELECT username FROM users WHERE id = ?', [delegatedBy]);
+      delegatedByName = delegatedByRows.length ? delegatedByRows[0].username : '';
+    }
+    console.log('[ACCEPT PROXY] Fallback/no delegation for contentId:', contentId, 'userId:', userId);
+    return res.json({
+      status: 'success',
+      message: 'تم قبول التفويض وستظهر لك في التقارير المكلف بها',
+      proxy: true,
+      delegated_by: delegatedBy,
+      delegated_by_name: delegatedByName
+    });
   } catch (err) {
-         console.error(err)
+    console.error('[ACCEPT PROXY] Error:', err)
     res.status(500).json({ status: 'error', message: 'فشل قبول التفويض' });
   }
 };
@@ -975,13 +1281,22 @@ function fixSequenceString(str) {
   return str.trim();
 }
 
+
+
 // تفويض جميع الملفات بالنيابة (bulk delegation)
+// ملاحظة: عند قبول التفويض الجماعي، إذا كان لدى المستخدم permanent_delegate_id، يتم تسجيل التفويض في approval_logs باسم permanent_delegate_id (كـ approver_id)، وuserId كـ delegated_by، وsigned_as_proxy = 1. هذا يضمن أن سجل التفويض بالنيابة يظهر دائماً باسم المفوض الدائم.
 const delegateAllApprovals = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ status: 'error', message: 'لا يوجد توكن' });
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const currentUserId = decoded.id;
+    // جلب permanent_delegate_id للمستخدم الحالي إذا كان موجودًا
+    let permanentDelegateId = null;
+    try {
+      const [userRows] = await db.execute('SELECT permanent_delegate_id FROM users WHERE id = ?', [currentUserId]);
+      permanentDelegateId = userRows.length ? userRows[0].permanent_delegate_id : null;
+    } catch {}
     const { delegateTo, notes } = req.body;
     if (!delegateTo || !currentUserId) {
       return res.status(400).json({ status: 'error', message: 'بيانات مفقودة أو غير صحيحة للتفويض الجماعي' });
@@ -1052,11 +1367,12 @@ const delegateAllApprovals = async (req, res) => {
   }
 };
 
+
 // إلغاء جميع التفويضات التي أعطاها المستخدم (revoke all delegations by user)
 const revokeAllDelegations = async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
-    const delegateeId = req.query.to ? parseInt(req.query.to, 10) : null;
+    const userId = parseInt(req.params.userId, 10); // المفوض الأصلي
+    const delegateeId = req.query.to ? parseInt(req.query.to, 10) : null; // المفوض إليه
     if (!userId) return res.status(400).json({ status: 'error', message: 'userId مطلوب' });
 
     // جلب كل الملفات التي سيتم حذف التفويض منها
@@ -1068,7 +1384,7 @@ const revokeAllDelegations = async (req, res) => {
     }
     const [rows] = await db.execute(selectSql, selectParams);
 
-    // حذف السجلات
+    // حذف سجلات التفويض بالنيابة
     let deleteSql = 'DELETE FROM approval_logs WHERE delegated_by = ? AND signed_as_proxy = 1';
     let deleteParams = [userId];
     if (delegateeId) {
@@ -1077,7 +1393,16 @@ const revokeAllDelegations = async (req, res) => {
     }
     const [result] = await db.execute(deleteSql, deleteParams);
 
-    // إعادة المفوض الأصلي إلى content_approvers
+    // حذف التفويض الدائم من active_delegations
+    let deleteActiveDelegationSql = 'DELETE FROM active_delegations WHERE user_id = ?';
+    let deleteActiveDelegationParams = [userId];
+    if (delegateeId) {
+      deleteActiveDelegationSql += ' AND delegate_id = ?';
+      deleteActiveDelegationParams.push(delegateeId);
+    }
+    await db.execute(deleteActiveDelegationSql, deleteActiveDelegationParams);
+
+    // إعادة المفوض الأصلي إلى التسلسل وإزالة تكرار التفويض فقط
     for (const row of rows) {
       if (row.delegated_by) {
         // إعادة المفوض الأصلي إلى content_approvers
@@ -1089,26 +1414,61 @@ const revokeAllDelegations = async (req, res) => {
         const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [row.content_id]);
         if (folderRows.length) {
           const folderId = folderRows[0].folder_id;
-          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
-          if (deptRows.length) {
-            const departmentId = deptRows[0].department_id;
-            // جلب approval_sequence من القسم
-            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
-            if (seqRows.length && seqRows[0].approval_sequence) {
-              let seqRaw = seqRows[0].approval_sequence;
-              let seqArr;
-              try {
-                seqArr = Array.isArray(seqRaw) ? seqRaw : JSON.parse(typeof seqRaw === 'string' ? seqRaw.replace(/'/g, '"') : seqRaw);
-              } catch { seqArr = []; }
-              // استبدل المستخدم الجديد بالمفوض الأصلي
-              let changed = false;
-              for (let i = 0; i < seqArr.length; i++) {
-                if (Number(seqArr[i]) === Number(row.approver_id)) {
-                  seqArr[i] = Number(row.delegated_by);
-                  changed = true;
-                }
+          // جلب التسلسل من جدول الملفات (custom_approval_sequence) أو من القسم (approval_sequence)
+          const [contentRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [row.content_id]);
+          let customSeqRaw = contentRows.length ? contentRows[0].custom_approval_sequence : null;
+          let usedCustom = false;
+          let seqArr = [];
+          if (customSeqRaw) {
+            // إذا كان هناك تسلسل مخصص
+            try {
+              seqArr = Array.isArray(customSeqRaw) ? customSeqRaw : JSON.parse(typeof customSeqRaw === 'string' ? customSeqRaw.replace(/'/g, '"') : customSeqRaw);
+              usedCustom = true;
+            } catch { seqArr = []; }
+          } else {
+            // جلب من القسم
+            const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+            if (deptRows.length) {
+              const departmentId = deptRows[0].department_id;
+              const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+              if (seqRows.length && seqRows[0].approval_sequence) {
+                let seqRaw = seqRows[0].approval_sequence;
+                try {
+                  seqArr = Array.isArray(seqRaw) ? seqRaw : JSON.parse(typeof seqRaw === 'string' ? seqRaw.replace(/'/g, '"') : seqRaw);
+                } catch { seqArr = []; }
               }
-              if (changed) {
+            }
+          }
+          // استبدل فقط أول موقع للمفوض إليه (delegatee) الذي أتى من التفويض بموقع المفوض الأصلي (delegator)
+          let changed = false;
+          if (delegateeId) {
+            let replaced = false;
+            for (let i = 0; i < seqArr.length; i++) {
+              if (Number(seqArr[i]) === Number(delegateeId) && !replaced) {
+                seqArr[i] = Number(row.delegated_by);
+                replaced = true;
+                changed = true;
+              }
+            }
+          } else {
+            // إذا لم يحدد delegateeId، استبدل كل المواقع التي كانت بالنيابة
+            for (let i = 0; i < seqArr.length; i++) {
+              if (Number(seqArr[i]) === Number(row.approver_id)) {
+                seqArr[i] = Number(row.delegated_by);
+                changed = true;
+              }
+            }
+          }
+          // إزالة التكرار مع الحفاظ على الترتيب
+          seqArr = seqArr.filter((item, pos) => seqArr.indexOf(item) === pos);
+          if (changed) {
+            if (usedCustom) {
+              await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(seqArr), row.content_id]);
+            } else {
+              // جلب القسم مرة أخرى
+              const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+              if (deptRows.length) {
+                const departmentId = deptRows[0].department_id;
                 await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(seqArr), departmentId]);
               }
             }
@@ -1117,12 +1477,13 @@ const revokeAllDelegations = async (req, res) => {
       }
     }
 
-    return res.status(200).json({ status: 'success', message: `تم حذف ${result.affectedRows} تفويض بالنيابة بنجاح وتمت إعادة المفوض الأصلي للملفات.` });
+    return res.status(200).json({ status: 'success', message: `تم حذف ${result.affectedRows} تفويض بالنيابة بنجاح وتمت إعادة المفوض الأصلي للملفات والتسلسل.` });
   } catch (err) {
     console.error('خطأ أثناء حذف جميع التفويضات:', err);
     return res.status(500).json({ status: 'error', message: 'فشل حذف جميع التفويضات' });
   }
 };
+
 
 // جلب قائمة الأشخاص الذين تم تفويضهم من المستخدم الحالي (distinct delegateeId)
 const getDelegationSummaryByUser = async (req, res) => {
@@ -1168,20 +1529,22 @@ const processBulkDelegation = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'لا توجد ملفات في الإشعار' });
     }
     if (action === 'accept') {
+      let lastApproverId = null;
       for (const fileId of data.fileIds) {
-        // أضف المستخدم كسيناريو تفويض بالنيابة
-        await db.execute(
-          `INSERT INTO approval_logs (
-            content_id, approver_id, delegated_by, signed_as_proxy, status, created_at
-          ) VALUES (?, ?, ?, 1, 'pending', NOW())
-          ON DUPLICATE KEY UPDATE
-            delegated_by = VALUES(delegated_by),
-            signed_as_proxy = 1,
-            status = 'pending',
-            created_at = NOW()`,
-          [fileId, userId, data.from]
-        );
-        // جلب sequence (custom أو approval)
+        // جلب permanent_delegate_id للمستخدم الذي قبل التفويض
+        let permanentDelegateId = null;
+        try {
+          const [userRows] = await db.execute('SELECT permanent_delegate_id FROM users WHERE id = ?', [userId]);
+          permanentDelegateId = userRows.length ? userRows[0].permanent_delegate_id : null;
+        } catch {}
+        let approverId = userId;
+        let delegatedBy = data.from;
+        if (permanentDelegateId) {
+          approverId = permanentDelegateId;
+          delegatedBy = userId;
+        }
+        lastApproverId = approverId; // احفظ آخر واحد بعد تعريفه
+        // جلب تسلسل الاعتماد (custom أو approval)
         let sequence = [];
         let useCustom = false;
         const [contentRows] = await db.execute('SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ?', [fileId]);
@@ -1215,39 +1578,60 @@ const processBulkDelegation = async (req, res) => {
             }
           }
         }
-        // استبدل المفوض الأصلي بالمفوض له في sequence
-        let changed = false;
+        // أضف سجل بالنيابة وسجل عادي إذا كان للمستخدم موقع أصلي
         for (let i = 0; i < sequence.length; i++) {
           if (Number(sequence[i]) === Number(data.from)) {
-            sequence[i] = Number(userId);
-            changed = true;
+            // سجل بالنيابة
+            const [existingProxy] = await db.execute(
+              `SELECT * FROM approval_logs WHERE content_id = ? AND approver_id = ? AND delegated_by = ? AND signed_as_proxy = 1`,
+              [fileId, approverId, data.from]
+            );
+            if (!existingProxy.length) {
+              await db.execute(
+                `INSERT INTO approval_logs (
+                  content_id, approver_id, delegated_by, signed_as_proxy, status, created_at
+                ) VALUES (?, ?, ?, 1, 'pending', NOW())`,
+                [fileId, approverId, data.from]
+              );
+            }
+            sequence[i] = Number(approverId);
           }
-        }
-        if (changed) {
-          if (useCustom) {
-            await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(sequence), fileId]);
-          } else if (contentRows.length && contentRows[0].folder_id) {
-            const folderId = contentRows[0].folder_id;
-            const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
-            if (deptRows.length) {
-              const departmentId = deptRows[0].department_id;
-              await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(sequence), departmentId]);
+          if (Number(sequence[i]) === Number(approverId)) {
+            // سجل عادي
+            const [existingSelf] = await db.execute(
+              `SELECT * FROM approval_logs WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = 0`,
+              [fileId, approverId]
+            );
+            if (!existingSelf.length) {
+              await db.execute(
+                `INSERT INTO approval_logs (
+                  content_id, approver_id, delegated_by, signed_as_proxy, status, created_at
+                ) VALUES (?, ?, NULL, 0, 'pending', NOW())`,
+                [fileId, approverId]
+              );
             }
           }
         }
-        // أضف المستخدم الجديد إلى content_approvers
-        await db.execute(
-          'INSERT IGNORE INTO content_approvers (content_id, user_id) VALUES (?, ?)',
-          [fileId, userId]
-        );
-        // احذف المفوض الأصلي من content_approvers
-        if (data.from && userId && data.from !== userId) {
-          await db.execute(
-            'DELETE FROM content_approvers WHERE content_id = ? AND user_id = ?',
-            [fileId, data.from]
-          );
+        // تحديث التسلسل في الملف أو القسم
+        if (useCustom) {
+          await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(sequence), fileId]);
+        } else if (contentRows.length && contentRows[0].folder_id) {
+          const folderId = contentRows[0].folder_id;
+          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+          if (deptRows.length) {
+            const departmentId = deptRows[0].department_id;
+            await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(sequence), departmentId]);
+          }
         }
       }
+      // إضافة تفويض دائم للملفات الجديدة
+// بعد اللوب:
+if (lastApproverId) {
+  await db.execute(
+    'INSERT IGNORE INTO active_delegations (user_id, delegate_id) VALUES (?, ?)',
+    [data.from, lastApproverId]
+  );
+}
       // احذف الإشعار نهائياً بعد المعالجة
       await db.execute('DELETE FROM notifications WHERE id = ?', [notificationId]);
       return res.status(200).json({ status: 'success', message: 'تم قبول التفويض الجماعي وأصبحت مفوضاً بالنيابة عن جميع الملفات.' });

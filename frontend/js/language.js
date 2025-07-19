@@ -957,6 +957,7 @@ const translations = {
         'notification-delete': 'حذف',
         'notification-other': 'أخرى',
         'select-files-to-revoke': 'حدد الملفات لسحبها  ',
+        'transfer-confirmed': 'تم التحويل',
         // Notifications JS messages
         'notifications-not-logged-in': 'المستخدم غير مسجل دخول.',
         'notifications-invalid-token': 'توكن غير صالح.',
@@ -1103,6 +1104,7 @@ const translations = {
   "confirm_status_change": "Are you sure you want to change status to",
   "logout_due_to_deactivation": "Your account has been deactivated. You will be logged out.",
   "status_change_failed": "Failed to change status.",
+  'transfer-confirmed': 'Transfer Confirmed',
         // Main content
         'main-title': 'Home Page',
         'tickets': 'OVR',
