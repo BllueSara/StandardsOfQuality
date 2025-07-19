@@ -45,6 +45,7 @@
           <i class="fas fa-search search-icon"></i>
         </div>
         <button class="add-user-btn" id="add-user-btn"><i class="fas fa-user-plus"></i><span data-translate="add-user">إضافة مستخدم جديد</span></button>
+        <button class="btn-primary" id="btn-revoke-files" style="margin-top: 10px; display: none;"><i class="fas fa-file-export"></i> <span>سحب الملفات</span></button>
         <div class="user-list" id="user-list">
           <!-- سيتم تحميل المستخدمين هنا ديناميكياً -->
         </div>
@@ -168,6 +169,17 @@
         </div>
       </div>
       <label class="switch" data-key="disable_logs">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="revoke_files">سحب الملفات</div>
+        </div>
+      </div>
+      <label class="switch" data-key="revoke_files">
         <input type="checkbox">
         <span class="slider round"></span>
       </label>

@@ -47,6 +47,84 @@ const editEmail = document.getElementById('editEmail');
 const btnCancelEditUser = document.getElementById('cancelEditUser');
 const btnSaveEditUser = document.getElementById('saveEditUser');
 
+// زر سحب الملفات
+const btnRevokeFiles = document.getElementById('btn-revoke-files');
+if (btnRevokeFiles) {
+  // تحقق من الدور مباشرة من التوكن
+  let isAdmin = false;
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+      isAdmin = payload.role === 'admin';
+    }
+  } catch {}
+  btnRevokeFiles.style.display = (myPermsSet.has('revoke_files') || isAdmin) ? '' : 'none';
+  btnRevokeFiles.onclick = async () => {
+    if (!selectedUserId) return alert(getTranslation('please-select-user'));
+    // جلب الملفات من API
+    const files = await fetchJSON(`${apiBase}/users/${selectedUserId}/approvals-sequence-files`);
+    // بناء Popup
+    const overlay = document.createElement('div');
+    overlay.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    const box = document.createElement('div');
+    box.style = 'background:#fff;padding:38px 38px 28px 38px;border-radius:18px;max-width:700px;min-width:420px;text-align:center;box-shadow:0 4px 32px #0003;max-height:80vh;overflow:auto;display:flex;flex-direction:column;align-items:center;';
+    box.innerHTML = `
+      <div style='display:flex;align-items:center;justify-content:center;margin-bottom:22px;'>
+        <i class="fas fa-exclamation-triangle" style="color:#e53e3e;font-size:2em;margin-left:14px;"></i>
+        <span style='font-size:1.45rem;font-weight:700;'>${getTranslation('revoke_files') || 'سحب الملفات من المستخدم'}</span>
+      </div>
+    `;
+    if (!files.length) {
+      box.innerHTML += `<div style='margin:24px 0 12px 0;color:#888;font-size:1.05em;'>${getTranslation('no-contents') || 'لا يوجد ملفات في التسلسل'}</div>`;
+    } else {
+      box.innerHTML += `<div style='width:100%;text-align:right;margin-bottom:16px;font-size:1.13em;'>${getTranslation('select-files-to-revoke') || 'اختر الملفات التي تريد سحبها:'}</div>`;
+      // شبكة الملفات
+      const grid = document.createElement('div');
+      grid.style = 'display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px;width:100%;margin-bottom:18px;justify-items:start;';
+      files.forEach(f => {
+        const item = document.createElement('div');
+        item.style = 'display:flex;align-items:center;gap:7px;';
+        item.innerHTML = `
+          <input type='checkbox' id='file-chk-${f.id}' value='${f.id}' style='accent-color:#e53e3e;width:22px;height:22px;cursor:pointer;'>
+          <label for='file-chk-${f.id}' style='cursor:pointer;font-size:1.13em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;'>${f.title}</label>
+        `;
+        grid.appendChild(item);
+      });
+      box.appendChild(grid);
+      // أزرار بجانب بعض
+      const btnsRow = document.createElement('div');
+      btnsRow.style = 'display:flex;gap:18px;justify-content:center;margin-top:16px;width:100%';
+      const btnConfirm = document.createElement('button');
+      btnConfirm.id = 'confirm-revoke-files';
+      btnConfirm.textContent = getTranslation('revoke_files') || 'سحب المحدد';
+      btnConfirm.style = 'background:#e53e3e;color:#fff;border:none;border-radius:10px;padding:13px 40px;font-size:1.13em;font-weight:600;cursor:pointer;transition:background 0.2s;';
+      const btnClose = document.createElement('button');
+      btnClose.textContent = getTranslation('cancel') || 'إغلاق';
+      btnClose.style = 'background:#888;color:#fff;border:none;border-radius:10px;padding:10px 38px;font-size:1.08em;cursor:pointer;transition:background 0.2s;';
+      btnClose.onmouseover = () => btnClose.style.background = '#555';
+      btnClose.onmouseout = () => btnClose.style.background = '#888';
+      btnClose.onclick = () => document.body.removeChild(overlay);
+      btnsRow.appendChild(btnConfirm);
+      btnsRow.appendChild(btnClose);
+      box.appendChild(btnsRow);
+      // إضافة حدث الضغط بعد تعريف الزر وإضافته للـ DOM
+      btnConfirm.addEventListener('click', async () => {
+        const checked = Array.from(box.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
+        if (!checked.length) return alert('اختر ملف واحد على الأقل');
+        await fetchJSON(`${apiBase}/users/${selectedUserId}/revoke-files`, {
+          method: 'POST',
+          body: JSON.stringify({ fileIds: checked })
+        });
+        alert('تم سحب الملفات المحددة');
+        document.body.removeChild(overlay);
+      });
+    }
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  };
+}
+
 // في البداية أخفِ قسم الصلاحيات
 permissionsSection.style.display = 'none';
 

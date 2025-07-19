@@ -956,6 +956,7 @@ const translations = {
         'notification-update': 'تحديث',
         'notification-delete': 'حذف',
         'notification-other': 'أخرى',
+        'select-files-to-revoke': 'حدد الملفات لسحبها  ',
         // Notifications JS messages
         'notifications-not-logged-in': 'المستخدم غير مسجل دخول.',
         'notifications-invalid-token': 'توكن غير صالح.',
@@ -1031,6 +1032,7 @@ const translations = {
             rejected: 'مرفوض'
         },
                 'delegate-all': 'توقيع بالنيابة لجميع الملفات',
+                'revoke_files': 'سحب الملفات',
 
         'accept-all-proxy': 'قبول جميع التفويضات بالنيابة عن الشخص',
                 'delegate_all' : 'تفويض جميع الملفات بالنيابة',
@@ -1200,6 +1202,8 @@ const translations = {
         'approval-rejected': 'Rejected By',
         'approval-comments': 'Approval Comments',
         'request-approval': 'Request Approval',
+        'revoke_files': 'Revoke Files',
+        'select-files-to-revoke': 'Select Files To Revoke',
         'select-quality-person-count': 'Select Quality Person Count',
         'approve': 'Approve',
         'reject': 'Reject',

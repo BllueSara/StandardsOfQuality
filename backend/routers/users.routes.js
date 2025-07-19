@@ -19,7 +19,9 @@ const {
   getNotificationSettings,
   updateNotificationSettings,
   resetNotificationSettings,
-  getHospitalManager
+  getHospitalManager,
+  getUserApprovalSequenceFiles,
+  revokeUserFromFiles
 } = require('../controllers/usersController');
 
 const router = express.Router();
@@ -36,6 +38,11 @@ router.get('/:id/notifications/unread-count', authenticateToken, getUnreadCount)
 router.put('/:id/notifications/mark-read', authenticateToken, markAllAsRead);
 router.delete('/:id/notifications/:nid', authenticateToken, deleteNotification);
 router.get('/:id/notifications', authenticateToken, getNotifications);
+
+// جلب الملفات التي المستخدم في تسلسلها
+router.get('/:id/approvals-sequence-files', authenticateToken, getUserApprovalSequenceFiles);
+// سحب المستخدم من ملفات محددة
+router.post('/:id/revoke-files', authenticateToken, revokeUserFromFiles);
 
 // 3) الراوتات الباقية
 router.get('/:id', authenticateToken, getUserById);

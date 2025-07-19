@@ -307,7 +307,7 @@ const updateUser = async (req, res) => {
     let logMessageAr, logMessageEn;
     if (changesAr.length > 0) {
       logMessageAr = `تم تعديل المستخدم '${oldUser.username}':\n${changesAr.join('\n')}`;
-      logMessageEn = `Updated user '${oldUser.username}':\n${changesEn.join('\n')}`;
+      logMessageEn = `Updated user '${oldUser.username}' (no changes)`;
     } else {
       logMessageAr = `تم تعديل المستخدم '${oldUser.username}' (لا توجد تغييرات)`;
       logMessageEn = `Updated user '${oldUser.username}' (no changes)`;
@@ -958,6 +958,139 @@ const getHospitalManager = async (req, res) => {
   }
 };
 
+// دالة آمنة لتحويل أي تسلسل إلى مصفوفة أرقام
+function safeParseSequence(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map(Number).filter(x => !isNaN(x));
+  if (typeof val !== 'string') val = String(val);
+  val = val.trim();
+  // إذا كان نص JSON array حقيقي
+  if (val.startsWith('[') && val.endsWith(']')) {
+    try {
+      const arr = JSON.parse(val);
+      return Array.isArray(arr) ? arr.map(Number).filter(x => !isNaN(x)) : [];
+    } catch {
+      // إذا فشل، جرب الطريقة القديمة
+    }
+  }
+  // الطريقة القديمة (إزالة الأقواس والاقتباسات)
+  let cleaned = val.replace(/\\[|\\]|'|\"/g, '').trim();
+  return cleaned.split(',').map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+}
+
+// دالة تصحيح نص التسلسل ليكون JSON صالح (من approvalController.js)
+function fixSequenceString(str) {
+  if (typeof str !== 'string') return str;
+  if (str.includes("'")) {
+    str = str.replace(/'/g, '"');
+  }
+  return str.trim();
+}
+
+
+// سحب المستخدم من تسلسل الاعتماد لملفات محددة
+const revokeUserFromFiles = async (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  const { fileIds } = req.body;
+  // جلب بيانات المستخدم الذي قام بالسحب
+  const auth = req.headers.authorization;
+  let performedBy = null;
+  if (auth?.startsWith('Bearer ')) {
+    try {
+      const token = auth.slice(7);
+      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      performedBy = payload.id;
+    } catch {}
+  }
+  if (!Array.isArray(fileIds) || !fileIds.length) {
+    return res.status(400).json({ status: 'error', message: 'حدد الملفات المراد سحبها' });
+  }
+  try {
+    for (const fileId of fileIds) {
+      const [[content]] = await db.execute(
+        'SELECT custom_approval_sequence, folder_id, title FROM contents WHERE id = ?',
+        [fileId]
+      );
+      let sequence = [];
+      if (content && content.custom_approval_sequence) {
+        sequence = safeParseSequence(content.custom_approval_sequence);
+      } else {
+        const [[folder]] = await db.execute(
+          'SELECT department_id FROM folders WHERE id = ?',
+          [content.folder_id]
+        );
+        const [[dept]] = await db.execute(
+          'SELECT approval_sequence FROM departments WHERE id = ?',
+          [folder.department_id]
+        );
+        let seqRaw = dept && dept.approval_sequence ? dept.approval_sequence : [];
+        console.log('seqRaw من القاعدة:', seqRaw, 'typeof:', typeof seqRaw);
+        if (typeof seqRaw === 'string') {
+          const fixed = fixSequenceString(seqRaw);
+          console.log('بعد fixSequenceString:', fixed);
+          seqRaw = fixed;
+        }
+        try {
+          sequence = Array.isArray(seqRaw) ? seqRaw : JSON.parse(seqRaw);
+          console.log('sequence بعد JSON.parse:', sequence);
+        } catch (e) {
+          console.log('خطأ في JSON.parse:', e, 'seqRaw:', seqRaw);
+          sequence = [];
+        }
+      }
+      const newSequence = sequence.filter(uid => Number(uid) !== Number(userId));
+      console.log('سحب ملف:', fileId, 'قبل:', sequence, 'بعد:', newSequence, 'userId:', userId);
+      const [updateResult] = await db.execute(
+        'UPDATE contents SET custom_approval_sequence = ? WHERE id = ?',
+        [JSON.stringify(newSequence), fileId]
+      );
+      console.log('تحديث الملف:', fileId, 'custom_approval_sequence:', JSON.stringify(newSequence), 'نتيجة:', updateResult);
+      // سجل العملية في اللوقز
+      if (performedBy) {
+        const logDescription = {
+          ar: `تم سحب المستخدم ذو المعرف ${userId} من تسلسل الاعتماد للملف: ${content.title}`,
+          en: `User with ID ${userId} was revoked from approval sequence for file: ${content.title}`
+        };
+        await logAction(performedBy, 'revoke_user_from_file', JSON.stringify(logDescription), 'content', fileId);
+      }
+    }
+    res.json({ status: 'success', message: 'تم سحب المستخدم من الملفات المحددة' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: 'خطأ أثناء السحب' });
+  }
+};
+
+// جلب الملفات التي المستخدم في تسلسل اعتمادها
+const getUserApprovalSequenceFiles = async (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  if (isNaN(userId)) return res.status(400).json({ status: 'error', message: 'معرّف المستخدم غير صالح' });
+  try {
+    const [rows] = await db.execute(`
+      SELECT c.id, c.title, c.custom_approval_sequence, d.approval_sequence
+      FROM contents c
+      JOIN folders f ON c.folder_id = f.id
+      JOIN departments d ON f.department_id = d.id
+    `);
+    // فلترة الملفات التي المستخدم في تسلسلها فعلاً
+    const userIdNum = Number(userId);
+    const filtered = rows.filter(row => {
+      const seqCustom = safeParseSequence(row.custom_approval_sequence);
+      let seqApproval = row.approval_sequence;
+      if (typeof seqApproval === 'string') seqApproval = fixSequenceString(seqApproval);
+      let seq = (seqCustom.length > 0) ? seqCustom : [];
+      if (seq.length === 0) {
+        try {
+          seq = Array.isArray(seqApproval) ? seqApproval : JSON.parse(seqApproval);
+        } catch { seq = []; }
+      }
+      return Array.isArray(seq) && seq.some(x => Number(x) === userIdNum);
+    }).map(row => ({ id: row.id, title: row.title }));
+    res.json({ status: 'success', data: filtered });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: 'خطأ في جلب الملفات' });
+  }
+};
+
 
 module.exports = {
   getUsers,
@@ -976,4 +1109,6 @@ module.exports = {
   getActionTypes,
   updateUserStatus,
   getHospitalManager,
+  getUserApprovalSequenceFiles,
+  revokeUserFromFiles,
 };
