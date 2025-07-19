@@ -169,14 +169,14 @@ function getEmailTemplate(notification) {
 }
 
 // دالة إدراج إشعار مع إرسال بريد إلكتروني
-async function insertNotification(userId, title, message, type = 'ticket') {
+async function insertNotification(userId, title, message, type = 'ticket', messageData = null) {
   try {
     // 1) إدراج الإشعار في قاعدة البيانات
     const [result] = await db.execute(
       `INSERT INTO notifications 
-       (user_id, title, message, type, created_at)
-       VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-      [userId, title, message, type]
+       (user_id, title, message, type, message_data, created_at)
+       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [userId, title, message, type, messageData]
     );
 
     // 2) إرسال البريد الإلكتروني في الخلفية (بدون await)

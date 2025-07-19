@@ -19,6 +19,17 @@ const btnResetPwd   = document.getElementById('btn-reset-password');
 const btnChangeRole = document.getElementById('btn-change-role');
 const btnAddUser    = document.getElementById('add-user-btn');
 
+// إضافة زر إلغاء جميع التفويضات
+const btnRevokeDelegations = document.createElement('button');
+btnRevokeDelegations.id = 'btn-revoke-delegations';
+btnRevokeDelegations.textContent = getTranslation('revoke-delegations') || 'إلغاء التفويضات';
+btnRevokeDelegations.style = 'margin: 0 8px; background: #e53e3e; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 1rem; cursor: pointer;';
+btnRevokeDelegations.onclick = openRevokeDelegationsPopup;
+if (btnAddUser && btnAddUser.parentNode) {
+  btnAddUser.parentNode.insertBefore(btnRevokeDelegations, btnAddUser.nextSibling);
+}
+btnRevokeDelegations.style.display = 'none'; // أظهره فقط إذا كان لديك الصلاحية المناسبة
+
 // popup تعديل الدور
 const rolePopup     = document.getElementById('role-popup');
 const roleSelect    = document.getElementById('role-select');
@@ -86,6 +97,13 @@ async function loadMyPermissions() {
     const myId = payload.id;
     const perms = await fetchJSON(`${apiBase}/users/${myId}/permissions`);
     myPermsSet = new Set(perms);
+    // أظهر زر إلغاء جميع التفويضات إذا كان لديك الصلاحية
+    const myRole = payload.role;
+    if (myRole === 'admin' || myPermsSet.has('grant_permissions') || myPermsSet.has('revoke_delegations')) {
+      btnRevokeDelegations.style.display = '';
+    } else {
+      btnRevokeDelegations.style.display = 'none';
+    }
   } catch (e) {
     alert('فشل جلب صلاحياتي.');
   }
@@ -663,4 +681,98 @@ if (btnSaveEditUser) {
       alert('فشل تحديث معلومات المستخدم: ' + err.message);
     }
   });
+}
+
+// دالة فتح popup إلغاء التفويضات
+async function openRevokeDelegationsPopup() {
+  if (!selectedUserId) return alert(getTranslation('please-select-user'));
+  // جلب ملخص الأشخاص المفوض لهم (ملفات + أقسام)
+  let fileDelegates = [];
+  let deptDelegates = [];
+  try {
+    // جلب ملخص الملفات
+    const res = await fetch(`${apiBase}/approvals/delegation-summary/${selectedUserId}`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      fileDelegates = json.data;
+    }
+    // جلب ملخص الأقسام (إذا عندك endpoint للأقسام)
+    // const resDept = await fetch(`${apiBase}/departments/delegation-summary/${selectedUserId}`, {
+    //   headers: { 'Authorization': `Bearer ${authToken}` }
+    // });
+    // const jsonDept = await resDept.json();
+    // if (jsonDept.status === 'success' && Array.isArray(jsonDept.data)) {
+    //   deptDelegates = jsonDept.data;
+    // }
+  } catch (err) {
+    alert(getTranslation('error-occurred'));
+    return;
+  }
+  // بناء popup
+  const overlay = document.createElement('div');
+  overlay.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  const box = document.createElement('div');
+  box.style = 'background:#fff;padding:32px 24px;border-radius:12px;max-width:600px;min-width:340px;text-align:center;box-shadow:0 2px 16px #0002;max-height:80vh;overflow:auto;';
+  box.innerHTML = `<div style='font-size:1.2rem;margin-bottom:18px;'>${getTranslation('revoke-delegations')} (${getTranslation('by-person') || 'حسب الشخص'})</div>`;
+  if (fileDelegates.length === 0 && deptDelegates.length === 0) {
+    box.innerHTML += `<div style='margin:24px 0;'>${getTranslation('no-active-delegations') || 'لا يوجد تفويضات نشطة'}</div>`;
+  } else {
+    if (fileDelegates.length > 0) {
+      box.innerHTML += `<div style='font-weight:bold;margin:12px 0 6px;'>${getTranslation('file-delegations') || 'تفويضات الملفات'}:</div>`;
+      fileDelegates.forEach(d => {
+        box.innerHTML += `<div style='margin:8px 0;padding:8px 0;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;'>
+          <span style='flex:1;text-align:right;'>${d.approver_name || d.email || (getTranslation('user') || 'مستخدم') + ' ' + d.approver_id} <span style='color:#888;font-size:0.95em;'>(${getTranslation('files-count') || 'عدد الملفات'}: ${d.files_count})</span></span>
+          <button style='background:#e53e3e;color:#fff;border:none;border-radius:6px;padding:4px 16px;cursor:pointer;margin-right:12px;' onclick='window.__revokeAllToUser(${selectedUserId},${d.approver_id},false,this)'>${getTranslation('revoke-delegations') || 'إلغاء التفويضات'}</button>
+        </div>`;
+      });
+    }
+    // إذا أضفت دعم الأقسام أضف هنا
+    // if (deptDelegates.length > 0) { ... }
+  }
+  // زر إغلاق
+  const btnClose = document.createElement('button');
+  btnClose.textContent = getTranslation('cancel') || 'إغلاق';
+  btnClose.style = 'margin-top:18px;background:#888;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:1rem;cursor:pointer;';
+  btnClose.onclick = () => document.body.removeChild(overlay);
+  box.appendChild(btnClose);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  // دالة إلغاء التفويض بالكامل (تربط على window)
+  window.__revokeAllToUser = async function(delegatorId, delegateeId, isCommittee, btn) {
+    if (!confirm(getTranslation('confirm-revoke-all') || 'هل أنت متأكد من إلغاء جميع التفويضات لهذا الشخص؟')) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const url = isCommittee
+        ? `${apiBase}/committee-approvals/delegations/by-user/${delegatorId}?to=${delegateeId}`
+        : `${apiBase}/approvals/delegations/by-user/${delegatorId}?to=${delegateeId}`;
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        btn.parentNode.style.opacity = '0.5';
+        btn.textContent = getTranslation('revoked') || 'تم الإلغاء';
+        btn.disabled = true;
+        setTimeout(() => {
+          const stillActive = overlay.querySelectorAll('button:not([disabled])').length;
+          if (!stillActive) {
+            document.body.removeChild(overlay);
+            loadUsers();
+          }
+        }, 700);
+      } else {
+        btn.disabled = false;
+        btn.textContent = getTranslation('revoke-delegations');
+        alert(json.message || getTranslation('error-occurred'));
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = getTranslation('revoke-delegations');
+      alert(getTranslation('error-occurred'));
+    }
+  };
 }

@@ -689,6 +689,8 @@ const getNotifications = async (req, res) => {
           n.title,
           n.message,
           n.is_read_by_admin AS is_read,
+                    n.message_data,         -- أضف هذا السطر
+
           n.created_at,
           n.type
         FROM notifications n
@@ -703,6 +705,8 @@ const getNotifications = async (req, res) => {
           n.title,
           n.message,
           n.is_read_by_user AS is_read,
+                    n.message_data,         -- أضف هذا السطر
+
           n.created_at,
           n.type
         FROM notifications n

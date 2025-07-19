@@ -13,6 +13,7 @@ let allItems = [];
 // بعد تعريف itemsPerPage …
 const statusList = ['pending', 'approved', 'rejected'];
 let currentGroupIndex = 0;
+let isBulkDelegation = false; // متغير عالمي لتحديد وضع التفويض الجماعي
 
 // جلب صلاحيات المستخدم
 async function fetchPermissions() {
@@ -21,6 +22,7 @@ async function fetchPermissions() {
   const userId = payload.id, role = payload.role;
   if (role === 'admin') {
     permissionsKeys = ['*'];
+    addBulkDelegateButton(); // إضافة هذا السطر ليظهر الزر للمدير
     return;
   }
   try {
@@ -32,6 +34,37 @@ async function fetchPermissions() {
     permissionsKeys = perms.map(p => typeof p === 'string' ? p : (p.permission || p.permission_key));
   } catch (e) {
     console.error('Failed to fetch permissions', e);
+  }
+  // بعد جلب الصلاحيات، أضف زر التفويض الجماعي إذا كان يحق للمستخدم
+  addBulkDelegateButton();
+}
+
+function addBulkDelegateButton() {
+  // تحقق من الصلاحية
+  const canBulkDelegate = permissionsKeys.includes('*') || permissionsKeys.includes('grant_permissions') || permissionsKeys.includes('delegate_all');
+  let btnAll = document.getElementById('delegateAllBtn');
+  if (btnAll) btnAll.remove();
+  if (canBulkDelegate) {
+    btnAll = document.createElement('button');
+    btnAll.id = 'delegateAllBtn';
+    btnAll.className = 'btn-delegate-all';
+    btnAll.type = 'button';
+    btnAll.innerHTML = `<i class="fas fa-user-friends"></i> ${getTranslation('delegate-all') || 'تفويض جميع الملفات بالنيابة'}`;
+    btnAll.style = 'background: #2563eb; color: #fff; padding: 8px 18px; border-radius: 6px; border: none; font-size: 1rem; margin-right: 8px; cursor: pointer; vertical-align: middle;';
+    const deptFilter = document.getElementById('deptFilter');
+    if (deptFilter && deptFilter.parentNode) {
+      deptFilter.parentNode.insertBefore(btnAll, deptFilter.nextSibling);
+    }
+    btnAll.onclick = function() {
+      isBulkDelegation = true;
+      selectedContentId = null;
+      document.getElementById('delegateDept').value = '';
+      document.getElementById('delegateUser').innerHTML = '<option value="" disabled selected>' + (getTranslation('select-user') || 'اختر المستخدم') + '</option>';
+      document.getElementById('delegateNotes').value = '';
+      openModal('delegateModal');
+      loadDepartments();
+      document.getElementById('delegateNotes').placeholder = getTranslation('notes-bulk') || 'ملاحظات (تنطبق على جميع الملفات)';
+    };
   }
 }
 
@@ -774,31 +807,52 @@ document.getElementById('delegateDept').addEventListener('change', async (e) => 
   }
 });
 
-document.getElementById('btnDelegateConfirm').addEventListener('click', async () => {
-  const userId = document.getElementById('delegateUser').value;
-  const notes = document.getElementById('delegateNotes').value;
-
-  if (!userId) return alert(getTranslation('please-select-user'));
-
-  const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
-  const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
-
-  try {
-    await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/delegate`, {
-      method: 'POST',
-      body: JSON.stringify({
-        delegateTo: userId,
-        notes: notes
-      })
-    });
-    alert(getTranslation('success-delegated'));
-    closeModal('delegateModal');
-    disableActionsFor(selectedContentId);
-  } catch (err) {
-    console.error('Failed to delegate:', err);
-    alert(getTranslation('error-sending'));
-  }
-});
+// عند التأكيد في مودال التفويض
+const btnDelegateConfirm = document.getElementById('btnDelegateConfirm');
+if (btnDelegateConfirm) {
+  btnDelegateConfirm.addEventListener('click', async () => {
+    const userId = document.getElementById('delegateUser').value;
+    const notes = document.getElementById('delegateNotes').value;
+    if (!userId) return alert(getTranslation('please-select-user'));
+    if (isBulkDelegation) {
+      // تفويض جماعي
+      try {
+        const res = await fetch(`${apiBase}/approvals/delegate-all`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ delegateTo: userId, notes })
+        });
+        const json = await res.json();
+        alert(json.message || getTranslation('success-delegated') || 'تم التفويض بنجاح');
+        closeModal('delegateModal');
+        window.location.reload();
+      } catch (err) {
+        alert(getTranslation('error-sending') || 'حدث خطأ أثناء التفويض الجماعي');
+      }
+      isBulkDelegation = false;
+      return;
+    }
+    // تفويض فردي (يبقى كما هو)
+    const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
+    const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
+    try {
+      await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/delegate`, {
+        method: 'POST',
+        body: JSON.stringify({
+          delegateTo: userId,
+          notes: notes
+        })
+      });
+      alert(getTranslation('success-delegated'));
+      closeModal('delegateModal');
+      disableActionsFor(selectedContentId);
+    } catch (err) {
+      console.error('Failed to delegate:', err);
+      alert(getTranslation('error-sending'));
+    }
+    isBulkDelegation = false;
+  });
+}
 
 function disableActionsFor(contentId) {
   const row = document.querySelector(`.approval-card[data-id="${contentId}"]`);

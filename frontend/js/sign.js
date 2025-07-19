@@ -1,4 +1,7 @@
-document.addEventListener('DOMContentLoaded', loadDelegations);
+document.addEventListener('DOMContentLoaded', async () => {
+  await checkBulkDelegationNotification();
+  loadDelegations();
+});
 
 const apiBaseDept = 'http://localhost:3006/api/approvals/proxy';
 const token = localStorage.getItem('token');
@@ -219,6 +222,106 @@ async function sendApproval(contentId, approvalData) {
   } catch (err) {
     // console.error(err);
     alert('خطأ أثناء إرسال الاعتماد.');
+  }
+}
+
+async function checkBulkDelegationNotification() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('يجب تسجيل الدخول أولاً');
+    return;
+  }
+  let currentUserId = null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    currentUserId = payload.id;
+  } catch (e) {
+    return;
+  }
+  try {
+    const res = await fetch('http://localhost:3006/api/users/' + currentUserId + '/notifications', { headers: authHeaders() });
+    const json = await res.json();
+    if (!json.data) return;
+    const filteredNotifs = (json.data || [])
+      .filter(n => {
+        if (!(n.type === 'proxy_bulk' || n.type === 'proxy_bulk_committee')) return false;
+        if (!n.message_data || typeof n.message_data !== 'string' || n.message_data.trim() === '') return false;
+        let raw = n.message_data;
+        if (raw.startsWith('"{') && raw.endsWith('}"')) {
+          raw = raw.slice(1, -1).replace(/\\"/g, '"');
+        }
+        try {
+          const data = JSON.parse(raw);
+          return Array.isArray(data.fileIds) && data.fileIds.length > 0;
+        } catch {
+          return false;
+        }
+      });
+    const notif = filteredNotifs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    if (!notif) return;
+    let fromName = '';
+    try {
+      if (notif.message_data) {
+        const data = JSON.parse(notif.message_data);
+        if (data.from_name) {
+          fromName = data.from_name;
+        } else if (data.from) {
+          const userRes = await fetch(`http://localhost:3006/api/users/${data.from}`, { headers: authHeaders() });
+          const userJson = await userRes.json();
+          fromName = userJson.data?.name || userJson.data?.username || '';
+        }
+      }
+    } catch {}
+    if (!fromName) fromName = notif.delegated_by_name || notif.delegated_by || 'المفوض';
+    showBulkDelegationPopup(notif.id, fromName);
+  } catch (err) {
+    // silent
+  }
+}
+
+function showBulkDelegationPopup(notificationId, fromName) {
+  const overlay = document.createElement('div');
+  overlay.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  const box = document.createElement('div');
+  box.style = 'background:#fff;padding:32px 24px;border-radius:12px;max-width:400px;text-align:center;box-shadow:0 2px 16px #0002;';
+  box.innerHTML = `<div style='font-size:1.2rem;margin-bottom:18px;'>
+    <b>${fromName}</b> قام بتفويضك بالنيابة عنه في جميع ملفاته.<br>هل توافق على التفويض الجماعي؟
+  </div>`;
+  const btnAccept = document.createElement('button');
+  btnAccept.textContent = 'موافقة';
+  btnAccept.style = 'background:#1eaa7c;color:#fff;padding:8px 24px;border:none;border-radius:6px;font-size:1rem;margin:0 8px;cursor:pointer;';
+  const btnReject = document.createElement('button');
+  btnReject.textContent = 'رفض';
+  btnReject.style = 'background:#e53e3e;color:#fff;padding:8px 24px;border:none;border-radius:6px;font-size:1rem;margin:0 8px;cursor:pointer;';
+  btnAccept.onclick = async () => {
+    await processBulkDelegation(notificationId, 'accept');
+    document.body.removeChild(overlay);
+  };
+  btnReject.onclick = async () => {
+    await processBulkDelegation(notificationId, 'reject');
+    document.body.removeChild(overlay);
+  };
+  box.appendChild(btnAccept);
+  box.appendChild(btnReject);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+async function processBulkDelegation(notificationId, action) {
+  const token = localStorage.getItem('token');
+  try {
+    const res = await fetch('http://localhost:3006/api/approvals/bulk-delegation/process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ notificationId, action })
+    });
+    const json = await res.json();
+    alert(json.message || (action === 'accept' ? 'تم قبول التفويض الجماعي' : 'تم رفض التفويض الجماعي'));
+  } catch (err) {
+    alert('حدث خطأ أثناء معالجة التفويض الجماعي');
   }
 }
 
