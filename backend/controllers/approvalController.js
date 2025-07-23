@@ -103,6 +103,10 @@ const handleApproval = async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const currentUserId = decoded.id;
+    const userRole = decoded.role;
+    
+    // تحقق من دور المدير فقط
+    const canViewAll = userRole === 'admin';
 
     // تمييز نوع الاعتماد بناءً على on_behalf_of
     let isProxy = false;
@@ -256,6 +260,180 @@ const handleApproval = async (req, res) => {
       return res.status(200).json({ status: 'success', message: 'تم تسجيل اعتمادك بنجاح (شخصي و/أو نيابة)' });
     }
 
+    // للمدير: السماح بالاعتماد بغض النظر عن التسلسل
+    if (canViewAll) {
+      if (approved === true && !signature && !electronic_signature) {
+        return res.status(400).json({ status: 'error', message: 'التوقيع مفقود' });
+      }
+      
+      // تسجيل اعتماد المدير
+      await db.execute(`
+        INSERT INTO approval_logs (
+          content_id, approver_id, delegated_by, signed_as_proxy, status, signature, electronic_signature, comments, created_at
+        ) VALUES (?, ?, NULL, 0, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          status = VALUES(status),
+          signature = VALUES(signature),
+          electronic_signature = VALUES(electronic_signature),
+          comments = VALUES(comments),
+          created_at = NOW()
+      `, [
+        contentId,
+        currentUserId,
+        approved ? 'approved' : 'rejected',
+        signature || null,
+        electronic_signature || null,
+        notes || ''
+      ]);
+
+      // تحديث ملف PDF
+      await generateFinalSignedPDF(contentId);
+
+      // تحديث approvals_log
+      const [allLogs] = await db.execute(
+        `SELECT approver_id AS user_id, status, signature, electronic_signature, comments, created_at FROM approval_logs WHERE content_id = ?`,
+        [contentId]
+      );
+      await db.execute(
+        `UPDATE contents SET approvals_log = ? WHERE id = ?`,
+        [JSON.stringify(allLogs), contentId]
+      );
+
+      // إذا كان الرفض، تحديث حالة الملف
+      if (!approved) {
+        await db.execute(`
+          UPDATE contents
+          SET approval_status = 'rejected',
+              is_approved = 0,
+              updated_at = NOW()
+          WHERE id = ?
+        `, [contentId]);
+      }
+
+      // للمدير: إذا كان الاعتماد، تحقق من اكتمال الاعتماد
+      if (approved) {
+        // جلب التسلسل للتحقق
+        let approvalSequence = [];
+        const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+        if (customRows.length && customRows[0].custom_approval_sequence) {
+          try {
+            const parsed = JSON.parse(customRows[0].custom_approval_sequence);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              approvalSequence = parsed;
+            }
+          } catch {}
+        }
+        if (approvalSequence.length === 0) {
+          const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [contentId]);
+          if (folderRows.length) {
+            const folderId = folderRows[0].folder_id;
+            const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+            if (deptRows.length) {
+              const departmentId = deptRows[0].department_id;
+              const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+              if (seqRows.length) {
+                const rawSeq = seqRows[0].approval_sequence;
+                if (Array.isArray(rawSeq)) {
+                  approvalSequence = rawSeq;
+                } else if (typeof rawSeq === 'string') {
+                  try {
+                    approvalSequence = JSON.parse(rawSeq);
+                  } catch {
+                    approvalSequence = [];
+                  }
+                }
+              }
+            }
+          }
+        }
+        approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+
+        // إذا لم يكن هناك تسلسل أو كان فارغاً، اعتمد الملف مباشرة
+        if (approvalSequence.length === 0) {
+          await db.execute(`
+            UPDATE contents
+            SET is_approved = 1,
+                approval_status = 'approved',
+                approved_by = ?, 
+                updated_at = NOW()
+            WHERE id = ?
+          `, [currentUserId, contentId]);
+          
+          // إرسال إشعار لصاحب الملف
+          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ?', [contentId]);
+          if (ownerRows.length) {
+            const ownerId = ownerRows[0].created_by;
+            const fileTitle = ownerRows[0].title || '';
+            await insertNotification(
+              ownerId,
+              'تم اعتماد ملفك',
+              `الملف "${fileTitle}" تم اعتماده من قبل المدير.`,
+              'approval'
+            );
+          }
+        } else {
+          // إذا كان هناك تسلسل، تحقق من اكتمال الاعتماد
+          const [logs] = await db.execute('SELECT approver_id, status FROM approval_logs WHERE content_id = ?', [contentId]);
+          let allApproved = true;
+          for (let i = 0; i < approvalSequence.length; i++) {
+            const approverId = Number(approvalSequence[i]);
+            const hasApproved = logs.some(log => Number(log.approver_id) === approverId && log.status === 'approved');
+            if (!hasApproved) {
+              allApproved = false;
+              break;
+            }
+          }
+          if (allApproved) {
+            await db.execute(`
+              UPDATE contents
+              SET is_approved = 1,
+                  approval_status = 'approved',
+                  approved_by = ?, 
+                  updated_at = NOW()
+              WHERE id = ?
+            `, [currentUserId, contentId]);
+            
+            // إرسال إشعار لصاحب الملف
+            const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ?', [contentId]);
+            if (ownerRows.length) {
+              const ownerId = ownerRows[0].created_by;
+              const fileTitle = ownerRows[0].title || '';
+              await insertNotification(
+                ownerId,
+                'تم اعتماد ملفك',
+                `الملف "${fileTitle}" تم اعتماده من قبل الإدارة.`,
+                'approval'
+              );
+            }
+          }
+        }
+      }
+
+      // جلب تفاصيل الملف للتسجيل
+      const [itemDetails] = await db.execute(`SELECT title FROM contents WHERE id = ?`, [contentId]);
+      const itemTitle = itemDetails.length > 0 ? itemDetails[0].title : `رقم ${contentId}`;
+
+      // تسجيل الحركة
+      const logDescription = {
+        ar: `تم ${approved ? 'اعتماد' : 'رفض'} الملف: "${getContentNameByLanguage(itemTitle, 'ar')}" بواسطة الادمن`,
+        en: `${approved ? 'Approved' : 'Rejected'} file: "${getContentNameByLanguage(itemTitle, 'en')}" by admin`
+      };
+
+      await logAction(
+        currentUserId,
+        approved ? 'approve_content' : 'reject_content',
+        JSON.stringify(logDescription),
+        'content',
+        contentId
+      );
+
+      return res.status(200).json({ 
+        status: 'success', 
+        message: approved ? 'تم تسجيل اعتمادك بنجاح (بواسطة الادمن)' : 'تم تسجيل رفضك بنجاح (بواسطة الادمن)' 
+      });
+    }
+
+    // للمستخدمين العاديين: التحقق من التوقيع
     if (approved === true && !signature && !electronic_signature) {
       return res.status(400).json({ status: 'error', message: 'التوقيع مفقود' });
     }
@@ -928,8 +1106,29 @@ const getAssignedApprovals = async (req, res) => {
           }
         }
       }
-      // إذا كان المستخدم في التسلسل أو مفوض له من أحد أعضاء التسلسل
-      if (userInSequence || isProxy) {
+      
+      // للمدير: اعرض كل الملفات بغض النظر عن التسلسل
+      if (canViewAll) {
+        // حدد إذا كان هو الدور الحالي (أول شخص لم يعتمد بعد)
+        let firstPendingUser = null;
+        for (let i = 0; i < sequence.length; i++) {
+          const approverId = Number(sequence[i]);
+          const hasApproved = logs.some(log => Number(log.user_id) === approverId && log.status === 'approved');
+          if (!hasApproved) {
+            firstPendingUser = approverId;
+            break;
+          }
+        }
+        assignedApprovals.push({
+          ...row,
+          isProxy: false,
+          delegatedBy: null,
+          isCurrentTurn: false, // المدير لا يعتبر دوره الحالي
+          isAdmin: true
+        });
+      }
+      // للمستخدمين العاديين: إذا كان المستخدم في التسلسل أو مفوض له من أحد أعضاء التسلسل
+      else if (userInSequence || isProxy) {
         // حدد إذا كان هو الدور الحالي (أول شخص لم يعتمد بعد)
         let firstPendingUser = null;
         for (let i = 0; i < sequence.length; i++) {
@@ -944,7 +1143,8 @@ const getAssignedApprovals = async (req, res) => {
           ...row,
           isProxy,
           delegatedBy,
-          isCurrentTurn: Number(firstPendingUser) === Number(userId) || (isProxy && Number(firstPendingUser) === Number(delegatedBy))
+          isCurrentTurn: Number(firstPendingUser) === Number(userId) || (isProxy && Number(firstPendingUser) === Number(delegatedBy)),
+          isAdmin: false
         });
       }
     }
