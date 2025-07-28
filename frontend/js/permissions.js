@@ -566,7 +566,7 @@ btnResetPwd.addEventListener('click', async () => {
   const newPassword = prompt('أدخل كلمة المرور الجديدة للمستخدم:');
   if (!newPassword) return;
   try {
-    await fetchJSON(`${apiBase}/users/${selectedUserId}/reset-password`, { method: 'POST', body: JSON.stringify({ newPassword }) });
+    await fetchJSON(`${apiBase}/users/${selectedUserId}/reset-password`, { method: 'PUT', body: JSON.stringify({ newPassword }) });
     showToast('تم تحديث كلمة المرور بنجاح');
   } catch (err) {
     showToast('فشل إعادة التعيين: ' + err.message);
