@@ -4,6 +4,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const sectionSelect = document.querySelector('.section-select select');
     const apiBase = 'http://localhost:3006/api';
 
+    // Toast notification function
+    function showToast(message, type = 'info', duration = 3000) {
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        // Force reflow to ensure animation plays from start
+        toast.offsetWidth;
+
+        // Set a timeout to remove the toast
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            // Remove element after animation completes
+            setTimeout(() => {
+                toast.remove();
+            }, 500); // Should match CSS animation duration
+        }, duration);
+    }
+
     // دالة لجمع قيم التاريخ والتحقق من صحتها
     function getDateValues() {
         const startDate = document.getElementById('start-date').value;
@@ -11,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // التحقق من صحة التواريخ
         if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-            alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+            showToast('تاريخ البداية يجب أن يكون قبل تاريخ النهاية', 'warning');
             return null;
         }
 
@@ -47,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const file = mainFileInput.files[0] || null;
         const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
         if (file && !allowedExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
-            alert('Only the following file types are allowed: PDF, DOC, DOCX, XLS, XLSX');
+            showToast('Only the following file types are allowed: PDF, DOC, DOCX, XLS, XLSX', 'warning');
             mainFileInput.value = '';
             selectedMainFile = null;
             renderMainFileList();
@@ -79,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const folderId = urlParams.get('folderId');
     if (!folderId) {
-        alert('Cannot upload files without selecting a folder. Please go back and select a folder first.');
+        showToast('Cannot upload files without selecting a folder. Please go back and select a folder first.', 'warning');
         // يمكنك إعادة التوجيه تلقائياً إذا أردت:
         // window.location.href = 'departments.html';
     }
@@ -106,15 +135,15 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await response.json();
             if (response.ok) {
-                alert('Main file uploaded successfully!');
+                showToast('Main file uploaded successfully!', 'success');
                 selectedMainFile = null;
                 mainFileInput.value = '';
                 renderMainFileList();
             } else {
-                alert(data.message || 'An error occurred while uploading the main file');
+                showToast(data.message || 'An error occurred while uploading the main file', 'error');
             }
         } catch (err) {
-            alert('Failed to connect to the server');
+            showToast('Failed to connect to the server', 'error');
         }
     });
 
@@ -145,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     validFiles.push(file);
                 }
             } else {
-                alert('Only the following file types are allowed: PDF, DOC, DOCX, XLS, XLSX\n' + file.name);
+                showToast('Only the following file types are allowed: PDF, DOC, DOCX, XLS, XLSX\n' + file.name, 'warning');
             }
         });
         selectedFiles = selectedFiles.concat(validFiles);
@@ -184,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadAllBtn.addEventListener('click', async function() {
         if (!folderId) return;
         if (!selectedMainFile && !selectedFiles.length) {
-            alert('Please select a main file or sub files');
+            showToast('Please select a main file or sub files', 'warning');
             return;
         }
         

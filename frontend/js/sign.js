@@ -1,12 +1,336 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  await checkBulkDelegationNotification();
+  await checkDelegationStatus();
   loadDelegations();
 });
 
+// تعريف المتغيرات العامة
 const apiBaseDept = 'http://localhost:3006/api/approvals/proxy';
 const token = localStorage.getItem('token');
 const currentLang = localStorage.getItem('language') || 'ar';
-const currentUserId = localStorage.getItem('userId');
+let currentUserId = localStorage.getItem('userId');
+
+// دالة لاستخراج userId من الـ token إذا لم يكن موجوداً في localStorage
+function getCurrentUserId() {
+  if (currentUserId) {
+    return currentUserId;
+  }
+  
+  const token = localStorage.getItem('token');
+  if (!token) {
+    return null;
+  }
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    currentUserId = payload.id;
+    localStorage.setItem('userId', currentUserId);
+    return currentUserId;
+  } catch (e) {
+    console.error('خطأ في استخراج userId من الـ token:', e);
+    return null;
+  }
+}
+
+// تحديث currentUserId
+currentUserId = getCurrentUserId();
+
+// دالة فحص حالة التفويض مباشرة من قاعدة البيانات
+async function checkDelegationStatus() {
+  const token = localStorage.getItem('token');
+  const userId = getCurrentUserId();
+  
+  if (!token || !userId) {
+    return;
+  }
+  
+  console.log('🔍 Checking delegation status for userId:', userId);
+  
+  try {
+    // 1. فحص التفويض المباشر من جدول active_delegations
+    const delegationUrl = `http://localhost:3006/api/approvals/delegation-status/${userId}`;
+    const delegationRes = await fetch(delegationUrl, { 
+      headers: authHeaders() 
+    });
+    
+    if (!delegationRes.ok) {
+      console.error('❌ Delegation status request failed:', delegationRes.status, delegationRes.statusText);
+      const errorText = await delegationRes.text();
+      console.error('Error response:', errorText);
+      return;
+    }
+    
+    const delegationJson = await delegationRes.json();
+    
+    if (delegationJson.status === 'success' && delegationJson.data && delegationJson.data.delegated_by) {
+      console.log('✅ Found direct delegation from user:', delegationJson.data.delegated_by);
+      
+      // تحقق من سجلات الموافقة قبل عرض البوب أب
+      const hasProcessedDelegation = await checkDelegationApprovalLogs(delegationJson.data.delegated_by, 'direct');
+      if (!hasProcessedDelegation) {
+        // المستخدم مفوض له - عرض بوب أب التفويض المباشر
+        await showDirectDelegationPopup(delegationJson.data.delegated_by);
+      } else {
+        console.log('✅ Direct delegation already processed, skipping popup');
+      }
+      return;
+    } else {
+      console.log('❌ No direct delegation found');
+    }
+    
+    // 2. فحص التفويضات المعلقة الموحدة (أقسام فقط)
+    const pendingDelegationsUrl = `http://localhost:3006/api/approvals/pending-delegations-unified/${userId}`;
+    console.log('Calling pending delegations unified URL:', pendingDelegationsUrl);
+    const pendingDelegationsRes = await fetch(pendingDelegationsUrl, { 
+      headers: authHeaders() 
+    });
+    
+    if (!pendingDelegationsRes.ok) {
+      console.error('❌ Pending delegations unified request failed:', pendingDelegationsRes.status, pendingDelegationsRes.statusText);
+      const errorText = await pendingDelegationsRes.text();
+      console.error('Error response:', errorText);
+      return;
+    }
+    
+    const pendingDelegationsJson = await pendingDelegationsRes.json();
+    console.log('Pending delegations unified response:', pendingDelegationsJson);
+    
+    if (pendingDelegationsJson.status === 'success' && pendingDelegationsJson.data && pendingDelegationsJson.data.length > 0) {
+      console.log('✅ Found pending unified delegations:', pendingDelegationsJson.data.length);
+      
+      // تحقق من سجلات الموافقة قبل عرض البوب أب
+      const latestDelegation = pendingDelegationsJson.data[0]; // أحدث تفويض
+      const hasProcessedDelegation = await checkDelegationApprovalLogs(latestDelegation.delegated_by, 'bulk', latestDelegation.id);
+      if (!hasProcessedDelegation) {
+        // هناك تفويضات معلقة - عرض بوب أب التفويض الجماعي الموحد
+        await showBulkDelegationPopup(latestDelegation.id, latestDelegation.delegated_by_name);
+      } else {
+        console.log('✅ Bulk delegation already processed, skipping popup');
+      }
+      return;
+    } else {
+      console.log('❌ No pending unified delegations found');
+    }
+    
+    console.log('🔍 No delegations found for user:', userId);
+    
+  } catch (err) {
+    console.error('خطأ في فحص حالة التفويض:', err);
+    if (err.response) {
+      console.error('Error response:', await err.response.text());
+    }
+  }
+}
+
+// دالة موحدة للتحقق من سجلات الموافقة للتفويض
+async function checkDelegationApprovalLogs(delegatorId, delegationType, delegationId = null) {
+  try {
+    const userId = getCurrentUserId();
+    console.log('🔍 Checking delegation approval logs:', { delegatorId, delegationType, delegationId, userId });
+    
+    // التحقق من سجلات الموافقة للأقسام
+    const deptLogsUrl = `http://localhost:3006/api/approvals/delegation-logs/${userId}/${delegatorId}`;
+    const deptLogsRes = await fetch(deptLogsUrl, { headers: authHeaders() });
+    
+    if (deptLogsRes.ok) {
+      const deptLogsJson = await deptLogsRes.json();
+      console.log('Department delegation logs:', deptLogsJson);
+      
+      if (deptLogsJson.status === 'success' && deptLogsJson.data && deptLogsJson.data.length > 0) {
+        // تحقق من وجود سجلات مقبولة أو مرفوضة
+        const hasProcessed = deptLogsJson.data.some(log => 
+          log.status === 'accepted' || log.status === 'rejected'
+        );
+        if (hasProcessed) {
+          console.log('✅ Found processed department delegation logs');
+          return true;
+        }
+      }
+    }
+    
+    console.log('❌ No processed delegation logs found');
+    return false;
+    
+  } catch (err) {
+    console.error('خطأ في فحص سجلات الموافقة للتفويض:', err);
+    return false;
+  }
+}
+
+// دالة عرض بوب أب التفويض المباشر
+async function showDirectDelegationPopup(delegatorId) {
+  try {
+    console.log('🎯 Showing direct delegation popup for delegator:', delegatorId);
+    
+    // جلب اسم المفوض
+    const userRes = await fetch(`http://localhost:3006/api/users/${delegatorId}`, { headers: authHeaders() });
+    const userJson = await userRes.json();
+    const delegatorName = userJson.data?.name || userJson.data?.username || 'المفوض';
+    
+    const message = `${delegatorName} قام بتفويضك بالنيابة عنه في جميع ملفاته. هل توافق على التفويض المباشر؟`;
+    
+    showDelegationPopup(
+      message,
+      async () => {
+        try {
+          await processDirectDelegationUnified(delegatorId, 'accept');
+        } catch (err) {
+          alert('خطأ في قبول التفويض المباشر');
+        }
+      },
+      async () => {
+        try {
+          await processDirectDelegationUnified(delegatorId, 'reject');
+          alert('تم رفض التفويض المباشر');
+        } catch (err) {
+          alert('خطأ في رفض التفويض المباشر');
+        }
+      }
+    );
+    
+  } catch (err) {
+    console.error('خطأ في عرض بوب أب التفويض المباشر:', err);
+  }
+}
+
+// دالة عرض بوب أب التفويض الجماعي الموحد
+async function showBulkDelegationPopup(delegationId, delegatorName) {
+  try {
+    console.log('🎯 Showing bulk delegation popup for delegation:', delegationId);
+    
+    const message = `${delegatorName} قام بتفويضك بالنيابة عنه في جميع ملفاته. هل توافق على التفويض الجماعي؟`;
+    
+    showDelegationPopup(
+      message,
+      async () => {
+        try {
+          await processBulkDelegationUnified(delegationId, 'accept');
+        } catch (err) {
+          alert('خطأ في قبول التفويض الجماعي');
+        }
+      },
+      async () => {
+        try {
+          await processBulkDelegationUnified(delegationId, 'reject');
+          alert('تم رفض التفويض الجماعي');
+        } catch (err) {
+          alert('خطأ في رفض التفويض الجماعي');
+        }
+      }
+    );
+    
+  } catch (err) {
+    console.error('خطأ في عرض بوب أب التفويض الجماعي:', err);
+  }
+}
+
+// دالة موحدة لعرض بوب أب التفويض
+function showDelegationPopup(message, onAccept, onReject) {
+  const overlay = document.createElement('div');
+  overlay.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  
+  const box = document.createElement('div');
+  box.style = 'background:#fff;padding:32px 24px;border-radius:12px;max-width:400px;text-align:center;box-shadow:0 2px 16px #0002;';
+  box.innerHTML = `<div style='font-size:1.2rem;margin-bottom:18px;'>${message}</div>`;
+  
+  const btnAccept = document.createElement('button');
+  btnAccept.textContent = 'موافقة';
+  btnAccept.style = 'background:#1eaa7c;color:#fff;padding:8px 24px;border:none;border-radius:6px;font-size:1rem;margin:0 8px;cursor:pointer;';
+  
+  const btnReject = document.createElement('button');
+  btnReject.textContent = 'رفض';
+  btnReject.style = 'background:#e53e3e;color:#fff;padding:8px 24px;border:none;border-radius:6px;font-size:1rem;margin:0 8px;cursor:pointer;';
+  
+  btnAccept.onclick = async () => {
+    try {
+      await onAccept();
+    } catch (err) {
+      console.error('خطأ في قبول التفويض:', err);
+    }
+    document.body.removeChild(overlay);
+  };
+  
+  btnReject.onclick = async () => {
+    try {
+      await onReject();
+    } catch (err) {
+      console.error('خطأ في رفض التفويض:', err);
+    }
+    document.body.removeChild(overlay);
+  };
+  
+  box.appendChild(btnAccept);
+  box.appendChild(btnReject);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+// دالة معالجة التفويض المباشر الموحد
+async function processDirectDelegationUnified(delegatorId, action) {
+  try {
+    const res = await fetch('http://localhost:3006/api/approvals/direct-delegation-unified/process', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ delegatorId, action })
+    });
+    const json = await res.json();
+    if (json.status !== 'success') {
+      throw new Error(json.message);
+    }
+    console.log('✅ Direct delegation unified result:', json);
+  } catch (err) {
+    console.error('خطأ في معالجة التفويض المباشر الموحد:', err);
+    throw err;
+  }
+}
+
+// دالة معالجة التفويض الجماعي الموحد
+async function processBulkDelegationUnified(delegationId, action) {
+  try {
+    const res = await fetch('http://localhost:3006/api/approvals/bulk-delegation-unified/process', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ delegationId, action })
+    });
+    const json = await res.json();
+    if (json.status !== 'success') {
+      throw new Error(json.message);
+    }
+    console.log('✅ Bulk delegation unified result:', json);
+  } catch (err) {
+    console.error('خطأ في معالجة التفويض الجماعي الموحد:', err);
+    throw err;
+  }
+}
+
+// دالة الترجمة
+function getTranslation(key) {
+  const translations = {
+    ar: {
+      'error-loading': 'خطأ في تحميل البيانات',
+      'no-documents': 'لا توجد مستندات',
+      'accept': 'قبول',
+      'reject': 'رفض',
+      'accept-message': 'هل أنت متأكد من قبول التفويض؟',
+      'reject-message': 'هل أنت متأكد من رفض التفويض؟',
+      'reason-required': 'يرجى إدخال سبب الرفض',
+      'reject-success': 'تم رفض التفويض بنجاح',
+      'error-rejecting': 'خطأ في رفض التفويض'
+    },
+    en: {
+      'error-loading': 'Error loading data',
+      'no-documents': 'No documents found',
+      'accept': 'Accept',
+      'reject': 'Reject',
+      'accept-message': 'Are you sure you want to accept the delegation?',
+      'reject-message': 'Are you sure you want to reject the delegation?',
+      'reason-required': 'Please enter a rejection reason',
+      'reject-success': 'Delegation rejected successfully',
+      'error-rejecting': 'Error rejecting delegation'
+    }
+  };
+  
+  return translations[currentLang]?.[key] || translations.ar[key] || key;
+}
 
 function getLocalizedName(jsonString) {
   try {
@@ -111,9 +435,10 @@ async function loadDelegations() {
 }
 
 function authHeaders() {
+  const currentToken = localStorage.getItem('token');
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+    'Authorization': `Bearer ${currentToken}`
   };
 }
 
@@ -222,106 +547,6 @@ async function sendApproval(contentId, approvalData) {
   } catch (err) {
     // console.error(err);
     alert('خطأ أثناء إرسال الاعتماد.');
-  }
-}
-
-async function checkBulkDelegationNotification() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert('يجب تسجيل الدخول أولاً');
-    return;
-  }
-  let currentUserId = null;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    currentUserId = payload.id;
-  } catch (e) {
-    return;
-  }
-  try {
-    const res = await fetch('http://localhost:3006/api/users/' + currentUserId + '/notifications', { headers: authHeaders() });
-    const json = await res.json();
-    if (!json.data) return;
-    const filteredNotifs = (json.data || [])
-      .filter(n => {
-        if (!(n.type === 'proxy_bulk' || n.type === 'proxy_bulk_committee')) return false;
-        if (!n.message_data || typeof n.message_data !== 'string' || n.message_data.trim() === '') return false;
-        let raw = n.message_data;
-        if (raw.startsWith('"{') && raw.endsWith('}"')) {
-          raw = raw.slice(1, -1).replace(/\\"/g, '"');
-        }
-        try {
-          const data = JSON.parse(raw);
-          return Array.isArray(data.fileIds) && data.fileIds.length > 0;
-        } catch {
-          return false;
-        }
-      });
-    const notif = filteredNotifs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-    if (!notif) return;
-    let fromName = '';
-    try {
-      if (notif.message_data) {
-        const data = JSON.parse(notif.message_data);
-        if (data.from_name) {
-          fromName = data.from_name;
-        } else if (data.from) {
-          const userRes = await fetch(`http://localhost:3006/api/users/${data.from}`, { headers: authHeaders() });
-          const userJson = await userRes.json();
-          fromName = userJson.data?.name || userJson.data?.username || '';
-        }
-      }
-    } catch {}
-    if (!fromName) fromName = notif.delegated_by_name || notif.delegated_by || 'المفوض';
-    showBulkDelegationPopup(notif.id, fromName);
-  } catch (err) {
-    // silent
-  }
-}
-
-function showBulkDelegationPopup(notificationId, fromName) {
-  const overlay = document.createElement('div');
-  overlay.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  const box = document.createElement('div');
-  box.style = 'background:#fff;padding:32px 24px;border-radius:12px;max-width:400px;text-align:center;box-shadow:0 2px 16px #0002;';
-  box.innerHTML = `<div style='font-size:1.2rem;margin-bottom:18px;'>
-    <b>${fromName}</b> قام بتفويضك بالنيابة عنه في جميع ملفاته.<br>هل توافق على التفويض الجماعي؟
-  </div>`;
-  const btnAccept = document.createElement('button');
-  btnAccept.textContent = 'موافقة';
-  btnAccept.style = 'background:#1eaa7c;color:#fff;padding:8px 24px;border:none;border-radius:6px;font-size:1rem;margin:0 8px;cursor:pointer;';
-  const btnReject = document.createElement('button');
-  btnReject.textContent = 'رفض';
-  btnReject.style = 'background:#e53e3e;color:#fff;padding:8px 24px;border:none;border-radius:6px;font-size:1rem;margin:0 8px;cursor:pointer;';
-  btnAccept.onclick = async () => {
-    await processBulkDelegation(notificationId, 'accept');
-    document.body.removeChild(overlay);
-  };
-  btnReject.onclick = async () => {
-    await processBulkDelegation(notificationId, 'reject');
-    document.body.removeChild(overlay);
-  };
-  box.appendChild(btnAccept);
-  box.appendChild(btnReject);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-}
-
-async function processBulkDelegation(notificationId, action) {
-  const token = localStorage.getItem('token');
-  try {
-    const res = await fetch('http://localhost:3006/api/approvals/bulk-delegation/process', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ notificationId, action })
-    });
-    const json = await res.json();
-    alert(json.message || (action === 'accept' ? 'تم قبول التفويض الجماعي' : 'تم رفض التفويض الجماعي'));
-  } catch (err) {
-    alert('حدث خطأ أثناء معالجة التفويض الجماعي');
   }
 }
 

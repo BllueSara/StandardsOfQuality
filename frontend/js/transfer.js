@@ -14,6 +14,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let departmentUsers = [];
 
+    // Toast notification function
+    function showToast(message, type = 'info', duration = 3000) {
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        // Force reflow to ensure animation plays from start
+        toast.offsetWidth;
+
+        // Set a timeout to remove the toast
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            // Remove element after animation completes
+            setTimeout(() => {
+                toast.remove();
+            }, 500); // Should match CSS animation duration
+        }, duration);
+    }
+
     // ترجمة
     function getTranslation(key) {
         const lang = localStorage.getItem('language') || 'ar';
@@ -52,6 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
             departmentUsers = data.data || [];
         } catch (err) {
             console.error(getTranslation('error-loading'), err);
+            showToast(getTranslation('error-loading'), 'error');
             departmentUsers = [];
         }
         // جلب التسلسل المحفوظ
@@ -162,6 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return data.data || [];
         } catch (err) {
             console.error(getTranslation('error-loading'), err);
+            showToast(getTranslation('error-loading'), 'error');
             return [];
         }
     }
@@ -387,6 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         } catch (err) {
             console.error(err);
+            showToast(getTranslation('error-loading'), 'error');
             departmentSelect.innerHTML = `<option value="">${getTranslation('error-loading')}</option>`;
         }
     }
@@ -438,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sequence.push(managerId);
         }
         await saveApprovalSequence(deptId, sequence);
-        alert(getTranslation('transfer-confirmed'));
+        showToast(getTranslation('transfer-confirmed'), 'success');
         // أكمل منطق التحويل الحالي إذا لزم...
     }
 

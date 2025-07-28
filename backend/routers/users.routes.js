@@ -43,6 +43,8 @@ router.get('/:id/notifications', authenticateToken, getNotifications);
 router.get('/:id/approvals-sequence-files', authenticateToken, getUserApprovalSequenceFiles);
 // سحب المستخدم من ملفات محددة
 router.post('/:id/revoke-files', authenticateToken, revokeUserFromFiles);
+// جلب حالة التفويض للمستخدم
+router.get('/:id/delegation-status', authenticateToken, require('../controllers/approvalController').getDelegationStatus);
 
 // 3) الراوتات الباقية
 router.get('/:id', authenticateToken, getUserById);

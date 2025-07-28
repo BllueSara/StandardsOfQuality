@@ -10,6 +10,38 @@ const searchInput = document.querySelector('#searchInput');
 const statusFilter = document.querySelector('#statusFilter');
 const deptFilter = document.querySelector('#deptFilter');
 
+// Toast notification function
+function showToast(message, type = 'info', duration = 3000) {
+  let toastContainer = document.getElementById('toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  // تحديث نص الرسالة بناءً على الترجمة
+  const translatedMessage = getTranslation(message) || message;
+  toast.textContent = translatedMessage;
+
+  toastContainer.appendChild(toast);
+
+  // Force reflow to ensure animation plays from start
+  toast.offsetWidth;
+
+  // Set a timeout to remove the toast
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    // Remove element after animation completes
+    setTimeout(() => {
+      toast.remove();
+    }, 500); // Should match CSS animation duration
+  }, duration);
+}
+
 // دالة تحويل اسم القسم حسب اللغة
 function getLocalizedDepartmentName(deptName) {
   const currentLang = localStorage.getItem('language') || 'ar';
@@ -32,7 +64,7 @@ function getTranslation(key) {
 
 // Fetch approvals from backend
 async function fetchApprovals() {
-  if (!token) return alert(getTranslation('please-login'));
+  if (!token) return showToast(getTranslation('please-login'), 'error');
   try {
     const res = await fetch(`${apiBase}/contents/my-uploads`, {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -46,7 +78,7 @@ async function fetchApprovals() {
     await setupFilters();
   } catch (err) {
     console.error('Error fetching approvals:', err);
-    alert(getTranslation('error-fetching-files'));
+    showToast(getTranslation('error-fetching-files'), 'error');
   }
 }
 

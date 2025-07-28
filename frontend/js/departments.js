@@ -3,6 +3,32 @@
 const apiBase      = 'http://localhost:3006/api';
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Add showToast function
+    function showToast(message, type = 'info', duration = 3000) {
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        toast.offsetWidth; // Force reflow
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        }, duration);
+    }
+
     // Get references to elements
     const addDepartmentBtn = document.getElementById('addDepartmentButton');
     const addDepartmentModal = document.getElementById('addDepartmentModal');
@@ -51,7 +77,7 @@ const editDepartmentNameEnInput = document.getElementById('editDepartmentNameEn'
     // Ensure authentication
     function checkAuth() {
         if (!getToken()) {
-            alert(getTranslation('please-login'));
+            showToast(getTranslation('please-login'), 'error');
             window.location.href = 'login.html';
         }
     }
@@ -261,7 +287,7 @@ async function fetchDepartments() {
 
     } catch (err) {
         console.error('Error fetching departments:', err);
-        alert(getTranslation('error-fetching-departments'));
+        showToast(getTranslation('error-fetching-departments'), 'error');
     }
 }
 
@@ -301,7 +327,7 @@ addModalSaveBtn.addEventListener('click', async () => {
   const file   = addDepartmentImageInput.files[0];
 
   if (!nameAr || !nameEn || !file) {
-    alert('الرجاء إدخال الاسم بالعربية والإنجليزية واختيار صورة.');
+    showToast('الرجاء إدخال الاسم بالعربية والإنجليزية واختيار صورة.', 'warning');
     return;
   }
 
@@ -319,12 +345,12 @@ addModalSaveBtn.addEventListener('click', async () => {
     });
     const r = await res.json();
     if (!res.ok) throw new Error(r.message);
-    alert(getTranslation('department-added-success'));
+    showToast(getTranslation('department-added-success'), 'success');
     closeModal(addDepartmentModal);
     fetchDepartments();
   } catch (err) {
     console.error(err);
-    alert(getTranslation('error-adding-department'));
+    showToast(getTranslation('error-adding-department'), 'error');
   }
 });
 
@@ -339,7 +365,7 @@ editModalSaveBtn.addEventListener('click', async () => {
   const file   = editDepartmentImageInput.files[0];
 
   if (!id || !nameAr || !nameEn) {
-    alert('الرجاء إدخال الاسم بالعربية والإنجليزية.');
+    showToast('الرجاء إدخال الاسم بالعربية والإنجليزية.', 'warning');
     return;
   }
 
@@ -357,12 +383,12 @@ editModalSaveBtn.addEventListener('click', async () => {
     });
     const r = await res.json();
     if (!res.ok) throw new Error(r.message);
-    alert(getTranslation('department-updated-success'));
+    showToast(getTranslation('department-updated-success'), 'success');
     closeModal(editDepartmentModal);
     fetchDepartments();
   } catch (err) {
     console.error(err);
-    alert(getTranslation('error-updating-department'));
+    showToast(getTranslation('error-updating-department'), 'error');
   }
 });
 
@@ -374,8 +400,8 @@ editModalSaveBtn.addEventListener('click', async () => {
         try {
             const res = await fetch(`http://localhost:3006/api/departments/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getToken()}` } });
             const r = await res.json(); if (!res.ok) throw new Error(r.message);
-            alert(getTranslation('department-deleted-success')); closeModal(deleteDepartmentModal); fetchDepartments();
-        } catch (err) { console.error(err); alert(getTranslation('error-deleting-department')); }
+            showToast(getTranslation('department-deleted-success'), 'success'); closeModal(deleteDepartmentModal); fetchDepartments();
+        } catch (err) { console.error(err); showToast(getTranslation('error-deleting-department'), 'error'); }
     });
 
     // Cancel buttons

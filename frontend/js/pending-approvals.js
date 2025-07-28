@@ -7,13 +7,42 @@ let permissionsKeys = [];
 let selectedContentId = null;
 let canvas, ctx;
 const currentLang = localStorage.getItem('language') || 'ar';
-let currentPage   = 1;
+let currentPage = 1;
 const itemsPerPage = 5;
 let allItems = [];
 // بعد تعريف itemsPerPage …
 const statusList = ['pending', 'approved', 'rejected'];
 let currentGroupIndex = 0;
 let isBulkDelegation = false; // متغير عالمي لتحديد وضع التفويض الجماعي
+
+// Toast notification function
+function showToast(message, type = 'info', duration = 3000) {
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    toastContainer.appendChild(toast);
+
+    // Force reflow to ensure animation plays from start
+    toast.offsetWidth;
+
+    // Set a timeout to remove the toast
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        // Remove element after animation completes
+        setTimeout(() => {
+            toast.remove();
+        }, 500); // Should match CSS animation duration
+    }, duration);
+}
 
 // جلب صلاحيات المستخدم
 async function fetchPermissions() {
@@ -114,7 +143,7 @@ function setupCloseButtons() {
 }
 console.log('pending-approvals.js loaded');
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!token) return alert(getTranslation('please-login'));
+  if (!token) return showToast(getTranslation('please-login'), 'error');
   // تعيين اسم المستخدم الحالي من JWT token
   const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
   window.currentUsername = payload.username;
@@ -134,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderApprovals(filteredItems);
   } catch (err) {
     console.error("Error loading approvals:", err);
-    alert(getTranslation('error-loading'));
+    showToast(getTranslation('error-loading'), 'error');
   }
   setupSignatureModal();
   setupCloseButtons();
@@ -145,19 +174,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnSendReason) {
     btnSendReason.addEventListener('click', async () => {
       const reason = document.getElementById('rejectReason').value.trim();
-      if (!reason) return alert(getTranslation('please-enter-reason'));
+      if (!reason) return showToast(getTranslation('please-enter-reason'), 'warning');
       try {
         await fetchJSON(`${apiBase}/contents/rejections/${selectedContentId}`, {
           method: 'POST',
           body: JSON.stringify({ reason })
         });
-        alert(getTranslation('success-rejected'));
+        showToast(getTranslation('success-rejected'), 'success');
         closeModal('rejectModal');
         updateApprovalStatusInUI(selectedContentId, 'rejected');
         disableActionsFor(selectedContentId);
       } catch (e) {
         console.error('Failed to send rejection:', e);
-        alert(getTranslation('error-sending'));
+        showToast(getTranslation('error-sending'), 'error');
       }
     });
   }
@@ -531,7 +560,7 @@ function initActions() {
       const item   = allItems.find(i => i.id == itemId);
 
       if (!item || !item.file_path) {
-        alert(getTranslation('no-content'));
+        showToast(getTranslation('no-content'), 'warning');
         return;
       }
 
@@ -624,13 +653,13 @@ document.getElementById('btnElectronicApprove')?.addEventListener('click', async
         notes: ''
       })
     });
-    alert(getTranslation('success-approved'));
+    showToast(getTranslation('success-approved'), 'success');
     closeModal('qrModal');
     updateApprovalStatusInUI(selectedContentId, 'approved');
     disableActionsFor(selectedContentId);
   } catch (err) {
     console.error('Failed to electronically approve:', err);
-    alert(getTranslation('error-sending'));
+    showToast(getTranslation('error-sending'), 'error');
   }
 });
 
@@ -737,13 +766,13 @@ function setupSignatureModal() {
           notes: ''
         })
       });
-      alert(getTranslation('success-sent'));
+      showToast(getTranslation('success-sent'), 'success');
       closeSignatureModal();
       updateApprovalStatusInUI(selectedContentId, 'approved');
       disableActionsFor(selectedContentId);
     } catch (err) {
       console.error('Failed to send signature:', err);
-      alert(getTranslation('error-sending'));
+      showToast(getTranslation('error-sending'), 'error');
     }
   });
 }
@@ -777,7 +806,7 @@ async function loadDepartments() {
 
   } catch (err) {
     console.error('Failed to load departments:', err);
-    alert(getTranslation('error-loading'));
+    showToast(getTranslation('error-loading'), 'error');
   }
 }
 
@@ -803,7 +832,7 @@ document.getElementById('delegateDept').addEventListener('change', async (e) => 
 
   } catch (err) {
     console.error('Failed to load users:', err);
-    alert(getTranslation('error-loading'));
+    showToast(getTranslation('error-loading'), 'error');
   }
 });
 
@@ -813,7 +842,7 @@ if (btnDelegateConfirm) {
   btnDelegateConfirm.addEventListener('click', async () => {
     const userId = document.getElementById('delegateUser').value;
     const notes = document.getElementById('delegateNotes').value;
-    if (!userId) return alert(getTranslation('please-select-user'));
+    if (!userId) return showToast(getTranslation('please-select-user'), 'warning');
     if (isBulkDelegation) {
       // تفويض جماعي
       try {
@@ -823,11 +852,11 @@ if (btnDelegateConfirm) {
           body: JSON.stringify({ delegateTo: userId, notes })
         });
         const json = await res.json();
-        alert(json.message || getTranslation('success-delegated') || 'تم التفويض بنجاح');
+        showToast(json.message || getTranslation('success-delegated') || 'تم التفويض بنجاح', 'success');
         closeModal('delegateModal');
         window.location.reload();
       } catch (err) {
-        alert(getTranslation('error-sending') || 'حدث خطأ أثناء التفويض الجماعي');
+        showToast(getTranslation('error-sending') || 'حدث خطأ أثناء التفويض الجماعي', 'error');
       }
       isBulkDelegation = false;
       return;
@@ -843,12 +872,12 @@ if (btnDelegateConfirm) {
           notes: notes
         })
       });
-      alert(getTranslation('success-delegated'));
+      showToast(getTranslation('success-delegated'), 'success');
       closeModal('delegateModal');
       disableActionsFor(selectedContentId);
     } catch (err) {
       console.error('Failed to delegate:', err);
-      alert(getTranslation('error-sending'));
+      showToast(getTranslation('error-sending'), 'error');
     }
     isBulkDelegation = false;
   });
@@ -1163,7 +1192,7 @@ document.getElementById('btnTransferConfirm').addEventListener('click', async fu
     ...selectedNewUsers.filter(Boolean)
   ];
   if (!selectedContentId || !finalSequence.length) {
-    alert(getTranslation('all-fields-required'));
+    showToast(getTranslation('all-fields-required'), 'warning');
     return;
   }
   try {
@@ -1190,9 +1219,9 @@ document.getElementById('btnTransferConfirm').addEventListener('click', async fu
       body: JSON.stringify({ approval_sequence: finalSequence })
     });
     closeFileTransferModal();
-    alert(getTranslation('confirm-transfer'));
+    showToast(getTranslation('confirm-transfer'), 'success');
   } catch (err) {
-    alert(getTranslation('error-sending'));
+    showToast(getTranslation('error-sending'), 'error');
   }
 });
 

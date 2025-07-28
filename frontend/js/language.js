@@ -186,6 +186,7 @@ const translations = {
         'request-approval': 'طلب اعتماد',
         'approve': 'اعتماد',
         'reject': 'رفض',
+        'clear-cache': 'مسح الكاش ميموري',
 
         // Profile
         'profile': 'الملف الشخصي',
@@ -2066,6 +2067,7 @@ const translations = {
         'committee-selected': 'Committee Selected',
         'search-committee-placeholder': 'Search for a committee...',
         'view_own_department': 'View Own Department',
+        'clear-cache': 'Clear Cache Memory',
     }
 };
 window.translations = translations;

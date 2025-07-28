@@ -3,11 +3,40 @@
 document.addEventListener('DOMContentLoaded', function() {
     const apiBase = 'http://localhost:3006/api';
 
+    // Toast notification function
+    function showToast(message, type = 'info', duration = 3000) {
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        // Force reflow to ensure animation plays from start
+        toast.offsetWidth;
+
+        // Set a timeout to remove the toast
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            // Remove element after animation completes
+            setTimeout(() => {
+                toast.remove();
+            }, 500); // Should match CSS animation duration
+        }, duration);
+    }
+
     // استخراج folderId من URL
     const urlParams = new URLSearchParams(window.location.search);
     const folderId = urlParams.get('folderId');
     if (!folderId) {
-        alert(getTranslation('no-folder-selected'));
+        showToast(getTranslation('no-folder-selected'), 'warning');
         // يمكنك إعادة التوجيه تلقائياً إذا أردت:
         // window.location.href = 'departments.html';
     }
@@ -42,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const file = fileInput.files[0];
             const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
             if (!allowedExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
-                alert(getTranslation('file-type-not-allowed'));
+                showToast(getTranslation('file-type-not-allowed'), 'warning');
                 fileInput.value = '';
                 fileInfoDiv.innerHTML = '';
                 selectedFile = null;
@@ -65,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         if (!folderId) return;
         if (!selectedFile) {
-            alert(getTranslation('select-file-alert'));
+            showToast(getTranslation('select-file-alert'), 'warning');
             return;
         }
 
@@ -75,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // التحقق من صحة التواريخ
         if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-            alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+            showToast('تاريخ البداية يجب أن يكون قبل تاريخ النهاية', 'warning');
             return;
         }
 
@@ -101,15 +130,15 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await response.json();
             if (response.ok) {
-                alert(getTranslation('file-upload-success'));
+                showToast(getTranslation('file-upload-success'), 'success');
                 uploadForm.reset();
                 selectedFile = null;
                 fileInfoDiv.innerHTML = '';
             } else {
-                alert(data.message || getTranslation('file-upload-error'));
+                showToast(data.message || getTranslation('file-upload-error'), 'error');
             }
         } catch (err) {
-            alert(getTranslation('server-connection-failed'));
+            showToast(getTranslation('server-connection-failed'), 'error');
         }
     });
 }); 
