@@ -6,13 +6,26 @@
     <title data-translate="upload-files-title">رفع ملفات فرعية</title>
     <link rel="stylesheet" href="../css/upload-files.css">
         <link rel="stylesheet" href="../css/shared.css">
+    <style>
+        /* إخفاء المحتوى حتى يتم تحميل اللغة */
+        .content-hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .content-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
-<body>
+<body class="content-hidden">
        <header class="main-header">
     <div class="header-container">
       <div class="hospital-logo">
@@ -70,8 +83,23 @@
             <button class="upload-all-btn" style="margin: 18px auto 0 auto; display: block; padding: 14px 48px; font-size: 1.18rem; font-weight: bold; background: #2563eb; color: #fff; border: none; border-radius: 12px; cursor: pointer;" data-translate="upload-all-files">رفع جميع الملفات</button>
         </div>
     </main>
+              <div id="toast-container" class="toast-container"></div>
+
             <script src="../js/language.js"></script>
 
-    <script src="../js/upload-files.js"></script>
-</body>
-</html> 
+          <script src="../js/upload-files.js"></script>
+  </body>
+
+  <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          // إظهار المحتوى بعد تحميل اللغة
+          setTimeout(() => {
+              const elements = document.querySelectorAll('.content-hidden');
+              elements.forEach(element => {
+                  element.classList.remove('content-hidden');
+                  element.classList.add('content-visible');
+              });
+          }, 100);
+      });
+  </script>
+  </html> 

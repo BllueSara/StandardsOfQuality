@@ -11,8 +11,22 @@
   <link rel="stylesheet" href="../css/shared.css">
   <link rel="stylesheet" href="../css/home.css">
   <link rel="stylesheet" href="../css/dashboard.css">
+  <style>
+      /* إخفاء المحتوى حتى يتم تحميل اللغة */
+      .content-hidden {
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease-in-out;
+      }
+
+      .content-visible {
+          opacity: 1;
+          visibility: visible;
+      }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+<body class="content-hidden">
         <div class="header-actions">
     <button class="back-btn" id="backBtn" onclick="window.location.href='index.html'" style="right: 50px; left: auto; display: flex; align-items: center; gap: 4px;">
       <i class="fas fa-arrow-right" id="backIcon" style="margin-right: 4px; transform: rotate(180deg);"></i>
@@ -94,7 +108,22 @@
       </div>
     </div>
   </main>
+            <div id="toast-container" class="toast-container"></div>
+
   <script src="../js/language.js"></script>
   <script src="../js/dashboard.js"></script>
+
+  <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          // إظهار المحتوى بعد تحميل اللغة
+          setTimeout(() => {
+              const elements = document.querySelectorAll('.content-hidden');
+              elements.forEach(element => {
+                  element.classList.remove('content-hidden');
+                  element.classList.add('content-visible');
+              });
+          }, 100);
+      });
+  </script>
 </body>
 </html> 

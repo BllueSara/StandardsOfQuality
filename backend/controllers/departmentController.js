@@ -108,10 +108,17 @@ const getDepartments = async (req, res) => {
 
 const addDepartment = async (req, res) => {
     try {
+        console.log('🔍 addDepartment called with body:', req.body);
+        console.log('🔍 addDepartment called with file:', req.file);
+        
         const { name } = req.body;
         const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : null;
 
+        console.log('🔍 Parsed name:', name);
+        console.log('🔍 Image path:', imagePath);
+
         if (!name || !imagePath) {
+            console.log('❌ Validation failed - name:', !!name, 'imagePath:', !!imagePath);
             return res.status(400).json({
                 status: 'error',
                 message: 'اسم القسم والصورة مطلوبان'
@@ -170,7 +177,12 @@ const addDepartment = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: 'خطأ في إضافة القسم' });
+        console.error('❌ Error in addDepartment:', error);
+        console.error('❌ Error stack:', error.stack);
+        res.status(500).json({ 
+            message: 'خطأ في إضافة القسم',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 

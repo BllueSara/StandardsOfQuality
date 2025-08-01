@@ -15,9 +15,22 @@
 
     <link rel="stylesheet" href="../css/shared.css">
     <link rel="stylesheet" href="../css/profile.css">
+    <style>
+        /* إخفاء المحتوى حتى يتم تحميل اللغة */
+        .content-hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .content-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
     <script src="../js/profile.js" defer></script>
 </head>
-<body>
+<body class="content-hidden">
     <header>
         <div class="container">
             <div class="system-title">
@@ -56,6 +69,19 @@
             <script src="/frontend/js/language.js"></script>
                 <script src="/frontend/js/check-status.js"></script>
 
+  
+  </body>
 
-</body>
-</html> 
+  <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          // إظهار المحتوى بعد تحميل اللغة
+          setTimeout(() => {
+              const elements = document.querySelectorAll('.content-hidden');
+              elements.forEach(element => {
+                  element.classList.remove('content-hidden');
+                  element.classList.add('content-visible');
+              });
+          }, 100);
+      });
+  </script>
+  </html> 

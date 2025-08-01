@@ -15,9 +15,22 @@
   <!-- ملفات CSS -->
   <link rel="stylesheet" href="../css/shared.css">
   <link rel="stylesheet" href="../css/notifications.css">
+  <style>
+      /* إخفاء المحتوى حتى يتم تحميل اللغة */
+      .content-hidden {
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease-in-out;
+      }
+
+      .content-visible {
+          opacity: 1;
+          visibility: visible;
+      }
+  </style>
 </head>
 
-<body>
+<body class="content-hidden">
   <header class="main-header">
     <div class="header-container">
       <div class="system-title">
@@ -69,9 +82,23 @@
       </section>
     </div>
   </main>
+            <div id="toast-container" class="toast-container"></div>
+
     <script src="../js/language.js"></script>
 
   <script src="../js/notifications.js"></script>
 </body>
-
-</html>
+  
+  <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          // إظهار المحتوى بعد تحميل اللغة
+          setTimeout(() => {
+              const elements = document.querySelectorAll('.content-hidden');
+              elements.forEach(element => {
+                  element.classList.remove('content-hidden');
+                  element.classList.add('content-visible');
+              });
+          }, 100);
+      });
+  </script>
+  </html>

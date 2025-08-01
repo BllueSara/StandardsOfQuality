@@ -1055,6 +1055,7 @@ const translations = {
         'delegate_all': 'Delegate All Files On Behalf',
 
         'by-person': 'By Person',
+        'revoke_files': 'Revoke Files',
         'no-active-delegations': 'No active delegations for this user.',
         'file-delegations': 'File Delegations',
         'committee-delegations': 'Committee Delegations',

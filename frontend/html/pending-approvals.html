@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-translate="pending-approvals-title">ملفات بانتظار الاعتماد</title>
+    <link rel="stylesheet" href="../css/shared.css">
     <link rel="stylesheet" href="../css/pending-approvals.css">
+    <style>
+        /* إخفاء المحتوى حتى يتم تحميل اللغة */
+        .content-hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .content-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +26,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
 </head>
-<body>
+<body class="content-hidden">
     <header class="main-header">
         <div class="header-container">
             <div class="hospital-logo">
@@ -58,7 +72,8 @@
             <!-- سيتم توليد البطاقات ديناميكياً من جافاسكريبت -->
         </div>
     </main>
-        
+          <div id="toast-container" class="toast-container"></div>
+  
     <!-- ===== توقيع (Signature) Modal ===== -->
     <div id="signatureModal" class="modal-overlay" style="display: none;">
         <div class="modal">
@@ -189,6 +204,18 @@
         <script src="../js/language.js"></script>
 
       <script src="/frontend/js/check-status.js"></script>
-      <script src="/frontend/js/pending-approvals.js"></script>
-
-</html> 
+              <script src="/frontend/js/pending-approvals.js"></script>
+  
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                // إظهار المحتوى بعد تحميل اللغة
+                setTimeout(() => {
+                    const elements = document.querySelectorAll('.content-hidden');
+                    elements.forEach(element => {
+                        element.classList.remove('content-hidden');
+                        element.classList.add('content-visible');
+                    });
+                }, 100);
+            });
+        </script>
+  </html> 

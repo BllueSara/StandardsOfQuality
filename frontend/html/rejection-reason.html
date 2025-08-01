@@ -4,14 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-translate="rejection-reason-title">سبب الرفض</title>
+    <link rel="stylesheet" href="../css/shared.css">
     <link rel="stylesheet" href="../css/rejection-reason.css">
+    <style>
+        /* إخفاء المحتوى حتى يتم تحميل اللغة */
+        .content-hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .content-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
-<body>
+<body class="content-hidden">
      <header class="main-header">
     <div class="header-container">
       <div class="hospital-logo">
@@ -47,6 +61,8 @@
             <div class="char-count">0/500</div>
         </div>
     </main>
+              <div id="toast-container" class="toast-container"></div>
+
         <script src="../js/language.js"></script>
 
     <script src="../js/rejection-reason.js"></script>
@@ -57,6 +73,19 @@
     input.addEventListener('input', function() {
         count.textContent = this.value.length + '/500';
     });
-    </script>
-</body>
-</html> 
+          </script>
+  </body>
+
+  <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          // إظهار المحتوى بعد تحميل اللغة
+          setTimeout(() => {
+              const elements = document.querySelectorAll('.content-hidden');
+              elements.forEach(element => {
+                  element.classList.remove('content-hidden');
+                  element.classList.add('content-visible');
+              });
+          }, 100);
+      });
+  </script>
+  </html> 

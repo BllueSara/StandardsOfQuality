@@ -662,13 +662,43 @@ select {
 /* Toast Notification Styles */
 .toast-container {
   position: fixed !important;
-  bottom: 20px;
-  right: 20px;
+  top: 20px !important;
+  bottom: auto !important;
   z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: 10px;
   pointer-events: none; /* يسمح بالنقر خلف التوست */
+}
+
+/* للغة العربية - التوست في أقصى اليسار */
+:lang(ar) .toast-container,
+[dir="rtl"] .toast-container,
+html[lang="ar"] .toast-container,
+body[dir="rtl"] .toast-container,
+html[dir="rtl"] .toast-container {
+  right: auto !important;
+  left: 20px !important;
+  top: 20px !important;
+  bottom: auto !important;
+}
+
+/* للغة الإنجليزية - التوست في أقصى اليمين */
+:lang(en) .toast-container,
+[dir="ltr"] .toast-container,
+html[lang="en"] .toast-container,
+body[dir="ltr"] .toast-container,
+html[dir="ltr"] .toast-container {
+  left: auto !important;
+  right: 20px !important;
+  top: 20px !important;
+  bottom: auto !important;
+}
+
+/* قواعد إضافية للتأكد من عدم ظهور التوست في الأسفل */
+.toast-container,
+.toast-container * {
+  bottom: auto !important;
 }
 
 .toast {
@@ -683,6 +713,9 @@ select {
     pointer-events: auto; /* يسمح بالنقر على التوست نفسه */
     max-width: 300px; /* عرض أقصى للتوست */
     word-wrap: break-word; /* كسر الكلمات الطويلة */
+    position: relative;
+    top: 0 !important;
+    bottom: auto !important;
 }
 
 .toast.success {
@@ -709,4 +742,39 @@ select {
         opacity: 0;
         transform: translateY(-20px);
     }
-} 
+}
+
+/* تأكيد إضافي لمنع ظهور التوست في الأسفل */
+.toast-container {
+    bottom: auto !important;
+    top: 20px !important;
+}
+
+.toast-container .toast {
+    bottom: auto !important;
+    top: 0 !important;
+}
+
+/* قواعد إضافية للتأكد من عدم وجود bottom في أي مكان */
+.toast-container,
+.toast-container *,
+.toast {
+    bottom: auto !important;
+}
+
+/* التأكد من أن التوست يظهر في الأعلى فقط */
+.toast-container {
+    position: fixed !important;
+    top: 20px !important;
+    bottom: auto !important;
+    left: 20px !important;
+    right: auto !important;
+}
+
+/* للغة الإنجليزية */
+html[lang="en"] .toast-container,
+body[lang="en"] .toast-container,
+[dir="ltr"] .toast-container {
+    left: auto !important;
+    right: 20px !important;
+}

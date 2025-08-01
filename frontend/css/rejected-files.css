@@ -339,3 +339,126 @@ html[dir="rtl"] .filters-row select {
   color: #38b6ff;
   font-size: 1.1em;
 } 
+/* Toast Notification Styles - إضافة تعريفات التوست */
+.toast-container {
+    position: fixed !important;
+    top: 20px !important;
+    bottom: auto !important;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+/* للغة العربية - التوست في أقصى اليسار */
+:lang(ar) .toast-container,
+[dir="rtl"] .toast-container,
+html[lang="ar"] .toast-container,
+body[dir="rtl"] .toast-container,
+html[dir="rtl"] .toast-container {
+    right: auto !important;
+    left: 20px !important;
+    top: 20px !important;
+    bottom: auto !important;
+}
+
+/* للغة الإنجليزية - التوست في أقصى اليمين */
+:lang(en) .toast-container,
+[dir="ltr"] .toast-container,
+html[lang="en"] .toast-container,
+body[dir="ltr"] .toast-container,
+html[dir="ltr"] .toast-container {
+    left: auto !important;
+    right: 20px !important;
+    top: 20px !important;
+    bottom: auto !important;
+}
+
+/* قواعد إضافية للتأكد من عدم ظهور التوست في الأسفل */
+.toast-container,
+.toast-container * {
+    bottom: auto !important;
+}
+
+.toast {
+    background-color: #333;
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(-20px);
+    animation: slideIn 0.5s forwards, fadeOut 0.5s forwards 2.5s;
+    pointer-events: auto;
+    max-width: 300px;
+    word-wrap: break-word;
+    position: relative;
+    top: 0 !important;
+    bottom: auto !important;
+}
+
+.toast.success {
+    background-color: #28a745;
+}
+
+.toast.error {
+    background-color: #dc3545;
+}
+
+.toast.info {
+    background-color: #17a2b8;
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* تأكيد إضافي لمنع ظهور التوست في الأسفل */
+.toast-container {
+    bottom: auto !important;
+    top: 20px !important;
+}
+
+.toast-container .toast {
+    bottom: auto !important;
+    top: 0 !important;
+}
+
+/* قواعد إضافية للتأكد من عدم وجود bottom في أي مكان */
+.toast-container,
+.toast-container *,
+.toast {
+    bottom: auto !important;
+}
+
+/* التأكد من أن التوست يظهر في الأعلى فقط */
+.toast-container {
+    position: fixed !important;
+    top: 20px !important;
+    bottom: auto !important;
+    left: 20px !important;
+    right: auto !important;
+}
+
+/* للغة الإنجليزية */
+html[lang="en"] .toast-container,
+body[lang="en"] .toast-container,
+[dir="ltr"] .toast-container {
+    left: auto !important;
+    right: 20px !important;
+}

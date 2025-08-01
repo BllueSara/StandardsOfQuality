@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-translate="file-details-title">تفاصيل الملف</title>
+    <link rel="stylesheet" href="../css/shared.css">
     <link rel="stylesheet" href="../css/file-details.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,9 +20,20 @@
         text-align: right !important;
         direction: rtl !important;
       }
+        /* إخفاء المحتوى حتى يتم تحميل اللغة */
+        .content-hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .content-visible {
+            opacity: 1;
+            visibility: visible;
+        }
     </style>
 </head>
-<body>
+<body class="content-hidden">
        <header class="main-header">
     <div class="header-container">
       <div class="hospital-logo">
@@ -110,6 +122,8 @@
             </div>
         </div>
     </main>
+              <div id="toast-container" class="toast-container"></div>
+
         <script src="../js/language.js"></script>
 
     <script src="../js/file-details.js"></script>
@@ -136,6 +150,19 @@
           applyFullDirection(e.detail.language);
         });
       });
-    </script>
-</body>
-</html> 
+          </script>
+  </body>
+
+  <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          // إظهار المحتوى بعد تحميل اللغة
+          setTimeout(() => {
+              const elements = document.querySelectorAll('.content-hidden');
+              elements.forEach(element => {
+                  element.classList.remove('content-hidden');
+                  element.classList.add('content-visible');
+              });
+          }, 100);
+      });
+  </script>
+  </html> 
