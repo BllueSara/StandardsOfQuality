@@ -84,9 +84,7 @@ function closeModal(modal) {
     // دالة لجلب الأقسام من الباك اند وتعبئة قائمة الاختيار
 async function fetchDepartments() {
   try {
-    const token    = localStorage.getItem('token');
     const response = await fetch('http://localhost:3006/api/departments/all', {
-      headers: { 'Authorization': `Bearer ${token}` }
     });
     const result     = await response.json();
     if (!response.ok) throw new Error(result.message || 'فشل جلب الأقسام');
