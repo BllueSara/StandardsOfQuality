@@ -2246,7 +2246,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (backToFilesContainer) backToFilesContainer.style.display = 'none'; // Hide the back to files button
       } else {
         // من قائمة المجلدات إلى الأقسام (departmens.html)
-        window.location.href = 'departments.html';
+        window.history.back();
       }
     });
   }

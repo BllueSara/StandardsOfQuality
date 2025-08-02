@@ -94,11 +94,11 @@ function updateFilesCount() {
 async function setupFilters() {
   // جلب الأقسام من قاعدة البيانات
   try {
-    const res = await fetch(`${apiBase}/departments`, { 
+    const res = await fetch(`${apiBase}/departments/all`, { 
       headers: { Authorization: `Bearer ${token}` } 
     });
-    const data = await res.json();
-    const departments = Array.isArray(data) ? data : (data.data || []);
+    const result = await res.json();
+    const departments = Array.isArray(result) ? result : (result.data || []);
     const currentLang = localStorage.getItem('language') || 'ar';
     
     deptFilter.innerHTML = `<option value="all" data-translate="all-departments">${getTranslation('all-departments')}</option>`;

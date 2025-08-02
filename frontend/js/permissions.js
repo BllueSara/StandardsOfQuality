@@ -284,7 +284,7 @@ async function loadMyPermissions() {
 async function fetchDepartments() {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${apiBase}/departments`, {
+    const response = await fetch(`${apiBase}/departments/all`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -296,7 +296,9 @@ async function fetchDepartments() {
       throw new Error('فشل في جلب الأقسام');
     }
 
-    if (!Array.isArray(result)) {
+    // التعامل مع الهيكل الجديد للبيانات
+    const data = result.data || result;
+    if (!Array.isArray(data)) {
       throw new Error('الرد ليس مصفوفة أقسام');
     }
 
@@ -306,7 +308,7 @@ const selectText = lang === 'ar' ? 'اختر القسم' : 'Select Department';
 departmentSelect.innerHTML = `<option value="">${selectText}</option>`;
 
 
-    result.forEach(dept => {
+    data.forEach(dept => {
       const option = document.createElement('option');
       option.value = dept.id;
 let name = dept.name;
@@ -787,17 +789,18 @@ if (btnEditUserInfo) {
 async function fetchDepartmentsForEditModal(selectedId, selectedName) {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${apiBase}/departments`, {
+    const response = await fetch(`${apiBase}/departments/all`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
     const result = await response.json();
-    if (!Array.isArray(result)) throw new Error('الرد ليس مصفوفة أقسام');
+    const data = result.data || result;
+    if (!Array.isArray(data)) throw new Error('الرد ليس مصفوفة أقسام');
     const lang = localStorage.getItem('language') || 'ar';
     const selectText = lang === 'ar' ? 'اختر القسم' : 'Select Department';
     editDepartment.innerHTML = `<option value="">${selectText}</option>`;
-    result.forEach(dept => {
+    data.forEach(dept => {
       const option = document.createElement('option');
       option.value = dept.id;
       let name = dept.name;

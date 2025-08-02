@@ -393,11 +393,17 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchDepartments() {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${apiBase}/departments`, {
+            const response = await fetch(`${apiBase}/departments/all`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || getTranslation('error-loading'));
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || getTranslation('error-loading'));
+
+            // التعامل مع الهيكل الجديد للبيانات
+            const data = result.data || result;
+            if (!Array.isArray(data)) {
+                throw new Error('Invalid data format');
+            }
 
             const lang = localStorage.getItem('language') || 'ar';
             const defaultText = getTranslation('select-department');

@@ -85,11 +85,17 @@ function closeModal(modal) {
 async function fetchDepartments() {
   try {
     const token    = localStorage.getItem('token');
-    const response = await fetch('http://localhost:3006/api/departments', {
+    const response = await fetch('http://localhost:3006/api/departments/all', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    const data     = await response.json();
-    if (!response.ok) throw new Error(data.message || 'فشل جلب الأقسام');
+    const result     = await response.json();
+    if (!response.ok) throw new Error(result.message || 'فشل جلب الأقسام');
+
+    // التعامل مع الهيكل الجديد للبيانات
+    const data = result.data || result;
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid data format');
+    }
 
     // حدّد اللغة الحالية:
     const lang = localStorage.getItem('language') || 'ar';
@@ -166,7 +172,7 @@ formData.append('image', imageFile);
 
 
   try {
-    const response = await fetch('http://localhost:3006/api/departments', {
+    const response = await fetch('http://localhost:3006/api/departments/all', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`

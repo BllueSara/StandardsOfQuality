@@ -204,9 +204,10 @@ async function setupFilters(items) {
   // جلب الأقسام من قاعدة البيانات
   let departments = [];
   try {
-    const res = await fetch(`${apiBase}/departments`, { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    departments = Array.isArray(data) ? data : (data.data || []);
+    const res = await fetch(`${apiBase}/departments/all`, { headers: { Authorization: `Bearer ${token}` } });
+    const result = await res.json();
+    const data = result.data || result;
+    departments = Array.isArray(data) ? data : [];
   } catch (err) {
     // fallback: use only items' source_name
     departments = [];
@@ -782,7 +783,7 @@ async function loadDepartments() {
   if (!deptSelect) return;
 
   try {
-    const res = await fetchJSON(`${apiBase}/departments`);
+    const res = await fetchJSON(`${apiBase}/departments/all`);
     const departments = Array.isArray(res) ? res : (res.data || []);
     const lang = localStorage.getItem('language') || 'ar';
 
@@ -1235,7 +1236,7 @@ async function loadTransferDepartments() {
   const deptSelect = document.getElementById('transferDept');
   if (!deptSelect) return;
   try {
-    const res = await fetch(`${apiBase}/departments`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${apiBase}/departments/all`, { headers: { Authorization: `Bearer ${token}` } });
     const json = await res.json();
     const departments = Array.isArray(json) ? json : (json.data || []);
     const lang = localStorage.getItem('language') || 'ar';

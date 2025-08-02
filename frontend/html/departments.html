@@ -4,12 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحة الأقسام</title>
+    <title data-translate="departments-page-title">صفحة الأقسام</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/shared.css">
     <link rel="stylesheet" href="../css/departments.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* إخفاء المحتوى حتى يتم تحميل اللغة */
         .content-hidden {
@@ -22,14 +23,60 @@
             opacity: 1;
             visibility: visible;
         }
-    </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  
+        /* إضافة أنماط للـ type badges */
+        .type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .type-badge.department {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .type-badge.administration {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .card-subtitle {
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Radio group styles */
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 8px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .radio-label input[type="radio"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .radio-label span {
+            color: #333;
+        }
+    </style>
 </head>
 
-<body class="content-hidden">
-    <header>
+<body>
+    <header class="content-hidden">
         <div class="container">
             <div class="hospital-logo">
                 <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
@@ -41,7 +88,7 @@
            
         </div>
     </header>
-        <div class="header-actions">
+        <div class="header-actions content-hidden">
     <button class="back-btn" id="backBtn" onclick="window.location.href='index.html'" style="right: 50px; left: auto; display: flex; align-items: center; gap: 4px;">
       <i class="fas fa-arrow-right" id="backIcon"></i>
         <span id="backBtnText" data-translate="back">رجوع</span>
@@ -51,19 +98,19 @@
     <span data-translate="home">الرئيسية</span>
   </button>
 </div>
-    <main>
+    <main class="content-hidden">
 
         <div class="container">
 <!-- HTML -->
 
 
 
-            <h1 data-translate="department-list">صفحة الأقسام</h1>
+            <h1 data-translate="department-list">صفحة الأقسام والإدارات</h1>
 
 
             <div class="controls-bar">
                 <div class="search-bar" id="searchBarWrapper" style="display: flex; align-items: center; position: relative;">
-                    <input type="text" placeholder="ابحث عن قسم" data-placeholder="search-department" id="searchInput" style="width: 100%;">
+                    <input type="text" placeholder="ابحث عن قسم أو إدارة" data-placeholder="search-department-placeholder" id="searchInput" style="width: 100%;">
                     <img src="../images/serach.svg" alt="بحث" class="search-icon" id="searchIcon" style="position: absolute; right: 10px; left: auto; top: 50%; transform: translateY(-50%);">
                 </div>
                 <button class="btn-primary" id="addDepartmentButton" data-translate="add-department">إضافة جديد</button>
@@ -81,20 +128,41 @@
     <!-- Add New Department Modal -->
 <div id="addDepartmentModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 data-translate="add-department">إضافة قسم</h3>
+    <h3 data-translate="add-department">إضافة قسم/إدارة</h3>
     <hr>
     <div class="modal-body">
       <div class="form-group">
-        <label for="departmentNameAr" data-translate="department-name-ar">اسم القسم (عربي)</label>
-        <input type="text" id="departmentNameAr"data-placeholder="enter-ar-name" placeholder="أدخل الاسم بالعربية">
+        <label for="departmentType" data-translate="department-type">النوع *</label>
+        <select id="departmentType" required>
+          <option value="" data-translate="choose-type">اختر النوع</option>
+          <option value="department" data-translate="department-type-text">قسم</option>
+          <option value="administration" data-translate="administration-type-text">إدارة</option>
+        </select>
       </div>
       <div class="form-group">
-        <label for="departmentNameEn" data-translate="department-name-en">Department Name (English)</label>
-        <input type="text" id="departmentNameEn" data-placeholder="enter-en-name" placeholder="Enter name in English">
+        <label for="departmentNameAr" data-translate="department-name-ar">اسم القسم/الإدارة (عربي) *</label>
+        <input type="text" id="departmentNameAr"data-placeholder="enter-ar-name" placeholder="أدخل الاسم بالعربية" required>
       </div>
       <div class="form-group">
-        <label for="departmentImage" data-translate="department-image">مسار الصورة</label>
-        <input type="file" id="departmentImage" accept="image/*">
+        <label for="departmentNameEn" data-translate="department-name-en">اسم القسم/الإدارة (إنجليزي) *</label>
+        <input type="text" id="departmentNameEn" data-placeholder="enter-en-name" placeholder="Enter name in English" required>
+      </div>
+      <div class="form-group">
+        <label for="departmentImage" data-translate="department-image">الصورة *</label>
+        <input type="file" id="departmentImage" accept="image/*" required>
+      </div>
+      <div class="form-group">
+        <label for="departmentHasSubDepartments" data-translate="has-sub-departments">هل يسمح بإضافة أقسام/إدارات تابعة؟</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="hasSubDepartments" value="true" id="hasSubDepartmentsYes">
+            <span data-translate="yes">نعم</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="hasSubDepartments" value="false" id="hasSubDepartmentsNo" checked>
+            <span data-translate="no">لا</span>
+          </label>
+        </div>
       </div>
     </div>
     <div class="modal-buttons">
@@ -108,21 +176,42 @@
     <!-- Edit Department Modal -->
 <div id="editDepartmentModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 data-translate="edit-department">تعديل القسم</h3>
+    <h3 data-translate="edit-department">تعديل قسم/إدارة</h3>
     <hr>
     <div class="modal-body">
       <input type="hidden" id="editDepartmentId">
       <div class="form-group">
-        <label for="editDepartmentNameAr" data-translate="department-name-ar">اسم القسم (عربي)</label>
-        <input type="text" id="editDepartmentNameAr" placeholder="أدخل الاسم بالعربية">
+        <label for="editDepartmentType" data-translate="department-type">النوع *</label>
+        <select id="editDepartmentType" required>
+          <option value="" data-translate="choose-type">اختر النوع</option>
+          <option value="department" data-translate="department-type-text">قسم</option>
+          <option value="administration" data-translate="administration-type-text">إدارة</option>
+        </select>
       </div>
       <div class="form-group">
-        <label for="editDepartmentNameEn" data-translate="department-name-en">Department Name (English)</label>
-        <input type="text" id="editDepartmentNameEn" placeholder="Enter name in English">
+        <label for="editDepartmentNameAr" data-translate="department-name-ar">اسم القسم/الإدارة (عربي) *</label>
+                            <input type="text" id="editDepartmentNameAr" data-placeholder="enter-ar-name" placeholder="أدخل الاسم بالعربية" required>
       </div>
       <div class="form-group">
-        <label for="editDepartmentImage" data-translate="department-image">مسار الصورة</label>
+        <label for="editDepartmentNameEn" data-translate="department-name-en">اسم القسم/الإدارة (إنجليزي) *</label>
+                            <input type="text" id="editDepartmentNameEn" data-placeholder="enter-en-name" placeholder="Enter name in English" required>
+      </div>
+      <div class="form-group">
+        <label for="editDepartmentImage" data-translate="department-image">الصورة (اختياري)</label>
         <input type="file" id="editDepartmentImage" accept="image/*">
+      </div>
+      <div class="form-group">
+        <label for="editDepartmentHasSubDepartments" data-translate="has-sub-departments">هل يسمح بإضافة أقسام/إدارات تابعة؟</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="editHasSubDepartments" value="true" id="editHasSubDepartmentsYes">
+            <span data-translate="yes">نعم</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="editHasSubDepartments" value="false" id="editHasSubDepartmentsNo">
+            <span data-translate="no">لا</span>
+          </label>
+        </div>
       </div>
     </div>
     <div class="modal-buttons">
@@ -136,10 +225,10 @@
     <!-- Delete Department Modal -->
     <div id="deleteDepartmentModal" class="modal-overlay">
         <div class="modal-content">
-            <h3><span data-translate="delete-department-title">تأكيد حذف القسم</span> <img src="../images/warning.svg" alt="تحذير" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 10px;"></h3>
+            <h3><span data-translate="delete-department-title">تأكيد حذف القسم/الإدارة</span> <img src="../images/warning.svg" alt="تحذير" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 10px;"></h3>
             <hr>
             <div class="modal-body" style="text-align: center;">
-                <p data-translate="delete-department-confirm">أنت متأكد من حذف هذا القسم؟</p>
+                <p data-translate="delete-department-confirm">أنت متأكد من حذف هذا القسم/الإدارة؟</p>
             </div>
             <div class="modal-buttons">
                 <button class="btn-danger" id="confirmDeleteDepartment" data-translate="delete">حذف نهائي</button>
@@ -151,9 +240,21 @@
 </body>
 
 
-<script src="../js/departments.js" defer></script>
 <script src="../js/language.js"></script>
-    <script src="/frontend/js/check-status.js"></script>
+<script src="../js/departments.js" defer></script>
+<script src="/frontend/js/check-status.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // إظهار المحتوى بعد تحميل اللغة
+        setTimeout(() => {
+            const elements = document.querySelectorAll('.content-hidden');
+            elements.forEach(element => {
+                element.classList.remove('content-hidden');
+                element.classList.add('content-visible');
+            });
+        }, 100);
+    });
+</script>
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
@@ -196,19 +297,6 @@
         updateBackBtnArrow(lang);
       };
     }
-      });
-  </script>
-
-  <script>
-      document.addEventListener("DOMContentLoaded", () => {
-          // إظهار المحتوى بعد تحميل اللغة
-          setTimeout(() => {
-              const elements = document.querySelectorAll('.content-hidden');
-              elements.forEach(element => {
-                  element.classList.remove('content-hidden');
-                  element.classList.add('content-visible');
-              });
-          }, 100);
-      });
-  </script>
+  });
+</script>
 </html>
