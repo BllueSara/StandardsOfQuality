@@ -207,22 +207,61 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // Modal handlers
-    function openModal(modal) { modal.style.display = 'flex'; }
+    function openModal(modal) { 
+        if (modal) {
+            console.log('🔍 openModal: opening modal', modal.id || 'unknown modal');
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+            modal.classList.add('active');
+            
+            // Force reflow
+            modal.offsetHeight;
+            console.log('🔍 openModal: modal opened successfully');
+        } else {
+            console.log('🔍 openModal: modal is null or undefined');
+        }
+    }
     
     function closeModal(modal) {
+        if (!modal) {
+            console.log('🔍 closeModal: modal is null or undefined');
+            return;
+        }
+        
+        console.log('🔍 closeModal: closing modal', modal.id || 'unknown modal');
+        
+        // Multiple approaches to ensure modal closes
         modal.style.display = 'none';
+        modal.classList.remove('show');
+        modal.classList.remove('active');
+        
+        // Force reflow
+        modal.offsetHeight;
+        
+        console.log('🔍 closeModal: modal display set to none');
 
         if (modal === addDepartmentModal) {
-            addDepartmentTypeInput.value = '';
-            addDepartmentNameArInput.value = '';
-            addDepartmentNameEnInput.value = '';
-            addDepartmentImageInput.value = '';
+            if (addDepartmentTypeInput) addDepartmentTypeInput.value = '';
+            if (addDepartmentNameArInput) addDepartmentNameArInput.value = '';
+            if (addDepartmentNameEnInput) addDepartmentNameEnInput.value = '';
+            if (addDepartmentImageInput) addDepartmentImageInput.value = '';
+            console.log('🔍 closeModal: add modal form cleared');
         } else if (modal === editDepartmentModal) {
-            editDepartmentIdInput.value = '';
-            editDepartmentTypeInput.value = '';
-            editDepartmentNameArInput.value = '';
-            editDepartmentNameEnInput.value = '';
-            editDepartmentImageInput.value = '';
+            if (editDepartmentIdInput) {
+                editDepartmentIdInput.value = '';
+                editDepartmentIdInput.dataset.level = '';
+                editDepartmentIdInput.dataset.parentId = '';
+            }
+            if (editDepartmentTypeInput) editDepartmentTypeInput.value = '';
+            if (editDepartmentNameArInput) editDepartmentNameArInput.value = '';
+            if (editDepartmentNameEnInput) editDepartmentNameEnInput.value = '';
+            if (editDepartmentImageInput) editDepartmentImageInput.value = '';
+            console.log('🔍 closeModal: edit modal form cleared');
+        } else if (modal === deleteDepartmentModal) {
+            if (deleteModalConfirmBtn) {
+                deleteModalConfirmBtn.dataset.departmentId = '';
+            }
+            console.log('🔍 closeModal: delete modal data cleared');
         }
     }
 
@@ -272,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (permissions.canEdit || permissions.canDelete) {
                 icons = '<div class="card-icons">';
                 if (permissions.canEdit)
-                    icons += `<a href="#" class="edit-icon" data-id="${dept.id}" data-name='${dept.name}' data-type="${dept.type}"><img src="../images/edit.svg" alt="${getTranslation('edit')}"></a>`;
+                    icons += `<a href="#" class="edit-icon" data-id="${dept.id}" data-name='${dept.name}' data-type="${dept.type}" data-level="${dept.level || ''}" data-parent-id="${dept.parent_id || ''}"><img src="../images/edit.svg" alt="${getTranslation('edit')}"></a>`;
 
                 if (permissions.canDelete)
                     icons += `<a href="#" class="delete-icon" data-id="${dept.id}"><img src="../images/delet.svg" alt="${getTranslation('delete')}"></a>`;
@@ -356,8 +395,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-
-
     // Display parent department info
     function displayParentInfo(parent) {
         if (!parent) return;
@@ -403,8 +440,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         const id = el.dataset.id;
         const name = el.dataset.name;
         const type = el.dataset.type;
+        const level = el.dataset.level;
+        const parentId = el.dataset.parentId;
 
-        console.log('🔍 Edit department:', { id, name, type });
+        console.log('🔍 Edit department:', { id, name, type, level, parentId });
 
         // Parse name JSON
         let nameAr = '', nameEn = '';
@@ -422,6 +461,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         editDepartmentTypeInput.value = type;
         editDepartmentNameArInput.value = nameAr;
         editDepartmentNameEnInput.value = nameEn;
+
+        // Store level and parent_id for update
+        editDepartmentIdInput.dataset.level = level;
+        editDepartmentIdInput.dataset.parentId = parentId;
 
         openModal(editDepartmentModal);
     }
@@ -474,7 +517,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const result = await response.json();
             console.log('🔍 Add department response:', result);
 
-            if (result.success) {
+            if (result.success || result.status === 'success') {
                 showToast(getTranslation('department-added-success'), 'success');
                 closeModal(addDepartmentModal);
                 await fetchSubDepartments();
@@ -494,6 +537,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const nameAr = editDepartmentNameArInput.value.trim();
         const nameEn = editDepartmentNameEnInput.value.trim();
         const imageFile = editDepartmentImageInput.files[0];
+        const level = editDepartmentIdInput.dataset.level;
+        const parentId = editDepartmentIdInput.dataset.parentId;
 
         if (!type || !nameAr || !nameEn) {
             showToast(getTranslation('please-fill-all-required-fields'), 'error');
@@ -506,6 +551,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (imageFile) {
             fd.append('image', imageFile);
         }
+        
+        // Preserve level and parent_id
+        if (level) {
+            fd.append('level', level);
+        }
+        if (parentId) {
+            fd.append('parentId', parentId);
+        }
 
         try {
             const response = await fetch(`${apiBase}/departments/${id}`, {
@@ -517,9 +570,33 @@ document.addEventListener('DOMContentLoaded', async function() {
             const result = await response.json();
             console.log('🔍 Edit department response:', result);
 
-            if (result.success) {
+            if (result.success || result.status === 'success') {
+                console.log('🔍 Success condition met, closing modal...');
                 showToast(getTranslation('department-updated-success'), 'success');
-                closeModal(editDepartmentModal);
+                
+                console.log('🔍 Closing edit modal...');
+                
+                // Force close modal with multiple approaches
+                if (editDepartmentModal) {
+                    editDepartmentModal.style.display = 'none';
+                    editDepartmentModal.classList.remove('show');
+                    editDepartmentModal.classList.remove('active');
+                    console.log('🔍 Edit modal display set to none');
+                }
+                
+                // Clear form data manually to ensure it's cleared
+                if (editDepartmentIdInput) editDepartmentIdInput.value = '';
+                if (editDepartmentTypeInput) editDepartmentTypeInput.value = '';
+                if (editDepartmentNameArInput) editDepartmentNameArInput.value = '';
+                if (editDepartmentNameEnInput) editDepartmentNameEnInput.value = '';
+                if (editDepartmentImageInput) editDepartmentImageInput.value = '';
+                if (editDepartmentIdInput) {
+                    editDepartmentIdInput.dataset.level = '';
+                    editDepartmentIdInput.dataset.parentId = '';
+                }
+                
+                console.log('🔍 Form data cleared');
+                
                 await fetchSubDepartments();
             } else {
                 showToast(result.message || getTranslation('failed-to-update-department'), 'error');
@@ -548,9 +625,26 @@ document.addEventListener('DOMContentLoaded', async function() {
             const result = await response.json();
             console.log('🔍 Delete department response:', result);
 
-            if (result.success) {
+            if (result.success || result.status === 'success') {
+                console.log('🔍 Success condition met, closing delete modal...');
                 showToast(getTranslation('department-deleted-success'), 'success');
-                closeModal(deleteDepartmentModal);
+                
+                console.log('🔍 Closing delete modal...');
+                
+                // Force close modal with multiple approaches
+                if (deleteDepartmentModal) {
+                    deleteDepartmentModal.style.display = 'none';
+                    deleteDepartmentModal.classList.remove('show');
+                    deleteDepartmentModal.classList.remove('active');
+                    console.log('🔍 Delete modal display set to none');
+                }
+                
+                // Clear stored department ID manually
+                if (deleteModalConfirmBtn) {
+                    deleteModalConfirmBtn.dataset.departmentId = '';
+                    console.log('🔍 Delete modal data cleared');
+                }
+                
                 await fetchSubDepartments();
             } else {
                 showToast(result.message || getTranslation('failed-to-delete-department'), 'error');
@@ -565,6 +659,19 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { 
         if (e.target === m) closeModal(m); 
     }));
+
+    // Escape key closes modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (addDepartmentModal && addDepartmentModal.style.display === 'flex') {
+                closeModal(addDepartmentModal);
+            } else if (editDepartmentModal && editDepartmentModal.style.display === 'flex') {
+                closeModal(editDepartmentModal);
+            } else if (deleteDepartmentModal && deleteDepartmentModal.style.display === 'flex') {
+                closeModal(deleteDepartmentModal);
+            }
+        }
+    });
 
     // Listen for language changes
     window.addEventListener('storage', function(e) {
