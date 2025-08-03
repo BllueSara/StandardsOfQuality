@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Get references to elements
     const addDepartmentBtn = document.getElementById('addDepartmentButton');
+    const manageContentBtn = document.getElementById('manageContentButton');
     const addDepartmentModal = document.getElementById('addDepartmentModal');
     const addModalSaveBtn = document.getElementById('saveAddDepartment');
     const addModalCancelBtn = document.getElementById('cancelAddDepartment');
@@ -110,6 +111,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // فتح بوب اب اضافه القسم 
     addDepartmentBtn.addEventListener('click', () => openModal(addDepartmentModal));
+
+    // زر إدارة المحتويات - الانتقال لصفحة محتويات القسم الأساسي
+    manageContentBtn.addEventListener('click', () => {
+        if (currentParentId) {
+            window.location.href = `department-content.html?departmentId=${currentParentId}`;
+        } else {
+            showToast(getTranslation('no-parent-department-found') || 'لم يتم العثور على القسم الأساسي', 'error');
+        }
+    });
 
     // Search functionality
     searchInput.addEventListener('input', function() {
