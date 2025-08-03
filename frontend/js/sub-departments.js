@@ -318,8 +318,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 icons += '</div>';
             }
 
+            // إنشاء عنصر الصورة مع التعامل مع الحالات التي لا توجد فيها صورة
+            const imageElement = dept.image ? 
+                `<img src="http://localhost:3006/${dept.image}" alt="${deptName}">` :
+                `<div style="font-size: 24px; color: #fff;">${deptName.charAt(0).toUpperCase()}</div>`;
+
             card.innerHTML = icons +
-                `<div class="card-icon bg-blue"><img src="http://localhost:3006/${dept.image}" alt="${deptName}"></div>` +
+                `<div class="card-icon bg-blue">${imageElement}</div>` +
                 `<div class="card-title">${deptName}</div>` +
                 `<div class="card-subtitle"><span class="type-badge ${typeClass}">${typeText}</span></div>`;
 
@@ -496,7 +501,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const nameEn = addDepartmentNameEnInput.value.trim();
         const imageFile = addDepartmentImageInput.files[0];
 
-        if (!type || !nameAr || !nameEn || !imageFile) {
+        if (!type || !nameAr || !nameEn) {
             showToast(getTranslation('please-fill-all-required-fields'), 'error');
             return;
         }
@@ -504,7 +509,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         const fd = new FormData();
         fd.append('type', type);
         fd.append('name', JSON.stringify({ ar: nameAr, en: nameEn }));
-        fd.append('image', imageFile);
+        if (imageFile) {
+            fd.append('image', imageFile);
+        }
         fd.append('parentId', currentParentId.toString());
 
         try {

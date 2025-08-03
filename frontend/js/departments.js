@@ -270,8 +270,13 @@ function closeModal(modal) {
                 icons += '</div>';
             }
 
+            // إنشاء عنصر الصورة مع التعامل مع الحالات التي لا توجد فيها صورة
+            const imageElement = dept.image ? 
+                `<img src="http://localhost:3006/${dept.image}" alt="${deptName}">` :
+                `<div style="font-size: 24px; color: #fff;">${deptName.charAt(0).toUpperCase()}</div>`;
+
             card.innerHTML = icons +
-                `<div class="card-icon bg-blue"><img src="http://localhost:3006/${dept.image}" alt="${deptName}"></div>` +
+                `<div class="card-icon bg-blue">${imageElement}</div>` +
                 `<div class="card-title">${deptName}</div>` +
                 `<div class="card-subtitle"><span class="type-badge ${typeClass}">${typeText}</span></div>`;
 
@@ -379,7 +384,7 @@ addModalSaveBtn.addEventListener('click', async () => {
   const file   = addDepartmentImageInput.files[0];
   const hasSubDepartments = addDepartmentHasSubDepartmentsYes.checked;
 
-  if (!type || !nameAr || !nameEn || !file) {
+  if (!type || !nameAr || !nameEn) {
     showToast(getTranslation('please-enter-all-required-data'), 'error');
     return;
   }
@@ -391,7 +396,7 @@ addModalSaveBtn.addEventListener('click', async () => {
   fd.append('type', type);
   fd.append('parentId', null); // الأقسام الرئيسية ليس لها أب
   fd.append('hasSubDepartments', hasSubDepartments);
-  fd.append('image', file);
+  if (file) fd.append('image', file);
 
   try {
     const res = await fetch(`${apiBase}/departments`, {

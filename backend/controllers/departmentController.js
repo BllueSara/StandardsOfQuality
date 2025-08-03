@@ -354,14 +354,14 @@ const getSubDepartments = async (req, res) => {
 const addDepartment = async (req, res) => {
     try {
         const { name, type, parentId, hasSubDepartments } = req.body;
-        const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : null;
+        const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : '';
 
         console.log('🔍 Received data:', { name, type, parentId, hasSubDepartments, hasImage: !!imagePath });
 
-        if (!name || !imagePath || !type) {
+        if (!name || !type) {
             return res.status(400).json({
                 status: 'error',
-                message: 'اسم القسم/الإدارة والصورة والنوع مطلوبان'
+                message: 'اسم القسم/الإدارة والنوع مطلوبان'
             });
         }
 
@@ -417,10 +417,13 @@ const addDepartment = async (req, res) => {
             // معالجة hasSubDepartments
             const processedHasSubDepartments = hasSubDepartments === 'true' || hasSubDepartments === true ? 1 : 0;
 
-            const [result] = await db.execute(
-                'INSERT INTO departments (name, image, type, parent_id, level, has_sub_departments, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-                [name, imagePath, type, processedParentId, level, processedHasSubDepartments]
-            );
+            // دائماً نرسل عمود image مع NULL إذا لم تكن هناك صورة
+            const query = 'INSERT INTO departments (name, image, type, parent_id, level, has_sub_departments, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
+            const params = [name, imagePath, type, processedParentId, level, processedHasSubDepartments];
+            console.log('🔍 Using query:', query);
+            console.log('🔍 Params:', params);
+
+            const [result] = await db.execute(query, params);
 
             // ✅ تسجيل اللوق بعد نجاح إضافة القسم
             const token = req.headers.authorization?.split(' ')[1];
@@ -471,10 +474,13 @@ const addDepartment = async (req, res) => {
                 });
             }
 
-            const [result] = await db.execute(
-                'INSERT INTO departments (name, image, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-                [name, imagePath]
-            );
+            // دائماً نرسل عمود image مع NULL إذا لم تكن هناك صورة
+            const query = 'INSERT INTO departments (name, image, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
+            const params = [name, imagePath];
+            console.log('🔍 Using old system query:', query);
+            console.log('🔍 Old system params:', params);
+
+            const [result] = await db.execute(query, params);
 
             // ✅ تسجيل اللوق بعد نجاح إضافة القسم
             const token = req.headers.authorization?.split(' ')[1];
@@ -520,7 +526,7 @@ const updateDepartment = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, type, parentId, hasSubDepartments } = req.body;
-        const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : null;
+        const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : '';
 
         if (!name || !type) {
             return res.status(400).json({
@@ -601,13 +607,8 @@ const updateDepartment = async (req, res) => {
             // معالجة hasSubDepartments
             const processedHasSubDepartments = hasSubDepartments === 'true' || hasSubDepartments === true ? 1 : 0;
 
-            let query = 'UPDATE departments SET name = ?, type = ?, parent_id = ?, level = ?, has_sub_departments = ?, updated_at = CURRENT_TIMESTAMP';
-            let params = [name, type, processedParentId, level, processedHasSubDepartments];
-
-            if (imagePath) {
-                query += ', image = ?';
-                params.push(imagePath);
-            }
+            let query = 'UPDATE departments SET name = ?, type = ?, parent_id = ?, level = ?, has_sub_departments = ?, image = ?, updated_at = CURRENT_TIMESTAMP';
+            let params = [name, type, processedParentId, level, processedHasSubDepartments, imagePath];
 
             query += ' WHERE id = ?';
             params.push(processedId);
@@ -672,13 +673,8 @@ const updateDepartment = async (req, res) => {
 
             const oldName = oldDepartment[0].name;
 
-            let query = 'UPDATE departments SET name = ?, updated_at = CURRENT_TIMESTAMP';
-            let params = [name];
-
-            if (imagePath) {
-                query += ', image = ?';
-                params.push(imagePath);
-            }
+            let query = 'UPDATE departments SET name = ?, image = ?, updated_at = CURRENT_TIMESTAMP';
+            let params = [name, imagePath];
 
             query += ' WHERE id = ?';
             params.push(processedId);
