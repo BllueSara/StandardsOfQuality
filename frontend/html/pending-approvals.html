@@ -82,17 +82,45 @@
                 <h2 class="modal-title" data-translate="signature">توقيع</h2>
             </div>
             <div class="modal-body">
-                <div class="canvas-wrapper">
-                    <canvas id="signatureCanvas"></canvas>
+                <!-- خيارات التوقيع -->
+                <div class="signature-options">
+                    <div class="option-tabs">
+                        <button class="tab-btn active" data-tab="draw" data-translate="draw-signature">التوقيع المباشر</button>
+                        <button class="tab-btn" data-tab="upload" data-translate="upload-signature">رفع صورة التوقيع</button>
+                    </div>
+                    
+                    <!-- تبويب التوقيع المباشر -->
+                    <div class="tab-content active" id="draw-tab">
+                        <div class="canvas-wrapper">
+                            <canvas id="signatureCanvas"></canvas>
+                        </div>
+                        <div class="canvas-controls">
+                            <button id="btnClear" class="btn-clear" data-translate="clear">مسح</button>
+                        </div>
+                    </div>
+                    
+                    <!-- تبويب رفع الصورة -->
+                    <div class="tab-content" id="upload-tab">
+                        <div class="upload-wrapper">
+                            <div class="upload-area" id="uploadArea">
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <p data-translate="drag-drop-signature">اسحب وأفلت صورة التوقيع هنا أو انقر للاختيار</p>
+                                <input type="file" id="signatureFile" accept="image/*" style="display: none;">
+                            </div>
+                            <div class="upload-preview" id="uploadPreview" style="display: none;">
+                                <img id="previewImage" src="" alt="معاينة التوقيع">
+                                <button id="btnRemoveImage" class="btn-remove" data-translate="remove">إزالة</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button id="btnConfirmSignature" class="btn-confirm" data-translate="confirm-signature">تأكيد التوقيع</button>
-                <button id="btnClear" class="btn-cancel" data-translate="clear">مسح</button>
+                <button id="btnCancelSignature" class="btn-cancel" data-translate="cancel">إلغاء</button>
             </div>
         </div>
     </div>
-
     <!-- ===== رفض الطلب Modal ===== -->
     <div id="rejectModal" class="modal-overlay" style="display: none;">
         <div class="modal">
