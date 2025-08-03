@@ -34,6 +34,7 @@ let authToken      = localStorage.getItem('token') || null;
 let selectedUserId = null;
 let myPermsSet     = new Set(); // صلاحيات المستخدم الحالي
 let editUserRole = null;
+let canGrantAll    = false; // للتحقق من صلاحية منح جميع الصلاحيات
 
 // عناصر الـ DOM
 const userList      = document.getElementById('user-list');
@@ -265,6 +266,10 @@ async function loadMyPermissions() {
     const myId = payload.id;
     const perms = await fetchJSON(`${apiBase}/users/${myId}/permissions`);
     myPermsSet = new Set(perms);
+    
+    // تحديث متغير canGrantAll
+    canGrantAll = myPermsSet.has('grant_all_permissions');
+    
     // أظهر زر إلغاء جميع التفويضات إذا كان لديك الصلاحية
     const myRole = payload.role;
     if (myRole === 'admin' || myPermsSet.has('grant_permissions') || myPermsSet.has('revoke_delegations')) {
@@ -497,8 +502,8 @@ document.querySelector('.user-profile-header')?.classList.add('active');
     const input = label.querySelector('input[type="checkbox"]');
     const key   = label.dataset.key;
 
-    // إظهار البنود: Admin يرى الكل، ومُخول grant يرى فقط ما يملكه
-    if (!isAdmin && myRole !== 'admin' && !myPermsSet.has(key) && key !== 'grant_permissions') {
+    // إظهار البنود: Admin يرى الكل، ومُخول grant يرى فقط ما يملكه، ومُخول grant_all_permissions يرى الكل
+    if (!isAdmin && myRole !== 'admin' && !myPermsSet.has(key) && key !== 'grant_permissions' && key !== 'grant_all_permissions' && !canGrantAll) {
       item.style.display = 'none';
     } else {
       item.style.display = '';
@@ -506,17 +511,85 @@ document.querySelector('.user-profile-header')?.classList.add('active');
 
     // تأشير الحالة
     input.checked = targetSet.has(key);
-    input.disabled = !(isAdmin || myPermsSet.has(key));
-    input.onchange = async () => {
-      const checked = input.checked;
-      try {
-        const method = checked ? 'POST' : 'DELETE';
-        await fetchJSON(`${apiBase}/users/${id}/permissions/${encodeURIComponent(key)}`, { method });
-      } catch {
-        input.checked = !checked;
-        showToast('فشل تحديث الصلاحية');
-      }
-    };
+    // تمكين الصلاحيات: Admin يمكنه منح الكل، ومُخول grant يمكنه منح ما يملكه، ومُخول grant_all_permissions يمكنه منح الكل
+    input.disabled = !(isAdmin || myPermsSet.has(key) || canGrantAll);
+    
+    // معالجة خاصة لصلاحية "منح جميع الصلاحيات"
+    if (key === 'grant_all_permissions') {
+        input.onchange = async () => {
+            const checked = input.checked;
+            try {
+                if (checked) {
+                    // إذا تم تفعيل "منح جميع الصلاحيات"، فعّل جميع الصلاحيات
+                    await fetchJSON(`${apiBase}/users/${id}/grant-all-permissions`, { 
+                        method: 'POST',
+                        body: JSON.stringify({ grantAll: true })
+                    });
+                    // تحديث جميع الصلاحيات لتظهر مفعلة (باستثناء الصلاحيات المستثناة)
+                    // ملاحظة: هذه الصلاحيات لا تُمنح تلقائياً ولكن يمكن منحها يدوياً
+                    const excludedPermissions = [
+                      'disable_departments',       // اخفاء الاقسام
+                      'disable_approvals',         // اخفاء الاعتمادات
+                      'disable_notifications',     // إلغاء الإشعارات
+                      'disable_emails',            // إلغاء الإيميلات
+                      'disable_logs',              // إلغاء اللوقز
+                      'view_own_department',       // عرض القسم الموجود
+
+                    ];
+                    
+                    document.querySelectorAll('.permission-item').forEach(otherItem => {
+                        const otherLabel = otherItem.querySelector('.switch');
+                        const otherInput = otherLabel.querySelector('input[type="checkbox"]');
+                        const otherKey = otherLabel.dataset.key;
+                        if (otherKey !== 'grant_all_permissions' && !excludedPermissions.includes(otherKey)) {
+                            otherInput.checked = true;
+                        }
+                    });
+                    showToast('تم منح جميع الصلاحيات بنجاح', 'success');
+                } else {
+                    // إذا تم إلغاء "منح جميع الصلاحيات"، ألغِ جميع الصلاحيات
+                    await fetchJSON(`${apiBase}/users/${id}/grant-all-permissions`, { 
+                        method: 'POST',
+                        body: JSON.stringify({ grantAll: false })
+                    });
+                    // تحديث جميع الصلاحيات لتظهر ملغية
+                    document.querySelectorAll('.permission-item').forEach(otherItem => {
+                        const otherLabel = otherItem.querySelector('.switch');
+                        const otherInput = otherLabel.querySelector('input[type="checkbox"]');
+                        const otherKey = otherLabel.dataset.key;
+                        if (otherKey !== 'grant_all_permissions') {
+                            otherInput.checked = false;
+                        }
+                    });
+                    showToast('تم إلغاء جميع الصلاحيات بنجاح', 'success');
+                }
+            } catch (error) {
+                input.checked = !checked;
+                showToast('فشل تحديث الصلاحيات: ' + error.message, 'error');
+            }
+        };
+    } else {
+        // معالجة عادية للصلاحيات الأخرى
+        input.onchange = async () => {
+            const checked = input.checked;
+            try {
+                const method = checked ? 'POST' : 'DELETE';
+                await fetchJSON(`${apiBase}/users/${id}/permissions/${encodeURIComponent(key)}`, { method });
+                
+                // إذا تم إلغاء أي صلاحية، ألغِ "منح جميع الصلاحيات" تلقائياً
+                if (!checked && targetSet.has('grant_all_permissions')) {
+                    const grantAllInput = document.querySelector('label.switch[data-key="grant_all_permissions"] input[type="checkbox"]');
+                    if (grantAllInput) {
+                        grantAllInput.checked = false;
+                        await fetchJSON(`${apiBase}/users/${id}/permissions/grant_all_permissions`, { method: 'DELETE' });
+                    }
+                }
+            } catch {
+                input.checked = !checked;
+                showToast('فشل تحديث الصلاحية', 'error');
+            }
+        };
+    }
   });
 
   // إظهار الزر حسب الصلاحية عند اختيار المستخدم

@@ -378,6 +378,135 @@ const removeUserCommittee = async (req, res) => {
     }
 };
 
+// منح أو إلغاء جميع الصلاحيات للمستخدم
+const grantAllPermissions = async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized' });
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(auth.slice(7), process.env.JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ status: 'error', message: 'Invalid token' });
+  }
+  const adminUserId = payload.id;
+  const userLang = getUserLang(req);
+
+  const userId = parseInt(req.params.id, 10);
+  const { grantAll } = req.body;
+
+  if (Number.isNaN(userId)) {
+    return res.status(400).json({ status: 'error', message: 'معرّف المستخدم غير صالح' });
+  }
+
+  const conn = await db.getConnection();
+
+  try {
+    // Fetch user details for logging
+    const [[userDetails]] = await conn.execute(
+      'SELECT username FROM users WHERE id = ?',
+      [userId]
+    );
+
+    // Fetch old permissions for comparison
+    const [oldPermsRows] = await conn.execute(
+      `SELECT p.permission_key
+       FROM permissions p
+       JOIN user_permissions up ON p.id = up.permission_id
+       WHERE up.user_id = ?`,
+      [userId]
+    );
+    const oldPerms = oldPermsRows.map(r => r.permission_key);
+
+    await conn.beginTransaction();
+
+    if (grantAll) {
+      // منح جميع الصلاحيات مع استثناء الصلاحيات المحددة
+      // الصلاحيات التي لا يجب منحها تلقائياً ولكن يمكن منحها يدوياً
+      const excludedPermissions = [
+        'disable_departments',       // اخفاء الاقسام
+        'disable_approvals',         // اخفاء الاعتمادات
+        'disable_notifications',     // إلغاء الإشعارات
+        'disable_emails',            // إلغاء الإيميلات
+        'disable_logs',              // إلغاء اللوقز
+        'view_own_department',       // عرض القسم الموجود
+
+      ];
+      
+      // جلب جميع الصلاحيات المتاحة مع استثناء الصلاحيات المحددة
+      const placeholders = excludedPermissions.map(() => '?').join(',');
+      const [allPerms] = await conn.execute(
+        `SELECT id, permission_key FROM permissions WHERE permission_key NOT IN (${placeholders})`,
+        excludedPermissions
+      );
+      
+      console.log('Excluded permissions:', excludedPermissions);
+      console.log('Permissions being granted:', allPerms.map(p => p.permission_key));
+      
+      // حذف الصلاحيات الحالية
+      await conn.execute('DELETE FROM user_permissions WHERE user_id = ?', [userId]);
+      
+      // إضافة جميع الصلاحيات (باستثناء المستبعدة)
+      if (allPerms.length > 0) {
+        const inserts = allPerms.map(p => [userId, p.id]);
+        await conn.query(
+          'INSERT INTO user_permissions (user_id, permission_id) VALUES ?',
+          [inserts]
+        );
+      }
+    } else {
+      // إلغاء جميع الصلاحيات
+      await conn.execute('DELETE FROM user_permissions WHERE user_id = ?', [userId]);
+    }
+
+    // Fetch new permissions for logging
+    const [newPermsRows] = await conn.execute(
+      `SELECT p.permission_key
+       FROM permissions p
+       JOIN user_permissions up ON p.id = up.permission_id
+       WHERE up.user_id = ?`,
+      [userId]
+    );
+    const newPerms = newPermsRows.map(r => r.permission_key);
+
+    // Add to logs
+    const addedPerms = newPerms.filter(k => !oldPerms.includes(k));
+    const removedPerms = oldPerms.filter(k => !newPerms.includes(k));
+
+    if (addedPerms.length > 0 || removedPerms.length > 0) {
+        try {
+            const logDescription = {
+                ar: `تم ${grantAll ? 'منح جميع الصلاحيات' : 'إلغاء جميع الصلاحيات'} للمستخدم: ${userDetails.username}`,
+                en: `${grantAll ? 'Granted all permissions' : 'Revoked all permissions'} for user: ${userDetails.username}`,
+                details: {
+                    action: grantAll ? 'grant_all' : 'revoke_all',
+                    added: addedPerms,
+                    removed: removedPerms
+                }
+            };
+            
+            await logAction(adminUserId, 'grant_all_permissions', JSON.stringify(logDescription), 'user', userId);
+        } catch (logErr) {
+            console.error('logAction error:', logErr);
+        }
+    }
+
+    await conn.commit();
+    return res.json({ 
+      status: 'success', 
+      message: grantAll ? 'تم منح جميع الصلاحيات بنجاح' : 'تم إلغاء جميع الصلاحيات بنجاح' 
+    });
+  } catch (error) {
+    await conn.rollback();
+    console.error('Error in grantAllPermissions:', error);
+    res.status(500).json({ message: 'Failed to update permissions: ' + error.message });
+  } finally {
+    conn.release();
+  }
+};
+
 module.exports = {
   getUserPermissions,
   updateUserPermissions,
@@ -385,5 +514,6 @@ module.exports = {
   removeUserPermission,
   getUserCommittees,
   saveUserCommittees,
-  removeUserCommittee
+  removeUserCommittee,
+  grantAllPermissions
 };

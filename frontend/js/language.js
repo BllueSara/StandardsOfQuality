@@ -233,6 +233,8 @@ const translations = {
         'disable_notifications': 'إلغاء الإشعارات',
         'disable_emails': 'إلغاء الإيميلات',
         'disable_logs': 'إلغاء اللوقز',
+        'grant_permissions': 'منح الصلاحيات',
+        'grant_all_permissions': 'منح جميع الصلاحيات',
 
         // Register specific
         'employee-number': 'الرقم الوظيفي',
@@ -1683,6 +1685,8 @@ const translations = {
         'disable_tickets': 'Disable OVR',
         'disable_comittees': 'Disable Committees',
         'disable_departments': 'Disable Departments',
+        'grant_permissions': 'Grant Permissions',
+        'grant_all_permissions': 'Grant All Permissions',
 
         // Ticket Creation Page Translations
         'create-ticket-page-title': 'Quality and Safety Management System - Create OVR',
