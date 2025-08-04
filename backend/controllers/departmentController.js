@@ -25,7 +25,54 @@ function getDepartmentNameByLanguage(departmentNameData, userLanguage = 'ar') {
         return departmentNameData || 'غير معروف';
     }
 }
+// دالة للتحقق من أن النص عربي
+function isArabicText(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    // نمط للكشف عن الحروف العربية
+    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    
+    // التحقق من وجود حروف عربية
+    const hasArabic = arabicPattern.test(text);
+    
+    // التحقق من أن النص يحتوي على حروف عربية أكثر من الحروف الإنجليزية
+    const arabicCount = (text.match(arabicPattern) || []).length;
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    
+    // إذا كان النص يحتوي على حروف عربية أكثر من الإنجليزية، فهو عربي
+    return hasArabic && arabicCount > englishCount;
+}
 
+// دالة للتحقق من أن النص إنجليزي
+function isEnglishText(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    // نمط للكشف عن الحروف الإنجليزية
+    const englishPattern = /[a-zA-Z]/;
+    
+    // التحقق من وجود حروف إنجليزية
+    const hasEnglish = englishPattern.test(text);
+    
+    // التحقق من أن النص يحتوي على حروف إنجليزية أكثر من الحروف العربية
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    const arabicCount = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/) || []).length;
+    
+    // إذا كان النص يحتوي على حروف إنجليزية أكثر من العربية، فهو إنجليزي
+    return hasEnglish && englishCount > arabicCount;
+}
+
+// دالة للتحقق من صحة النص حسب اللغة المطلوبة
+function validateTextLanguage(text, requiredLanguage) {
+    if (!text || typeof text !== 'string') return false;
+    
+    if (requiredLanguage === 'ar') {
+        return isArabicText(text);
+    } else if (requiredLanguage === 'en') {
+        return isEnglishText(text);
+    }
+    
+    return true; // إذا لم تكن اللغة محددة، نسمح بأي نص
+}
 // دالة مساعدة لاستخراج لغة المستخدم من التوكن
 function getUserLanguageFromToken(token) {
     try {
@@ -351,6 +398,7 @@ const getSubDepartments = async (req, res) => {
     }
 };
 
+
 const addDepartment = async (req, res) => {
     try {
         const { name, type, parentId, hasSubDepartments } = req.body;
@@ -365,11 +413,49 @@ const addDepartment = async (req, res) => {
             });
         }
 
-        // التحقق من صحة النوع
-        if (!['department', 'administration'].includes(type)) {
+        // التحقق من صحة النص حسب اللغة
+        let nameAr, nameEn;
+        try {
+            const parsedName = JSON.parse(name);
+            nameAr = parsedName.ar;
+            nameEn = parsedName.en;
+            
+            // التحقق من وجود النصوص
+            if (!nameAr || !nameEn) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'يجب إدخال اسم القسم/الإدارة باللغتين العربية والإنجليزية'
+                });
+            }
+
+            // التحقق من أن النص العربي يحتوي على حروف عربية
+            if (!validateTextLanguage(nameAr, 'ar')) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `❌ خطأ في حقل "الاسم بالعربية": يجب إدخال النص باللغة العربية فقط.\nالنص المدخل: "${nameAr}"\n\nمثال صحيح: "قسم الجودة" أو "إدارة الموارد البشرية"`
+                });
+            }
+
+            // التحقق من أن النص الإنجليزي يحتوي على حروف إنجليزية
+            if (!validateTextLanguage(nameEn, 'en')) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `❌ خطأ في حقل "الاسم بالإنجليزية": يجب إدخال النص باللغة الإنجليزية فقط.\nالنص المدخل: "${nameEn}"\n\nمثال صحيح: "Quality Department" أو "Human Resources Administration"`
+                });
+            }
+
+        } catch (parseError) {
             return res.status(400).json({
                 status: 'error',
-                message: 'النوع يجب أن يكون قسم أو إدارة'
+                message: '❌ تنسيق اسم القسم/الإدارة غير صحيح. يجب أن يكون باللغتين العربية والإنجليزية في تنسيق JSON صحيح'
+            });
+        }
+
+        // التحقق من صحة النوع
+        if (!['department', 'administration', 'executive_administration'].includes(type)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'النوع يجب أن يكون قسم أو إدارة أو إدارة تنفيذية'
             });
         }
 
@@ -433,7 +519,16 @@ const addDepartment = async (req, res) => {
                 
                 try {
                     const userLanguage = getUserLanguageFromToken(token);
-                    const typeText = type === 'department' ? 'قسم' : 'إدارة';
+                    let typeText;
+                    if (type === 'department') {
+                        typeText = 'قسم';
+                    } else if (type === 'administration') {
+                        typeText = 'إدارة';
+                    } else if (type === 'executive_administration') {
+                        typeText = 'إدارة تنفيذية';
+                    } else {
+                        typeText = 'قسم/إدارة';
+                    }
                     
                     // إنشاء النص ثنائي اللغة
                     const logDescription = {
@@ -535,11 +630,49 @@ const updateDepartment = async (req, res) => {
             });
         }
 
-        // التحقق من صحة النوع
-        if (!['department', 'administration'].includes(type)) {
+        // التحقق من صحة النص حسب اللغة
+        let nameAr, nameEn;
+        try {
+            const parsedName = JSON.parse(name);
+            nameAr = parsedName.ar;
+            nameEn = parsedName.en;
+            
+            // التحقق من وجود النصوص
+            if (!nameAr || !nameEn) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'يجب إدخال اسم القسم/الإدارة باللغتين العربية والإنجليزية'
+                });
+            }
+
+            // التحقق من أن النص العربي يحتوي على حروف عربية
+            if (!validateTextLanguage(nameAr, 'ar')) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `❌ خطأ في حقل "الاسم بالعربية": يجب إدخال النص باللغة العربية فقط.\nالنص المدخل: "${nameAr}"\n\nمثال صحيح: "قسم الجودة" أو "إدارة الموارد البشرية"`
+                });
+            }
+
+            // التحقق من أن النص الإنجليزي يحتوي على حروف إنجليزية
+            if (!validateTextLanguage(nameEn, 'en')) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `❌ خطأ في حقل "الاسم بالإنجليزية": يجب إدخال النص باللغة الإنجليزية فقط.\nالنص المدخل: "${nameEn}"\n\nمثال صحيح: "Quality Department" أو "Human Resources Administration"`
+                });
+            }
+
+        } catch (parseError) {
             return res.status(400).json({
                 status: 'error',
-                message: 'النوع يجب أن يكون قسم أو إدارة'
+                message: '❌ تنسيق اسم القسم/الإدارة غير صحيح. يجب أن يكون باللغتين العربية والإنجليزية في تنسيق JSON صحيح'
+            });
+        }
+
+        // التحقق من صحة النوع
+        if (!['department', 'administration', 'executive_administration'].includes(type)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'النوع يجب أن يكون قسم أو إدارة أو إدارة تنفيذية'
             });
         }
 
@@ -630,8 +763,27 @@ const updateDepartment = async (req, res) => {
                 
                 try {
                     const userLanguage = getUserLanguageFromToken(token);
-                    const typeText = type === 'department' ? 'قسم' : 'إدارة';
-                    const oldTypeText = oldType === 'department' ? 'قسم' : 'إدارة';
+                    let typeText, oldTypeText;
+                    
+                    if (type === 'department') {
+                        typeText = 'قسم';
+                    } else if (type === 'administration') {
+                        typeText = 'إدارة';
+                    } else if (type === 'executive_administration') {
+                        typeText = 'إدارة تنفيذية';
+                    } else {
+                        typeText = 'قسم/إدارة';
+                    }
+                    
+                    if (oldType === 'department') {
+                        oldTypeText = 'قسم';
+                    } else if (oldType === 'administration') {
+                        oldTypeText = 'إدارة';
+                    } else if (oldType === 'executive_administration') {
+                        oldTypeText = 'إدارة تنفيذية';
+                    } else {
+                        oldTypeText = 'قسم/إدارة';
+                    }
                     
                     // إنشاء النص ثنائي اللغة
                     const logDescription = {

@@ -66,6 +66,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Store original departments data for filtering
     let allDepartments = [];
+    
+    // Pagination variables
+    let currentPage = 1;
+    const departmentsPerPage = 20;
+    let filteredDepartments = [];
 
     // Utility to get token
     function getToken() { return localStorage.getItem('token'); }
@@ -138,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     function filterDepartments(searchTerm) {
         const lang = localStorage.getItem('language') || 'ar';
         
-        const filteredDepartments = allDepartments.filter(dept => {
+        filteredDepartments = allDepartments.filter(dept => {
             let deptName;
             let parsed;
             try {
@@ -158,7 +163,76 @@ document.addEventListener('DOMContentLoaded', async function() {
                    nameEn.includes(searchTerm);
         });
         
-        renderDepartments(filteredDepartments);
+        currentPage = 1; // Reset to first page when filtering
+        renderDepartments();
+        renderPagination();
+    }
+
+    // Calculate pagination
+    function getPaginatedDepartments() {
+        const startIndex = (currentPage - 1) * departmentsPerPage;
+        const endIndex = startIndex + departmentsPerPage;
+        return filteredDepartments.slice(startIndex, endIndex);
+    }
+
+    // Render pagination controls
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredDepartments.length / departmentsPerPage);
+        
+        // Remove existing pagination
+        const existingPagination = document.querySelector('.pagination');
+        if (existingPagination) {
+            existingPagination.remove();
+        }
+
+        if (totalPages <= 1) return;
+
+        const paginationContainer = document.createElement('div');
+        paginationContainer.className = 'pagination';
+        
+        // Previous button (السابق)
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'pagination-btn';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderDepartments();
+                renderPagination();
+            }
+        });
+
+        // Next button (التالي)
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'pagination-btn';
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderDepartments();
+                renderPagination();
+            }
+        });
+
+        // Page info
+        const pageInfo = document.createElement('span');
+        pageInfo.className = 'page-info';
+        pageInfo.textContent = `${getTranslation('page') || 'صفحة'} ${currentPage} ${getTranslation('of') || 'من'} ${totalPages}`;
+
+        // Total departments info
+        const totalInfo = document.createElement('span');
+        totalInfo.className = 'total-info';
+        totalInfo.textContent = `${getTranslation('total-departments') || 'إجمالي الأقسام'}: ${filteredDepartments.length}`;
+
+        paginationContainer.appendChild(prevBtn);
+        paginationContainer.appendChild(pageInfo);
+        paginationContainer.appendChild(nextBtn);
+        paginationContainer.appendChild(totalInfo);
+
+        // Insert pagination after cards grid
+        cardsGrid.parentNode.insertBefore(paginationContainer, cardsGrid.nextSibling);
     }
 
     // Fetch user permissions
@@ -223,11 +297,12 @@ function closeModal(modal) {
     }
 
     // Render departments to the grid
-    function renderDepartments(departments) {
+    function renderDepartments() {
+        const departmentsToRender = getPaginatedDepartments();
         cardsGrid.innerHTML = '';
         const lang = localStorage.getItem('language') || 'ar';
 
-        if (departments.length === 0) {
+        if (departmentsToRender.length === 0) {
             const noResultsDiv = document.createElement('div');
             noResultsDiv.className = 'no-results';
             noResultsDiv.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 18px; grid-column: 1 / -1;';
@@ -241,7 +316,7 @@ function closeModal(modal) {
             return;
         }
 
-        departments.forEach(dept => {
+        departmentsToRender.forEach(dept => {
             const card = document.createElement('div');
             card.className = 'card';
             card.dataset.id = dept.id;
@@ -256,8 +331,20 @@ function closeModal(modal) {
             }
 
             // إضافة نوع القسم/الإدارة
-            const typeText = dept.type === 'department' ? getTranslation('department-type-text') : getTranslation('administration-type-text');
-            const typeClass = dept.type === 'department' ? 'department' : 'administration';
+            let typeText, typeClass;
+            if (dept.type === 'department') {
+                typeText = getTranslation('department-type-text');
+                typeClass = 'department';
+            } else if (dept.type === 'administration') {
+                typeText = getTranslation('administration-type-text');
+                typeClass = 'administration';
+            } else if (dept.type === 'executive_administration') {
+                typeText = getTranslation('executive-administration-type-text');
+                typeClass = 'executive-administration';
+            } else {
+                typeText = getTranslation('department-type-text');
+                typeClass = 'department';
+            }
 
             let icons = '';
             if (permissions.canEdit || permissions.canDelete) {
@@ -328,9 +415,11 @@ async function fetchDepartments() {
 
         // Store all departments for filtering
         allDepartments = result.success ? result.data : result;
+        filteredDepartments = [...allDepartments]; // Initialize filtered departments
         
-        // Render all departments initially
-        renderDepartments(allDepartments);
+        // Render departments and pagination
+        renderDepartments();
+        renderPagination();
 
     } catch (err) {
         console.error('Error fetching departments:', err);
@@ -408,10 +497,25 @@ addModalSaveBtn.addEventListener('click', async () => {
     if (!res.ok) throw new Error(r.message);
     showToast(getTranslation('department-added-success'), 'success');
     closeModal(addDepartmentModal);
-    fetchDepartments();
+    
+    // إضافة القسم الجديد إلى المصفوفات
+    const newDepartment = r.department || r.data || {
+        id: r.departmentId || r.id,
+        name: name,
+        type: type,
+        has_sub_departments: hasSubDepartments,
+        image: file ? `backend/uploads/images/${file.name}` : ''
+    };
+    
+    allDepartments.unshift(newDepartment);
+    filteredDepartments.unshift(newDepartment);
+    
+    // إعادة عرض الأقسام مع الصفحات
+    renderDepartments();
+    renderPagination();
   } catch (err) {
     console.error(err);
-    showToast(getTranslation('error-adding-department'), 'error');
+    showToast(getTranslation(err), 'error');
   }
 });
 
@@ -451,10 +555,32 @@ editModalSaveBtn.addEventListener('click', async () => {
     if (!res.ok) throw new Error(r.message);
     showToast(getTranslation('department-updated-success'), 'success');
     closeModal(editDepartmentModal);
-    fetchDepartments();
+    
+    // تحديث القسم في المصفوفات
+    const updatedDepartment = r.department || r.data || {
+        id: id,
+        name: name,
+        type: type,
+        has_sub_departments: hasSubDepartments,
+        image: file ? `backend/uploads/images/${file.name}` : ''
+    };
+    
+    const allIndex = allDepartments.findIndex(d => d.id == id);
+    const filteredIndex = filteredDepartments.findIndex(d => d.id == id);
+    
+    if (allIndex !== -1) {
+        allDepartments[allIndex] = updatedDepartment;
+    }
+    if (filteredIndex !== -1) {
+        filteredDepartments[filteredIndex] = updatedDepartment;
+    }
+    
+    // إعادة عرض الأقسام مع الصفحات
+    renderDepartments();
+    renderPagination();
   } catch (err) {
     console.error(err);
-    showToast(getTranslation('error-updating-department'), 'error');
+    showToast(getTranslation(err), 'error');
   }
 });
 
@@ -466,7 +592,16 @@ editModalSaveBtn.addEventListener('click', async () => {
         try {
             const res = await fetch(`http://localhost:3006/api/departments/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getToken()}` } });
             const r = await res.json(); if (!res.ok) throw new Error(r.message);
-            showToast(getTranslation('department-deleted-success'), 'success'); closeModal(deleteDepartmentModal); fetchDepartments();
+            showToast(getTranslation('department-deleted-success'), 'success'); 
+            closeModal(deleteDepartmentModal); 
+            
+            // حذف القسم من المصفوفات
+            allDepartments = allDepartments.filter(d => d.id != id);
+            filteredDepartments = filteredDepartments.filter(d => d.id != id);
+            
+            // إعادة عرض الأقسام مع الصفحات
+            renderDepartments();
+            renderPagination();
         } catch (err) { console.error(err); showToast(getTranslation('error-deleting-department'), 'error'); }
     });
 

@@ -71,6 +71,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     let allDepartments = [];
     let currentParentId = null;
     let currentParent = null;
+    
+    // Pagination variables
+    let currentPage = 1;
+    const departmentsPerPage = 20;
+    let filteredDepartments = [];
 
     // Utility to get token
     function getToken() { return localStorage.getItem('token'); }
@@ -160,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     function filterDepartments(searchTerm) {
         const lang = localStorage.getItem('language') || 'ar';
         
-        const filteredDepartments = allDepartments.filter(dept => {
+        filteredDepartments = allDepartments.filter(dept => {
             let deptName;
             let parsed;
             try {
@@ -180,7 +185,76 @@ document.addEventListener('DOMContentLoaded', async function() {
                    nameEn.includes(searchTerm);
         });
         
-        renderDepartments(filteredDepartments);
+        currentPage = 1; // Reset to first page when filtering
+        renderDepartments();
+        renderPagination();
+    }
+
+    // Calculate pagination
+    function getPaginatedDepartments() {
+        const startIndex = (currentPage - 1) * departmentsPerPage;
+        const endIndex = startIndex + departmentsPerPage;
+        return filteredDepartments.slice(startIndex, endIndex);
+    }
+
+    // Render pagination controls
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredDepartments.length / departmentsPerPage);
+        
+        // Remove existing pagination
+        const existingPagination = document.querySelector('.pagination');
+        if (existingPagination) {
+            existingPagination.remove();
+        }
+
+        if (totalPages <= 1) return;
+
+        const paginationContainer = document.createElement('div');
+        paginationContainer.className = 'pagination';
+        
+        // Previous button (السابق)
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'pagination-btn';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderDepartments();
+                renderPagination();
+            }
+        });
+
+        // Next button (التالي)
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'pagination-btn';
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderDepartments();
+                renderPagination();
+            }
+        });
+
+        // Page info
+        const pageInfo = document.createElement('span');
+        pageInfo.className = 'page-info';
+        pageInfo.textContent = `${getTranslation('page') || 'صفحة'} ${currentPage} ${getTranslation('of') || 'من'} ${totalPages}`;
+
+        // Total departments info
+        const totalInfo = document.createElement('span');
+        totalInfo.className = 'total-info';
+        totalInfo.textContent = `${getTranslation('total-departments') || 'إجمالي الأقسام'}: ${filteredDepartments.length}`;
+
+        paginationContainer.appendChild(prevBtn);
+        paginationContainer.appendChild(pageInfo);
+        paginationContainer.appendChild(nextBtn);
+        paginationContainer.appendChild(totalInfo);
+
+        // Insert pagination after cards grid
+        cardsGrid.parentNode.insertBefore(paginationContainer, cardsGrid.nextSibling);
     }
 
     // Fetch user permissions
@@ -281,11 +355,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // Render departments to the grid
-    function renderDepartments(departments) {
+    function renderDepartments() {
+        const departmentsToRender = getPaginatedDepartments();
         cardsGrid.innerHTML = '';
         const lang = localStorage.getItem('language') || 'ar';
 
-        if (departments.length === 0) {
+        if (departmentsToRender.length === 0) {
             const noResultsDiv = document.createElement('div');
             noResultsDiv.className = 'no-results';
             noResultsDiv.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 18px; grid-column: 1 / -1;';
@@ -299,7 +374,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
-        departments.forEach(dept => {
+        departmentsToRender.forEach(dept => {
             const card = document.createElement('div');
             card.className = 'card';
             card.dataset.id = dept.id;
@@ -314,8 +389,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             // إضافة نوع القسم/الإدارة
-            const typeText = dept.type === 'department' ? getTranslation('department-type-text') : getTranslation('administration-type-text');
-            const typeClass = dept.type === 'department' ? 'department' : 'administration';
+            let typeText, typeClass;
+            if (dept.type === 'department') {
+                typeText = getTranslation('department-type-text');
+                typeClass = 'department';
+            } else if (dept.type === 'administration') {
+                typeText = getTranslation('administration-type-text');
+                typeClass = 'administration';
+            } else if (dept.type === 'executive_administration') {
+                typeText = getTranslation('executive-administration-type-text');
+                typeClass = 'executive-administration';
+            } else {
+                typeText = getTranslation('department-type-text');
+                typeClass = 'department';
+            }
 
             let icons = '';
             if (permissions.canEdit || permissions.canDelete) {
@@ -392,8 +479,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             if (result.success) {
                 allDepartments = result.data || [];
+                filteredDepartments = [...allDepartments]; // Initialize filtered departments
                 console.log('🔍 All sub-departments:', allDepartments);
-                renderDepartments(allDepartments);
+                renderDepartments();
+                renderPagination();
                 
                 // Use parent info from the response
                 if (result.parent) {
@@ -434,8 +523,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         if (parentType) {
-            const typeText = parent.type === 'department' ? getTranslation('department-type-text') : getTranslation('administration-type-text');
-            const typeClass = parent.type === 'department' ? 'department' : 'administration';
+            let typeText, typeClass;
+            if (parent.type === 'department') {
+                typeText = getTranslation('department-type-text');
+                typeClass = 'department';
+            } else if (parent.type === 'administration') {
+                typeText = getTranslation('administration-type-text');
+                typeClass = 'administration';
+            } else if (parent.type === 'executive_administration') {
+                typeText = getTranslation('executive-administration-type-text');
+                typeClass = 'executive-administration';
+            } else {
+                typeText = getTranslation('department-type-text');
+                typeClass = 'department';
+            }
             parentType.textContent = typeText;
             parentType.className = `type-badge ${typeClass}`;
         }
@@ -537,13 +638,27 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (result.success || result.status === 'success') {
                 showToast(getTranslation('department-added-success'), 'success');
                 closeModal(addDepartmentModal);
-                await fetchSubDepartments();
+                
+                // إضافة القسم الجديد إلى المصفوفات
+                const newDepartment = result.department || result.data || {
+                    id: result.departmentId || result.id,
+                    name: JSON.stringify({ ar: nameAr, en: nameEn }),
+                    type: type,
+                    image: imageFile ? `backend/uploads/images/${imageFile.name}` : ''
+                };
+                
+                allDepartments.unshift(newDepartment);
+                filteredDepartments.unshift(newDepartment);
+                
+                // إعادة عرض الأقسام مع الصفحات
+                renderDepartments();
+                renderPagination();
             } else {
                 showToast(result.message || getTranslation('failed-to-add-department'), 'error');
             }
         } catch (error) {
             console.error('Error adding department:', error);
-            showToast(getTranslation('error-adding-department'), 'error');
+            showToast(getTranslation(error), 'error');
         }
     });
 
@@ -614,13 +729,33 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 console.log('🔍 Form data cleared');
                 
-                await fetchSubDepartments();
+                // تحديث القسم في المصفوفات
+                const updatedDepartment = result.department || result.data || {
+                    id: id,
+                    name: JSON.stringify({ ar: nameAr, en: nameEn }),
+                    type: type,
+                    image: imageFile ? `backend/uploads/images/${imageFile.name}` : ''
+                };
+                
+                const allIndex = allDepartments.findIndex(d => d.id == id);
+                const filteredIndex = filteredDepartments.findIndex(d => d.id == id);
+                
+                if (allIndex !== -1) {
+                    allDepartments[allIndex] = updatedDepartment;
+                }
+                if (filteredIndex !== -1) {
+                    filteredDepartments[filteredIndex] = updatedDepartment;
+                }
+                
+                // إعادة عرض الأقسام مع الصفحات
+                renderDepartments();
+                renderPagination();
             } else {
                 showToast(result.message || getTranslation('failed-to-update-department'), 'error');
             }
         } catch (error) {
             console.error('Error editing department:', error);
-            showToast(getTranslation('error-updating-department'), 'error');
+            showToast(getTranslation(error), 'error');
         }
     });
 
@@ -662,7 +797,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                     console.log('🔍 Delete modal data cleared');
                 }
                 
-                await fetchSubDepartments();
+                // حذف القسم من المصفوفات
+                allDepartments = allDepartments.filter(d => d.id != id);
+                filteredDepartments = filteredDepartments.filter(d => d.id != id);
+                
+                // إعادة عرض الأقسام مع الصفحات
+                renderDepartments();
+                renderPagination();
             } else {
                 showToast(result.message || getTranslation('failed-to-delete-department'), 'error');
             }
@@ -697,7 +838,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (currentParent) {
                 displayParentInfo(currentParent);
             }
-            renderDepartments(allDepartments);
+            renderDepartments();
+            renderPagination();
         }
     });
 

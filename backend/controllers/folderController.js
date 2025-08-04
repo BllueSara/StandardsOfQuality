@@ -44,7 +44,54 @@ function getDepartmentNameByLanguage(departmentNameData, userLanguage = 'ar') {
         return departmentNameData || 'غير معروف';
     }
 }
+// دالة للتحقق من أن النص عربي
+function isArabicText(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    // نمط للكشف عن الحروف العربية
+    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    
+    // التحقق من وجود حروف عربية
+    const hasArabic = arabicPattern.test(text);
+    
+    // التحقق من أن النص يحتوي على حروف عربية أكثر من الحروف الإنجليزية
+    const arabicCount = (text.match(arabicPattern) || []).length;
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    
+    // إذا كان النص يحتوي على حروف عربية أكثر من الإنجليزية، فهو عربي
+    return hasArabic && arabicCount > englishCount;
+}
 
+// دالة للتحقق من أن النص إنجليزي
+function isEnglishText(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    // نمط للكشف عن الحروف الإنجليزية
+    const englishPattern = /[a-zA-Z]/;
+    
+    // التحقق من وجود حروف إنجليزية
+    const hasEnglish = englishPattern.test(text);
+    
+    // التحقق من أن النص يحتوي على حروف إنجليزية أكثر من الحروف العربية
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    const arabicCount = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/) || []).length;
+    
+    // إذا كان النص يحتوي على حروف إنجليزية أكثر من العربية، فهو إنجليزي
+    return hasEnglish && englishCount > arabicCount;
+}
+
+// دالة للتحقق من صحة النص حسب اللغة المطلوبة
+function validateTextLanguage(text, requiredLanguage) {
+    if (!text || typeof text !== 'string') return false;
+    
+    if (requiredLanguage === 'ar') {
+        return isArabicText(text);
+    } else if (requiredLanguage === 'en') {
+        return isEnglishText(text);
+    }
+    
+    return true; // إذا لم تكن اللغة محددة، نسمح بأي نص
+}
 // دالة مساعدة لاستخراج اسم المجلد باللغة المناسبة
 function getFolderNameByLanguage(folderNameData, userLanguage = 'ar') {
   try {
@@ -422,6 +469,44 @@ const addFolderName = async (req, res) => {
     return res.status(400).json({ message: 'الاسم مطلوب.' });
   }
 
+  // التحقق من صحة النص حسب اللغة
+  let nameAr, nameEn;
+  try {
+    const parsedName = JSON.parse(name);
+    nameAr = parsedName.ar;
+    nameEn = parsedName.en;
+    
+    // التحقق من وجود النصوص
+    if (!nameAr || !nameEn) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'يجب إدخال اسم المجلد باللغتين العربية والإنجليزية'
+      });
+    }
+
+    // التحقق من أن النص العربي يحتوي على حروف عربية
+    if (!validateTextLanguage(nameAr, 'ar')) {
+      return res.status(400).json({
+        status: 'error',
+        message: `❌ خطأ في حقل "الاسم بالعربية": يجب إدخال النص باللغة العربية فقط.\nالنص المدخل: "${nameAr}"\n\nمثال صحيح: "مجلد التقارير" أو "مجلد السياسات"`
+      });
+    }
+
+    // التحقق من أن النص الإنجليزي يحتوي على حروف إنجليزية
+    if (!validateTextLanguage(nameEn, 'en')) {
+      return res.status(400).json({
+        status: 'error',
+        message: `❌ خطأ في حقل "الاسم بالإنجليزية": يجب إدخال النص باللغة الإنجليزية فقط.\nالنص المدخل: "${nameEn}"\n\nمثال صحيح: "Reports Folder" أو "Policies Folder"`
+      });
+    }
+
+  } catch (parseError) {
+    return res.status(400).json({
+      status: 'error',
+      message: '❌ تنسيق اسم المجلد غير صحيح. يجب أن يكون باللغتين العربية والإنجليزية في تنسيق JSON صحيح'
+    });
+  }
+
   try {
     const conn = await pool.getConnection();
     const [result] = await conn.execute(
@@ -473,6 +558,44 @@ const updateFolderName = async (req, res) => {
   const { id }   = req.params;
   const { name } = req.body;
   if (!name) return res.status(400).json({ message: 'الاسم الجديد مطلوب.' });
+
+  // التحقق من صحة النص حسب اللغة
+  let nameAr, nameEn;
+  try {
+    const parsedName = JSON.parse(name);
+    nameAr = parsedName.ar;
+    nameEn = parsedName.en;
+    
+    // التحقق من وجود النصوص
+    if (!nameAr || !nameEn) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'يجب إدخال اسم المجلد باللغتين العربية والإنجليزية'
+      });
+    }
+
+    // التحقق من أن النص العربي يحتوي على حروف عربية
+    if (!validateTextLanguage(nameAr, 'ar')) {
+      return res.status(400).json({
+        status: 'error',
+        message: `❌ خطأ في حقل "الاسم بالعربية": يجب إدخال النص باللغة العربية فقط.\nالنص المدخل: "${nameAr}"\n\nمثال صحيح: "مجلد التقارير" أو "مجلد السياسات"`
+      });
+    }
+
+    // التحقق من أن النص الإنجليزي يحتوي على حروف إنجليزية
+    if (!validateTextLanguage(nameEn, 'en')) {
+      return res.status(400).json({
+        status: 'error',
+        message: `❌ خطأ في حقل "الاسم بالإنجليزية": يجب إدخال النص باللغة الإنجليزية فقط.\nالنص المدخل: "${nameEn}"\n\nمثال صحيح: "Reports Folder" أو "Policies Folder"`
+      });
+    }
+
+  } catch (parseError) {
+    return res.status(400).json({
+      status: 'error',
+      message: '❌ تنسيق اسم المجلد غير صحيح. يجب أن يكون باللغتين العربية والإنجليزية في تنسيق JSON صحيح'
+    });
+  }
 
   const conn = await pool.getConnection();
   try {

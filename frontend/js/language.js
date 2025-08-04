@@ -1122,10 +1122,26 @@ const translations = {
     'third-name-placeholder': 'أدخل الاسم الثالث (اختياري)',
     'last-name-placeholder': 'أدخل اسم العائلة',
     'username-placeholder': 'أدخل اسم المستخدم',
-
+        'executive-administration-type-text': 'إدارة تنفيذية',
+        'choose-type': 'اختر النوع',
+        'yes': 'نعم',
+        'no': 'لا',
+        
+        // Pagination translations
+        'page': 'صفحة',
+        'of': 'من',
+        'total-departments': 'إجمالي الأقسام',
+        'total-committees': 'إجمالي اللجان',
     },
     en: {
               // Names fields
+                      // Pagination translations
+                              'executive-administration-type-text': 'Executive Administration',
+
+        'page': 'Page',
+        'of': 'of',
+        'total-departments': 'Total Departments',
+        'total-committees': 'Total Committees',
         'first-name': 'First Name',
         'second-name': 'Second Name',
         'third-name': 'Third Name',
