@@ -31,13 +31,13 @@ const transporter = nodemailer.createTransport({
 // 1) تسجيل مستخدم جديد
 const register = async (req, res) => {
   try {
-    const { username, email, password, department_id, role, employee_number, job_title } = req.body;
+    const { first_name, second_name, third_name, last_name, username, email, password, department_id, role, employee_number, job_title } = req.body;
 
     // 1) الحقول الأساسية
-    if (!username || !email || !password ) {
+    if (!username || !first_name || !last_name || !email || !password ) {
       return res.status(400).json({
         status: 'error',
-        message: 'اسم المستخدم، البريد الإلكتروني، كلمة المرور مطلوبة'
+        message: 'اسم المستخدم والاسم الأول واسم العائلة والبريد الإلكتروني وكلمة المرور مطلوبة'
       });
     }
 
@@ -82,7 +82,11 @@ const register = async (req, res) => {
       }
     }
 
-    // 6) تحقق من وجود المسمى الوظيفي للمستخدمين غير admin
+    // 6) بناء الاسم الكامل من الأسماء
+    const names = [first_name, second_name, third_name, last_name].filter(name => name);
+    const fullName = names.join(' ');
+
+    // 7) تحقق من وجود المسمى الوظيفي للمستخدمين غير admin
     if (username.toLowerCase() !== 'admin' && !job_title) {
       return res.status(400).json({
         status: 'error',
@@ -96,12 +100,12 @@ const register = async (req, res) => {
     // 8) دور المستخدم
     const userRole = role || 'user';
 
-    // 9) إدخال المستخدم
+        // 9) إدخال المستخدم
     const [result] = await db.execute(
       `INSERT INTO users 
-        (username, email, employee_number, job_title, password, department_id, role, created_at, updated_at)
-       VALUES (?,       ?,     ?,                 ?,        ?,             ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [username, email, employee_number, job_title, hashedPassword, department_id || null, userRole]
+         (username, email, employee_number, job_title, password, department_id, role, first_name, second_name, third_name, last_name, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [username, email, employee_number, job_title, hashedPassword, department_id || null, userRole, first_name, second_name || null, third_name || null, last_name]
     );
     const userId = result.insertId;
 
@@ -112,8 +116,8 @@ const register = async (req, res) => {
     );
 
      const logDescription = {
-            ar: 'تم تسجيل مستخدم جديد: ' + username,
-            en: 'Registered new user: ' + username
+            ar: 'تم تسجيل مستخدم جديد: ' + fullName,
+            en: 'Registered new user: ' + fullName
         };
         
     await logAction(
@@ -129,7 +133,7 @@ JSON.stringify(logDescription),      'user',
       status: 'success',
       message: 'تم إنشاء الحساب وتسجيل الدخول تلقائياً',
       token,
-      user: { id: userId, username, email, employee_number, job_title, department_id, role: userRole }
+      user: { id: userId, username, email, employee_number, job_title, department_id, role: userRole, first_name, second_name, third_name, last_name }
     });
 
   } catch (error) {

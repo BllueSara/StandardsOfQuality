@@ -1,40 +1,49 @@
+// دالة إظهار التوست - خارج DOMContentLoaded لتكون متاحة في كل مكان
+function showToast(message, type = 'info', duration = 3000) {
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    toastContainer.appendChild(toast);
+
+    // Force reflow to ensure animation plays from start
+    toast.offsetWidth; 
+
+    // تفعيل التوست
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+
+    // Set a timeout to remove the toast
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 500);
+    }, duration);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('register.js script loaded and DOMContentLoaded event fired.');
     const registerForm = document.getElementById('registerForm');
     const departmentSelect = document.getElementById('reg-department');
+    const firstNameInput = document.getElementById('reg-first-name');
+    const secondNameInput = document.getElementById('reg-second-name');
+    const thirdNameInput = document.getElementById('reg-third-name');
+    const lastNameInput = document.getElementById('reg-last-name');
     const usernameInput = document.getElementById('reg-username');
     const departmentGroup = departmentSelect.closest('.form-group');
-    const employeeInput = document.getElementById('reg-employee');
-    const employeeGroup = employeeInput.closest('.form-group');
-
-    // Toast notification function
-    function showToast(message, type = 'info', duration = 3000) {
-        let toastContainer = document.getElementById('toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            document.body.appendChild(toastContainer);
-        }
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
-
-        toastContainer.appendChild(toast);
-
-        // Force reflow to ensure animation plays from start
-        toast.offsetWidth;
-
-        // Set a timeout to remove the toast
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-20px)';
-            // Remove element after animation completes
-            setTimeout(() => {
-                toast.remove();
-            }, 500); // Should match CSS animation duration
-        }, duration);
-    }
+    const employeeInput   = document.getElementById('reg-employee');
+    const employeeGroup   = employeeInput.closest('.form-group');
 
     // عناصر النموذج المنبثق لإضافة قسم
     const addDepartmentModal = document.getElementById('addDepartmentModal');
@@ -60,39 +69,64 @@ function closeModal(modal) {
 }
 
 
-  usernameInput.addEventListener('input', function() {
-    const username = this.value.trim().toLowerCase();
-    if (username === 'admin') {
-      // أخفِ القسم والموظف
-      departmentGroup.style.display = 'none';
-      departmentSelect.removeAttribute('required');
-      departmentSelect.value = '';
+  // دالة لبناء اسم المستخدم من الأسماء للتحقق من admin
+  function buildUsername() {
+    const firstName = firstNameInput.value.trim();
+    const secondName = secondNameInput.value.trim();
+    const thirdName = thirdNameInput.value.trim();
+    const lastName = lastNameInput.value.trim();
+    
+    const names = [firstName, secondName, thirdName, lastName].filter(name => name);
+    return names.join(' ').toLowerCase().replace(/\s+/g, '');
+  }
 
-      employeeGroup.style.display = 'none';
-      employeeInput.removeAttribute('required');
-      employeeInput.value = '';
-    } else {
-      // أعِد ظهورهما
-      departmentGroup.style.display = 'block';
-      departmentSelect.setAttribute('required', 'required');
+  // مراقبة تغييرات الأسماء للتحقق من admin
+  [firstNameInput, secondNameInput, thirdNameInput, lastNameInput].forEach(input => {
+    input.addEventListener('input', function() {
+      const username = buildUsername();
+      if (username === 'admin') {
+        // أخفِ القسم والموظف
+        departmentGroup.style.display = 'none';
+        departmentSelect.removeAttribute('required');
+        departmentSelect.value = '';
 
-      employeeGroup.style.display = 'block';
-      employeeInput.setAttribute('required', 'required');
-    }
+        employeeGroup.style.display = 'none';
+        employeeInput.removeAttribute('required');
+        employeeInput.value = '';
+      } else {
+        // أعِد ظهورهما
+        departmentGroup.style.display = 'block';
+        departmentSelect.setAttribute('required', 'required');
+
+        employeeGroup.style.display = 'block';
+        employeeInput.setAttribute('required', 'required');
+      }
+    });
   });
 
     // دالة لجلب الأقسام من الباك اند وتعبئة قائمة الاختيار
 async function fetchDepartments() {
   try {
     const response = await fetch('http://localhost:3006/api/departments/all', {
+      method: 'GET',
+      headers: { 
+        'Content-Type': 'application/json'
+      }
     });
-    const result     = await response.json();
-    if (!response.ok) throw new Error(result.message || 'فشل جلب الأقسام');
 
-    // التعامل مع الهيكل الجديد للبيانات
-    const data = result.data || result;
-    if (!Array.isArray(data)) {
-      throw new Error('Invalid data format');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
+      throw new Error(`فشل جلب الأقسام: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    // Handle both array and object with data property
+    const departments = Array.isArray(result) ? result : (result.data || []);
+
+    if (!Array.isArray(departments)) {
+      throw new Error('الرد ليس مصفوفة أقسام');
     }
 
     // حدّد اللغة الحالية:
@@ -101,7 +135,7 @@ async function fetchDepartments() {
     const defaultText = lang === 'ar' ? 'اختر القسم' : 'Select Department';
     departmentSelect.innerHTML = `<option value="">${defaultText}</option>`;
 
-    data.forEach(dept => {
+    departments.forEach(dept => {
       let parsed;
       try {
         // تأكد من تحويل الاسم من string JSON إلى كائن دائماً
@@ -119,11 +153,13 @@ async function fetchDepartments() {
       departmentSelect.appendChild(opt);
     });
 
+    console.log('تم تحميل الأقسام بنجاح:', departments.length);
+
     // خيار "إضافة جديد"
 
 
   } catch (err) {
-    console.error(err);
+    console.error('خطأ في جلب الأقسام:', err);
     showToast(err.message || 'حدث خطأ أثناء جلب الأقسام', 'error');
   }
 }
@@ -157,7 +193,6 @@ saveAddDepartmentBtn.addEventListener('click', async function () {
   const nameAr = departmentNameArInput.value.trim();
   const nameEn = departmentNameEnInput.value.trim();
   const imageFile = departmentImageInput.files[0];
-  const token = localStorage.getItem('token');
 
   if (!nameAr || !nameEn || !imageFile) {
     showToast('جميع الحقول مطلوبة (الاسمين + الصورة)', 'warning');
@@ -172,9 +207,6 @@ formData.append('image', imageFile);
   try {
     const response = await fetch('http://localhost:3006/api/departments/all', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
       body: formData
     });
 
@@ -230,19 +262,33 @@ registerForm.addEventListener('submit', async function(e) {
   e.preventDefault();
   
   // جمع البيانات من النموذج
+  const firstName = firstNameInput.value.trim();
+  const secondName = secondNameInput.value.trim();
+  const thirdName = thirdNameInput.value.trim();
+  const lastName = lastNameInput.value.trim();
+  const username = usernameInput.value.trim();
+  
   const formData = {
-    username: document.getElementById('reg-username').value.trim(),
-    email:    document.getElementById('reg-email').value.trim(),
+    first_name: firstName,
+    second_name: secondName,
+    third_name: thirdName,
+    last_name: lastName,
+    username: username,
+    email: document.getElementById('reg-email').value.trim(),
     password: document.getElementById('reg-password').value,
     department_id: departmentSelect.value,
-    employee_number: document.getElementById('reg-employee').value.trim()  // ← هنا,
-    ,    job_title: document.getElementById('reg-job-title').value.trim()
-
+    employee_number: document.getElementById('reg-employee').value.trim(),
+    job_title: document.getElementById('reg-job-title').value.trim()
   };
 
+  // تحقق من الأسماء المطلوبة
+  if (!firstName || !lastName || !username) {
+    showToast('الاسم الأول واسم العائلة واسم المستخدم مطلوبان.', 'warning');
+    return;
+  }
+
   // تحقق من القسم (مال admins)
-  const username = formData.username.toLowerCase();
-  if (username !== 'admin') {
+  if (username.toLowerCase() !== 'admin') {
     if (!formData.department_id || formData.department_id === '__ADD_NEW_DEPARTMENT__') {
       showToast('الرجاء اختيار قسم أو إضافة قسم جديد.', 'warning');
       return;
@@ -257,15 +303,17 @@ registerForm.addEventListener('submit', async function(e) {
   }
 
   // **تحقق من وجود الرقم الوظيفي**
-if (username !== 'admin' && !formData.employee_number) {
-  showToast('الرجاء إدخال الرقم الوظيفي.', 'warning');
-  return;
-}
+  if (username !== 'admin' && !formData.employee_number) {
+    showToast('الرجاء إدخال الرقم الوظيفي.', 'warning');
+    return;
+  }
+
   // **تحقق من وجود المسمى الوظيفي**
-if (username !== 'admin' && !formData.job_title) {
-  showToast('الرجاء إدخال المسمى الوظيفي.', 'warning');
-  return;
-}
+  if (username !== 'admin' && !formData.job_title) {
+    showToast('الرجاء إدخال المسمى الوظيفي.', 'warning');
+    return;
+  }
+
   try {
     const response = await fetch('http://localhost:3006/api/auth/register', {
       method: 'POST',

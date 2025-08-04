@@ -86,6 +86,7 @@ const getUsers = async (req, res) => {
 };
 
 
+
 // 2) جلب مستخدم محدد
 const getUserById = async (req, res) => {
   const id = req.params.id;
@@ -94,7 +95,7 @@ const getUserById = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT 
          u.id,
-         u.username AS name,
+         u.username,
          u.email,
          u.role,
          u.status,  
@@ -102,6 +103,10 @@ const getUserById = async (req, res) => {
          d.name AS departmentName,
          u.employee_number,
          u.job_title,
+         u.first_name,
+         u.second_name,
+         u.third_name,
+         u.last_name,
          u.created_at,
          u.updated_at
        FROM users u
@@ -116,6 +121,22 @@ const getUserById = async (req, res) => {
     }
     
     const userData = rows[0];
+    
+    // بناء الاسم الكامل من الأجزاء
+    const buildFullName = (firstName, secondName, thirdName, lastName) => {
+      const nameParts = [firstName, secondName, thirdName, lastName].filter(part => part && part.trim());
+      return nameParts.join(' ');
+    };
+    
+    // إضافة الاسم الكامل أو اليوزرنيم كـ name
+    const fullName = buildFullName(
+      userData.first_name,
+      userData.second_name,
+      userData.third_name,
+      userData.last_name
+    );
+    
+    userData.name = fullName || userData.username;
     
     res.status(200).json({
       status: 'success',
@@ -143,24 +164,27 @@ const addUser = async (req, res) => {
   const adminUserId = payload.id;
   const userLang = getUserLang(req);
 
-  const { name, email, departmentId, password, role, employeeNumber, jobTitle } = req.body;
+  const { first_name, second_name, third_name, last_name, name, email, departmentId, password, role, employeeNumber, jobTitle } = req.body;
   console.log('🪵 بيانات قادمة:', req.body);
 
-  if (!name || !email || !password || !role) {
-    return res.status(400).json({ status: 'error', message: 'جميع الحقول مطلوبة' });
+  if (!name || !first_name || !last_name || !email || !password || !role) {
+    return res.status(400).json({ status: 'error', message: 'اسم المستخدم والاسم الأول واسم العائلة والبريد الإلكتروني وكلمة المرور والدور مطلوبة' });
   }
 
   try {
-    const [existingUser] = await db.execute(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
-    );
+    // التحقق من البريد الإلكتروني فقط إذا كان موجوداً
+    if (email && email.trim()) {
+      const [existingUser] = await db.execute(
+        'SELECT id FROM users WHERE email = ?',
+        [email]
+      );
 
-    if (existingUser.length > 0) {
-      return res.status(409).json({
-        status: 'error',
-        message: 'البريد الإلكتروني مستخدم بالفعل'
-      });
+      if (existingUser.length > 0) {
+        return res.status(409).json({
+          status: 'error',
+          message: 'البريد الإلكتروني مستخدم بالفعل'
+        });
+      }
     }
 
     // Fetch department details for logging
@@ -176,6 +200,10 @@ const addUser = async (req, res) => {
     const hashed = await bcrypt.hash(password, 12);
     const cleanDeptId = departmentId && departmentId !== '' ? departmentId : null;
 
+    // بناء الاسم الكامل من الأسماء
+    const names = [first_name, second_name, third_name, last_name].filter(name => name);
+    const fullName = names.join(' ');
+
     const [result] = await db.execute(
   `INSERT INTO users (
     username, 
@@ -185,17 +213,21 @@ const addUser = async (req, res) => {
     role,
     employee_number,
     job_title,
+    first_name,
+    second_name,
+    third_name,
+    last_name,
     created_at,
     updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-  [name, email, cleanDeptId, hashed, role, employeeNumber, jobTitle]
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+  [name, email, cleanDeptId, hashed, role, employeeNumber, jobTitle, first_name, second_name || null, third_name || null, last_name]
 );
 
     // Add to logs
     const localizedDeptName = getLocalizedName(departmentName, userLang);
     const logDescription = {
-      ar: `تم إضافة مستخدم جديد: ${name}`,
-      en: `Added new user: ${name}`
+      ar: `تم إضافة مستخدم جديد: ${fullName}`,
+      en: `Added new user: ${fullName}`
     };
     
     await logAction(adminUserId, 'add_user', JSON.stringify(logDescription), 'user', result.insertId);
@@ -228,16 +260,24 @@ const updateUser = async (req, res) => {
   const userLang = getUserLang(req);
 
   const id = req.params.id;
-  const { name, email, departmentId, role, employee_number, job_title } = req.body;
+  const { first_name, second_name, third_name, last_name, name, email, departmentId, role, employee_number, job_title } = req.body;
 
-  if (!name || !email || !role) {
-    return res.status(400).json({ status:'error', message:'الحقول الأساسية مطلوبة' });
+  // للادمن: فقط الاسم الأول واسم العائلة واسم المستخدم والدور مطلوبة
+  // للمستخدمين الآخرين: جميع الحقول مطلوبة
+  if (role === 'admin') {
+    if (!name || !first_name || !last_name || !role) {
+      return res.status(400).json({ status:'error', message:'اسم المستخدم والاسم الأول واسم العائلة والدور مطلوبة للادمن' });
+    }
+  } else {
+    if (!name || !first_name || !last_name || !email || !role) {
+      return res.status(400).json({ status:'error', message:'اسم المستخدم والاسم الأول واسم العائلة والبريد الإلكتروني والدور مطلوبة' });
+    }
   }
 
   try {
     // Fetch old user details for logging
     const [[oldUser]] = await db.execute(
-      `SELECT u.username, u.email, u.role, u.department_id, u.employee_number, u.job_title, d.name as department_name
+      `SELECT u.username, u.email, u.role, u.department_id, u.employee_number, u.job_title, u.first_name, u.second_name, u.third_name, u.last_name, d.name as department_name
        FROM users u
        LEFT JOIN departments d ON u.department_id = d.id
        WHERE u.id = ?`,
@@ -248,17 +288,19 @@ const updateUser = async (req, res) => {
       return res.status(404).json({ status:'error', message:'المستخدم غير موجود' });
     }
 
-    // التحقق من عدم وجود البريد الإلكتروني مع مستخدم آخر
-    const [existingUser] = await db.execute(
-      'SELECT id FROM users WHERE email = ? AND id != ?',
-      [email, id]
-    );
+    // التحقق من عدم وجود البريد الإلكتروني مع مستخدم آخر (فقط إذا كان موجوداً)
+    if (email && email.trim()) {
+      const [existingUser] = await db.execute(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, id]
+      );
 
-    if (existingUser.length > 0) {
-      return res.status(409).json({ 
-        status: 'error', 
-        message: 'البريد الإلكتروني مستخدم بالفعل' 
-      });
+      if (existingUser.length > 0) {
+        return res.status(409).json({ 
+          status: 'error', 
+          message: 'البريد الإلكتروني مستخدم بالفعل' 
+        });
+      }
     }
 
     // Fetch new department details for logging
@@ -271,6 +313,10 @@ const updateUser = async (req, res) => {
       newDepartmentName = deptDetails ? deptDetails.name : null;
     }
 
+    // بناء الاسم الكامل من الأسماء
+    const names = [first_name, second_name, third_name, last_name].filter(name => name);
+    const fullName = names.join(' ');
+
     const [result] = await db.execute(
       `UPDATE users 
        SET username = ?, 
@@ -279,9 +325,13 @@ const updateUser = async (req, res) => {
            role = ?,
            employee_number = ?,
            job_title = ?,
+           first_name = ?,
+           second_name = ?,
+           third_name = ?,
+           last_name = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [name, email, departmentId || null, role, employee_number, job_title, id]
+      [name, email, departmentId || null, role, employee_number, job_title, first_name, second_name || null, third_name || null, last_name, id]
     );
 
     if (!result.affectedRows) {
@@ -292,8 +342,24 @@ const updateUser = async (req, res) => {
     const changesAr = [];
     const changesEn = [];
     if (name !== oldUser.username) {
-      changesAr.push(`الاسم: '${oldUser.username}' ← '${name}'`);
-      changesEn.push(`Name: '${oldUser.username}' → '${name}'`);
+      changesAr.push(`اسم المستخدم: '${oldUser.username}' ← '${name}'`);
+      changesEn.push(`Username: '${oldUser.username}' → '${name}'`);
+    }
+    if (first_name !== oldUser.first_name) {
+      changesAr.push(`الاسم الأول: '${oldUser.first_name || ''}' ← '${first_name}'`);
+      changesEn.push(`First Name: '${oldUser.first_name || ''}' → '${first_name}'`);
+    }
+    if (second_name !== oldUser.second_name) {
+      changesAr.push(`الاسم الثاني: '${oldUser.second_name || ''}' ← '${second_name || ''}'`);
+      changesEn.push(`Second Name: '${oldUser.second_name || ''}' → '${second_name || ''}'`);
+    }
+    if (third_name !== oldUser.third_name) {
+      changesAr.push(`الاسم الثالث: '${oldUser.third_name || ''}' ← '${third_name || ''}'`);
+      changesEn.push(`Third Name: '${oldUser.third_name || ''}' → '${third_name || ''}'`);
+    }
+    if (last_name !== oldUser.last_name) {
+      changesAr.push(`اسم العائلة: '${oldUser.last_name || ''}' ← '${last_name}'`);
+      changesEn.push(`Last Name: '${oldUser.last_name || ''}' → '${last_name}'`);
     }
     if (email !== oldUser.email) {
       changesAr.push(`البريد الإلكتروني: '${oldUser.email}' ← '${email}'`);
@@ -346,7 +412,6 @@ const updateUser = async (req, res) => {
     res.status(500).json({ message: 'خطأ في تعديل المستخدم' });
   }
 };
-
 // 5) حذف مستخدم
 const deleteUser = async (req, res) => {
   const auth = req.headers.authorization;

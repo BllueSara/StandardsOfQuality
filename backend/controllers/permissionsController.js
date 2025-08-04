@@ -309,74 +309,7 @@ const removeUserPermission = async (req, res) => {
   }
 };
 
-// جلب اللجان المختارة للمستخدم
-const getUserCommittees = async (req, res) => {
-    try {
-        const { userId } = req.params;
-        
-        const [rows] = await db.execute(`
-            SELECT c.id, c.name
-            FROM committees c
-            JOIN user_committees uc ON c.id = uc.committee_id
-            WHERE uc.user_id = ?
-            ORDER BY c.name
-        `, [userId]);
-        
-        res.status(200).json(rows);
-    } catch (error) {
-        console.error('Error getting user committees:', error);
-        res.status(500).json({ message: 'خطأ في جلب اللجان المختارة' });
-    }
-};
 
-// حفظ اللجان المختارة للمستخدم
-const saveUserCommittees = async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const { committeeIds } = req.body;
-        
-        if (!Array.isArray(committeeIds)) {
-            return res.status(400).json({ message: 'committeeIds يجب أن تكون مصفوفة' });
-        }
-        
-        // حذف اللجان القديمة
-        await db.execute('DELETE FROM user_committees WHERE user_id = ?', [userId]);
-        
-        // إضافة اللجان الجديدة
-        if (committeeIds.length > 0) {
-            // إنشاء placeholders للـ VALUES
-            const placeholders = committeeIds.map(() => '(?, ?)').join(', ');
-            const values = committeeIds.flatMap(committeeId => [userId, committeeId]);
-            
-            await db.execute(
-                `INSERT INTO user_committees (user_id, committee_id) VALUES ${placeholders}`,
-                values
-            );
-        }
-        
-        res.status(200).json({ message: 'تم حفظ اللجان المختارة بنجاح' });
-    } catch (error) {
-        console.error('Error saving user committees:', error);
-        res.status(500).json({ message: 'خطأ في حفظ اللجان المختارة' });
-    }
-};
-
-// حذف لجنة من المستخدم
-const removeUserCommittee = async (req, res) => {
-    try {
-        const { userId, committeeId } = req.params;
-        
-        await db.execute(
-            'DELETE FROM user_committees WHERE user_id = ? AND committee_id = ?',
-            [userId, committeeId]
-        );
-        
-        res.status(200).json({ message: 'تم حذف اللجنة بنجاح' });
-    } catch (error) {
-        console.error('Error removing user committee:', error);
-        res.status(500).json({ message: 'خطأ في حذف اللجنة' });
-    }
-};
 
 // منح أو إلغاء جميع الصلاحيات للمستخدم
 const grantAllPermissions = async (req, res) => {
@@ -512,8 +445,5 @@ module.exports = {
   updateUserPermissions,
   addUserPermission,
   removeUserPermission,
-  getUserCommittees,
-  saveUserCommittees,
-  removeUserCommittee,
   grantAllPermissions
 };

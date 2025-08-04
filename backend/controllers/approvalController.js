@@ -821,12 +821,19 @@ async function generateFinalSignedPDF(contentId) {
     return console.error('❌ Failed to load original PDF or electronic seal:', err);
   }
 
-  // 3) جلب سجلات الاعتماد بما فيها التفويض مع معلومات إضافية
-  const [logs] = await db.execute(`
+ const [logs] = await db.execute(`
     SELECT
       al.signed_as_proxy,
       u_actual.username   AS actual_signer,
       u_original.username AS original_user,
+      u_actual.first_name AS actual_first_name,
+      u_actual.second_name AS actual_second_name,
+      u_actual.third_name AS actual_third_name,
+      u_actual.last_name AS actual_last_name,
+      u_original.first_name AS original_first_name,
+      u_original.second_name AS original_second_name,
+      u_original.third_name AS original_third_name,
+      u_original.last_name AS original_last_name,
       al.signature,
       al.electronic_signature,
       al.comments,
@@ -859,6 +866,11 @@ async function generateFinalSignedPDF(contentId) {
       return text.split(' ').reverse().join(' ');
     }
     return text;
+  };
+  // دالة مساعدة لبناء الاسم الكامل من الأجزاء
+  const buildFullName = (firstName, secondName, thirdName, lastName) => {
+    const nameParts = [firstName, secondName, thirdName, lastName].filter(part => part && part.trim());
+    return nameParts.join(' ');
   };
 
   // تعريف خط Amiri العربي
@@ -947,6 +959,14 @@ async function generateFinalSignedPDF(contentId) {
       day: '2-digit'
     });
 
+    // بناء الاسم الكامل للموقع الفعلي
+    const actualSignerFullName = buildFullName(
+      log.actual_first_name,
+      log.actual_second_name,
+      log.actual_third_name,
+      log.actual_last_name
+    ) || log.actual_signer || 'N/A';
+
     // إضافة صف الاعتماد مع معالجة النصوص العربية
     approvalTableBody.push([
       { text: approvalType, style: 'tableCell' },
@@ -959,9 +979,17 @@ async function generateFinalSignedPDF(contentId) {
 
     // إذا كان تفويض، أضف صف إضافي للمفوض الأصلي
     if (log.signed_as_proxy && log.original_user) {
+      // بناء الاسم الكامل للمفوض الأصلي
+      const originalUserFullName = buildFullName(
+        log.original_first_name,
+        log.original_second_name,
+        log.original_third_name,
+        log.original_last_name
+      ) || log.original_user || 'N/A';
+
       approvalTableBody.push([
         { text: '(Proxy for)', style: 'proxyCell' },
-        { text: fixArabicOrder(log.original_user || 'N/A'), style: 'proxyCell' },
+        { text: fixArabicOrder(originalUserFullName), style: 'proxyCell' },
         { text: fixArabicOrder(log.original_job_title || 'Not Specified'), style: 'proxyCell' },
         { text: 'Delegated', style: 'proxyCell' },
         { text: '-', style: 'proxyCell' },
@@ -1053,15 +1081,15 @@ async function generateFinalSignedPDF(contentId) {
         const { PDFDocument } = require('pdf-lib');
         const mergedPdf = await PDFDocument.create();
         
-        // إضافة صفحة الاعتمادات
-        const approvalPdfDoc = await PDFDocument.load(approvalPdfBuffer);
-        const approvalPages = await mergedPdf.copyPages(approvalPdfDoc, approvalPdfDoc.getPageIndices());
-        approvalPages.forEach((page) => mergedPdf.addPage(page));
-        
-        // إضافة صفحات PDF الأصلي
+        // إضافة صفحات PDF الأصلي أولاً
         const originalPdfDoc = await PDFDocument.load(originalPdfBytes);
         const originalPages = await mergedPdf.copyPages(originalPdfDoc, originalPdfDoc.getPageIndices());
         originalPages.forEach((page) => mergedPdf.addPage(page));
+        
+        // إضافة صفحة الاعتمادات في النهاية
+        const approvalPdfDoc = await PDFDocument.load(approvalPdfBuffer);
+        const approvalPages = await mergedPdf.copyPages(approvalPdfDoc, approvalPdfDoc.getPageIndices());
+        approvalPages.forEach((page) => mergedPdf.addPage(page));
         
         // حفظ PDF المدمج
         const finalPdfBytes = await mergedPdf.save();
@@ -1088,7 +1116,6 @@ async function generateFinalSignedPDF(contentId) {
     console.error('❌ Error creating approval PDF:', err);
   }
 }
-
 
 
 

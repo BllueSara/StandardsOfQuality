@@ -6,9 +6,6 @@ const {
   updateUserPermissions,
   addUserPermission,
   removeUserPermission,
-  getUserCommittees,
-  saveUserCommittees,
-  removeUserCommittee,
   grantAllPermissions
 } = require('../controllers/permissionsController');
 
@@ -21,9 +18,6 @@ router.post('/:id/permissions/:key',   authenticateToken, addUserPermission);
 router.delete('/:id/permissions/:key', authenticateToken, removeUserPermission);
 router.post('/:id/grant-all-permissions', authenticateToken, grantAllPermissions);
 
-// Routes for user committees
-router.get('/:userId/committees',      authenticateToken, getUserCommittees);
-router.post('/:userId/committees',     authenticateToken, saveUserCommittees);
-router.delete('/:userId/committees/:committeeId', authenticateToken, removeUserCommittee);
+
 
 module.exports = router;

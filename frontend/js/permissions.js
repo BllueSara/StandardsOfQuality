@@ -133,7 +133,11 @@ const departmentSelect = document.getElementById('department');
 // زر تعديل معلومات المستخدم
 const btnEditUserInfo = document.getElementById('btn-edit-user-info');
 const editUserModal = document.getElementById('editUserModal');
-const editUserName = document.getElementById('editUserName');
+const editFirstName = document.getElementById('editFirstName');
+const editSecondName = document.getElementById('editSecondName');
+const editThirdName = document.getElementById('editThirdName');
+const editLastName = document.getElementById('editLastName');
+const editUsername = document.getElementById('editUsername');
 const editEmployeeNumber = document.getElementById('editEmployeeNumber');
 const editDepartment = document.getElementById('editDepartment');
 const editEmail = document.getElementById('editEmail');
@@ -474,7 +478,6 @@ document.querySelector('.user-profile-header')?.classList.add('active');
     btnDeleteUser.style.display = 'none';
     btnResetPwd.style.display   = 'none';
     btnChangeRole.style.display = 'none';
-    return;
   }
 
   // أظهر قسم الصلاحيات للمستخدمين غير Admin
@@ -694,21 +697,39 @@ if (btnCancel) {
 const btnSaveUser = document.getElementById('saveUser');
 if (btnSaveUser) {
   btnSaveUser.addEventListener('click', async () => {
+    // جمع الأسماء
+    const firstName = document.getElementById('userName').value.trim();
+    const secondName = document.getElementById('userSecondName').value.trim();
+    const thirdName = document.getElementById('userThirdName').value.trim();
+    const lastName = document.getElementById('userLastName').value.trim();
+    const username = document.getElementById('userName').value.trim();
+    
+    // تحقق من الحقول المطلوبة
+    if (!firstName || !lastName || !username) {
+      showToast('الاسم الأول واسم العائلة واسم المستخدم مطلوبان.', 'warning');
+      return;
+    }
+    
+    // بناء الاسم الكامل
+    const names = [firstName, secondName, thirdName, lastName].filter(name => name);
+    const fullName = names.join(' ');
 
-const data = {
-  name: document.getElementById('userName').value,
-  departmentId: document.getElementById('department').value,
-  email: document.getElementById('email').value,
-  password: document.getElementById('password').value,
-  role: document.getElementById('role')?.value || 'user',
-  employeeNumber: document.getElementById('employeeNumber').value , // ✅ أضف هذا
-    jobTitle: document.getElementById('jobTitle').value
+    const data = {
+      name: username,
+      first_name: firstName,
+      second_name: secondName,
+      third_name: thirdName,
+      last_name: lastName,
+      departmentId: document.getElementById('department').value,
+      email: document.getElementById('email').value,
+      password: document.getElementById('password').value,
+      role: document.getElementById('role')?.value || 'user',
+      employeeNumber: document.getElementById('employeeNumber').value,
+      jobTitle: document.getElementById('jobTitle').value
+    };
 
-};
-
-console.log('🚀 departmentId:', data.departmentId);
-
-        console.log('🚀 Sending user data:', data);
+    console.log('🚀 departmentId:', data.departmentId);
+    console.log('🚀 Sending user data:', data);
 
     const method = selectedUserId ? 'PUT' : 'POST';
     const url    = selectedUserId
@@ -826,8 +847,10 @@ async function showEditUserInfoButton(u) {
   const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
   const myRole = payload.role;
   const myId = payload.id;
-  // إذا كان المستخدم المستهدف admin، فقط admin نفسه يمكنه التعديل
+  
+  // إذا كان المستخدم المستهدف admin
   if (u.role === 'admin') {
+    // فقط admin نفسه يمكنه تعديل معلوماته
     if (myRole === 'admin' && Number(u.id) === Number(myId)) {
       btnEditUserInfo.style.display = '';
     } else {
@@ -835,7 +858,8 @@ async function showEditUserInfoButton(u) {
     }
     return;
   }
-  // غير admin: admin أو من لديه الصلاحية
+  
+  // للمستخدمين غير admin: admin أو من لديه الصلاحية يمكنه التعديل
   if (myRole === 'admin' || myPermsSet.has('change_user_info')) {
     btnEditUserInfo.style.display = '';
   } else {
@@ -843,30 +867,41 @@ async function showEditUserInfoButton(u) {
   }
 }
 
+
 // عند الضغط على زر تعديل معلومات المستخدم
 if (btnEditUserInfo) {
   btnEditUserInfo.addEventListener('click', async () => {
     if (!selectedUserId) return;
+    
     // جلب بيانات المستخدم الحالي
     const u = await fetchJSON(`${apiBase}/users/${selectedUserId}`);
     const authToken = localStorage.getItem('token') || '';
     const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+    
     // تحقق: إذا كان المستهدف admin، فقط admin نفسه يمكنه التعديل
     if (u.role === 'admin' && !(payload.role === 'admin' && Number(u.id) === Number(payload.id))) {
+      showToast('لا يمكن تعديل معلومات admin آخر', 'warning');
       return;
     }
-    editUserName.value = u.name || '';
+    
+    // تقسيم الاسم الكامل إلى أسماء منفصلة
+    const nameParts = (u.name || '').split(' ').filter(part => part.trim());
+    editFirstName.value = nameParts[0] || '';
+    editSecondName.value = nameParts[1] || '';
+    editThirdName.value = nameParts[2] || '';
+    editLastName.value = nameParts.slice(3).join(' ') || '';
+    editUsername.value = u.username || '';
+    
     editEmployeeNumber.value = u.employee_number || '';
-        editJobTitle.value = u.job_title || '';
-
+    editJobTitle.value = u.job_title || '';
     editEmail.value = u.email || '';
     editUserRole = u.role || null;
+    
     // جلب الأقسام وتعبئة الدروب داون
     await fetchDepartmentsForEditModal(u.departmentId, u.departmentName);
     editUserModal.style.display = 'flex';
   });
 }
-
 // دالة لجلب الأقسام وتعبئة الدروب داون مع اختيار القسم الحالي
 async function fetchDepartmentsForEditModal(selectedId, selectedName) {
   try {
@@ -915,16 +950,45 @@ if (btnCancelEditUser) {
 if (btnSaveEditUser) {
   btnSaveEditUser.addEventListener('click', async () => {
     if (!selectedUserId) return;
+    
+    // جمع الأسماء
+    const firstName = editFirstName.value.trim();
+    const secondName = editSecondName.value.trim();
+    const thirdName = editThirdName.value.trim();
+    const lastName = editLastName.value.trim();
+    const username = editUsername.value.trim();
+    
     // تحقق من الحقول المطلوبة
-    if (!editUserName.value.trim() || !editEmployeeNumber.value.trim() || !editJobTitle.value.trim() || !editDepartment.value || !editEmail.value.trim()) {
-      showToast('جميع الحقول مطلوبة.');
-      return;
+    // للادمن: فقط الاسم الأول واسم العائلة واسم المستخدم مطلوبة
+    // للمستخدمين الآخرين: جميع الحقول مطلوبة
+    const isAdmin = editUserRole === 'admin';
+    
+    if (isAdmin) {
+      // للادمن: فقط الحقول الأساسية مطلوبة
+      if (!firstName || !lastName || !username) {
+        showToast('الاسم الأول واسم العائلة واسم المستخدم مطلوبة للادمن.', 'warning');
+        return;
+      }
+    } else {
+      // للمستخدمين الآخرين: جميع الحقول مطلوبة
+      if (!firstName || !lastName || !username || !editEmployeeNumber.value.trim() || !editJobTitle.value.trim() || !editDepartment.value || !editEmail.value.trim()) {
+        showToast('الاسم الأول واسم العائلة واسم المستخدم وجميع الحقول الأخرى مطلوبة.', 'warning');
+        return;
+      }
     }
+    
+    // بناء الاسم الكامل
+    const names = [firstName, secondName, thirdName, lastName].filter(name => name);
+    const fullName = names.join(' ');
+    
     const data = {
-      name: editUserName.value,
+      name: username,
+      first_name: firstName,
+      second_name: secondName,
+      third_name: thirdName,
+      last_name: lastName,
       employee_number: editEmployeeNumber.value,
-            job_title: editJobTitle.value,
-
+      job_title: editJobTitle.value,
       departmentId: editDepartment.value,
       email: editEmail.value,
       role: editUserRole
@@ -936,9 +1000,9 @@ if (btnSaveEditUser) {
       });
       editUserModal.style.display = 'none';
       await selectUser(selectedUserId); // تحديث بيانات العرض
-      showToast('تم تحديث معلومات المستخدم بنجاح');
+      showToast('تم تحديث معلومات المستخدم بنجاح', 'success');
     } catch (err) {
-      showToast('فشل تحديث معلومات المستخدم: ' + err.message);
+      showToast('فشل تحديث معلومات المستخدم: ' + err.message, 'error');
     }
   });
 }

@@ -531,41 +531,66 @@
         <div class="modal-content">
             <h2 class="modal-title" data-translate="add-user-title">إضافة مستخدم جديد</h2>
 
- <div class="modal-section">
-  <h3 data-translate="user-info">معلومات المستخدم</h3>
+            <div class="modal-section">
+                <h3 data-translate="user-info">معلومات المستخدم</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="userName" data-translate="first-name-label">الاسم الأول *</label>
+                        <input type="text" id="userName" data-translate-placeholder="first-name-placeholder" placeholder="أدخل الاسم الأول" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userLastName" data-translate="last-name-label">اسم العائلة *</label>
+                        <input type="text" id="userLastName" data-translate-placeholder="last-name-placeholder" placeholder="أدخل اسم العائلة" required>
+                    </div>
+                </div>
 
-  <div class="form-group">
-    <label for="userName" data-translate="user-name-label">اسم المستخدم</label>
-                            <input type="text" id="userName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل الاسم الاول والثاني">
-  </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="userSecondName" data-translate="second-name-label">الاسم الثاني</label>
+                        <input type="text" id="userSecondName" data-translate-placeholder="second-name-placeholder" placeholder="أدخل الاسم الثاني">
+                    </div>
+                    <div class="form-group">
+                        <label for="userThirdName" data-translate="third-name-label">الاسم الثالث</label>
+                        <input type="text" id="userThirdName" data-translate-placeholder="third-name-placeholder" placeholder="أدخل الاسم الثالث">
+                    </div>
+                </div>
 
-  <div class="form-group">
-    <label for="employeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
-    <input type="text" id="employeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
-  </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="username" data-translate="username-label">اسم المستخدم *</label>
+                        <input type="text" id="username" data-translate-placeholder="username-placeholder" placeholder="أدخل اسم المستخدم" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password" data-translate="password-label">كلمة المرور</label>
+                        <input type="password" id="password" data-translate-placeholder="password-placeholder" placeholder="أدخل كلمة المرور">
+                    </div>
+                </div>
 
-  <div class="form-group">
-    <label for="jobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
-    <input type="text" id="jobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
-  </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="employeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
+                        <input type="text" id="employeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
+                    </div>
+                    <div class="form-group">
+                        <label for="jobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
+                        <input type="text" id="jobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
+                    </div>
+                </div>
 
-  <div class="form-group">
-    <label for="department" data-translate="department-label">القسم</label>
-    <select id="department">
-      <option value="" data-translate="select-department">اختر القسم</option>
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label for="email" data-translate="email-label">البريد الإلكتروني</label>
-    <input type="email" id="email" data-translate-placeholder="email-placeholder" placeholder="أدخل البريد الإلكتروني">
-  </div>
-
-  <div class="form-group">
-    <label for="password" data-translate="password-label">كلمة المرور</label>
-    <input type="password" id="password" data-translate-placeholder="password-placeholder" placeholder="أدخل كلمة المرور">
-  </div>
-</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="department" data-translate="department-label">القسم</label>
+                        <select id="department">
+                            <option value="" data-translate="select-department">اختر القسم</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="email" data-translate="email-label">البريد الإلكتروني</label>
+                        <input type="email" id="email" data-translate-placeholder="email-placeholder" placeholder="أدخل البريد الإلكتروني">
+                    </div>
+                </div>
+            </div>
 
     <!-- Permissions section removed as per user request -->
 
@@ -590,27 +615,58 @@
     <h2 class="modal-title" data-translate="change-user-info">تعديل معلومات المستخدم</h2>
     <div class="modal-section">
       <h3 data-translate="user-info">معلومات المستخدم</h3>
-      <div class="form-group">
-        <label for="editUserName" data-translate="user-name-label">اسم المستخدم</label>
-                                <input type="text" id="editUserName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل الاسم الاول والثاني">
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="editFirstName" data-translate="first-name-label">الاسم الأول *</label>
+          <input type="text" id="editFirstName" data-translate-placeholder="first-name-placeholder" placeholder="أدخل الاسم الأول" required>
+        </div>
+        <div class="form-group">
+          <label for="editLastName" data-translate="last-name-label">اسم العائلة *</label>
+          <input type="text" id="editLastName" data-translate-placeholder="last-name-placeholder" placeholder="أدخل اسم العائلة" required>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="editEmployeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
-        <input type="text" id="editEmployeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="editSecondName" data-translate="second-name-label">الاسم الثاني</label>
+          <input type="text" id="editSecondName" data-translate-placeholder="second-name-placeholder" placeholder="أدخل الاسم الثاني">
+        </div>
+        <div class="form-group">
+          <label for="editThirdName" data-translate="third-name-label">الاسم الثالث</label>
+          <input type="text" id="editThirdName" data-translate-placeholder="third-name-placeholder" placeholder="أدخل الاسم الثالث">
+        </div>
       </div>
-            <div class="form-group">
-        <label for="editJobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
-        <input type="text" id="editJobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="editUsername" data-translate="username-label">اسم المستخدم *</label>
+          <input type="text" id="editUsername" data-translate-placeholder="username-placeholder" placeholder="أدخل اسم المستخدم" required>
+        </div>
+        <div class="form-group">
+          <label for="editEmail" data-translate="email-label">البريد الإلكتروني</label>
+          <input type="email" id="editEmail" data-translate-placeholder="email-placeholder" placeholder="أدخل البريد الإلكتروني">
+        </div>
       </div>
-      <div class="form-group">
-        <label for="editDepartment" data-translate="department-label">القسم</label>
-        <select id="editDepartment">
-          <option value="" data-translate="select-department">اختر القسم</option>
-        </select>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="editEmployeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
+          <input type="text" id="editEmployeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
+        </div>
+        <div class="form-group">
+          <label for="editJobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
+          <input type="text" id="editJobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
+        </div>
       </div>
-      <div class="form-group">
-        <label for="editEmail" data-translate="email-label">البريد الإلكتروني</label>
-        <input type="email" id="editEmail" data-translate-placeholder="email-placeholder" placeholder="أدخل البريد الإلكتروني">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="editDepartment" data-translate="department-label">القسم</label>
+          <select id="editDepartment">
+            <option value="" data-translate="select-department">اختر القسم</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="modal-actions">
