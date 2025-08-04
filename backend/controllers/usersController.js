@@ -90,6 +90,7 @@ const getUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   const id = req.params.id;
   try {
+    
     const [rows] = await db.execute(
       `SELECT 
          u.id,
@@ -100,6 +101,7 @@ const getUserById = async (req, res) => {
          u.department_id AS departmentId,
          d.name AS departmentName,
          u.employee_number,
+         u.job_title,
          u.created_at,
          u.updated_at
        FROM users u
@@ -107,14 +109,20 @@ const getUserById = async (req, res) => {
        WHERE u.id = ?`,
       [id]
     );
+    
+    
     if (!rows.length) {
       return res.status(404).json({ status:'error', message:'المستخدم غير موجود' });
     }
+    
+    const userData = rows[0];
+    
     res.status(200).json({
       status: 'success',
-      data: rows[0]
+      data: userData
     });
   } catch (error) {
+    console.error('❌ خطأ في جلب المستخدم:', error);
     res.status(500).json({ message: 'خطأ في جلب المستخدم' });
   }
 };
@@ -135,7 +143,7 @@ const addUser = async (req, res) => {
   const adminUserId = payload.id;
   const userLang = getUserLang(req);
 
-  const { name, email, departmentId, password, role, employeeNumber } = req.body;
+  const { name, email, departmentId, password, role, employeeNumber, jobTitle } = req.body;
   console.log('🪵 بيانات قادمة:', req.body);
 
   if (!name || !email || !password || !role) {
@@ -176,10 +184,11 @@ const addUser = async (req, res) => {
     password, 
     role,
     employee_number,
+    job_title,
     created_at,
     updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-  [name, email, cleanDeptId, hashed, role, employeeNumber]
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+  [name, email, cleanDeptId, hashed, role, employeeNumber, jobTitle]
 );
 
     // Add to logs
@@ -219,7 +228,7 @@ const updateUser = async (req, res) => {
   const userLang = getUserLang(req);
 
   const id = req.params.id;
-  const { name, email, departmentId, role } = req.body;
+  const { name, email, departmentId, role, employee_number, job_title } = req.body;
 
   if (!name || !email || !role) {
     return res.status(400).json({ status:'error', message:'الحقول الأساسية مطلوبة' });
@@ -228,7 +237,7 @@ const updateUser = async (req, res) => {
   try {
     // Fetch old user details for logging
     const [[oldUser]] = await db.execute(
-      `SELECT u.username, u.email, u.role, u.department_id, u.employee_number, d.name as department_name
+      `SELECT u.username, u.email, u.role, u.department_id, u.employee_number, u.job_title, d.name as department_name
        FROM users u
        LEFT JOIN departments d ON u.department_id = d.id
        WHERE u.id = ?`,
@@ -268,9 +277,11 @@ const updateUser = async (req, res) => {
            email = ?, 
            department_id = ?, 
            role = ?,
+           employee_number = ?,
+           job_title = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [name, email, departmentId || null, role, id]
+      [name, email, departmentId || null, role, employee_number, job_title, id]
     );
 
     if (!result.affectedRows) {
@@ -291,6 +302,10 @@ const updateUser = async (req, res) => {
     if (req.body.employee_number !== undefined && req.body.employee_number !== oldUser.employee_number) {
       changesAr.push(`الرقم الوظيفي: '${oldUser.employee_number || ''}' ← '${req.body.employee_number || ''}'`);
       changesEn.push(`Employee Number: '${oldUser.employee_number || ''}' → '${req.body.employee_number || ''}'`);
+    }
+    if (req.body.job_title !== undefined && req.body.job_title !== oldUser.job_title) {
+      changesAr.push(`المسمى الوظيفي: '${oldUser.job_title || ''}' ← '${req.body.job_title || ''}'`);
+      changesEn.push(`Job Title: '${oldUser.job_title || ''}' → '${req.body.job_title || ''}'`);
     }
     if (role !== oldUser.role) {
       changesAr.push(`الدور: '${oldUser.role}' ← '${role}'`);

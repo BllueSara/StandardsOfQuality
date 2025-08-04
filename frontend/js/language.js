@@ -783,7 +783,7 @@ const translations = {
         'add-user-title': 'إضافة مستخدم جديد',
         'user-info': 'معلومات المستخدم',
         'user-name-label': 'اسم المستخدم',
-        'user-name-placeholder': 'أدخل اسم المستخدم',
+        'user-name-placeholder': 'أدخل الاسم الاول والثاني',
         'job-title-label': 'المسمى الوظيفي',
         'job-title-placeholder': 'أدخل المسمى الوظيفي',
         'department-label': 'القسم',
@@ -797,7 +797,7 @@ const translations = {
         'save': 'حفظ',
         'content-name-ar': 'اسم المحتوى (عربي)',
         'content-name-en': 'اسم المحتوى (انجليزي)',
-        'enter-username-only': 'ادخل اسم المستخدم ',
+        'enter-username-only': 'ادخل الاسم الاول والثاني ',
         // Permissions Page (Groups)
         'general-group': 'عامّ',
         'departments-group': 'الأقسام',
@@ -1098,8 +1098,18 @@ const translations = {
         'cancel': 'إلغاء',
         'no-signature': 'يرجى إضافة توقيع أولاً',
         'invalid-image': 'يرجى اختيار ملف صورة صالح',
+                'job-title': 'المسمى الوظيفي',
+        'enter-job-title': 'أدخل المسمى الوظيفي',
+                'job-title-label': 'المسمى الوظيفي:',
+
     },
     en: {
+              'enter-username-only': 'Enter First Name and Last Name',
+        'user-name-placeholder': 'Enter First Name and Last Name',
+
+              'job-title-label': 'Job Title:',
+        'job-title': 'Job Title',
+        'enter-job-title': 'Enter job title',
               'draw-signature': 'Direct Signature',
         'upload-signature': '  Upload Signature',
         'drag-drop-signature': 'Drag and drop the signature here or click to browse',

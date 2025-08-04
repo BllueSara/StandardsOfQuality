@@ -235,7 +235,9 @@ registerForm.addEventListener('submit', async function(e) {
     email:    document.getElementById('reg-email').value.trim(),
     password: document.getElementById('reg-password').value,
     department_id: departmentSelect.value,
-    employee_number: document.getElementById('reg-employee').value.trim()  // ← هنا
+    employee_number: document.getElementById('reg-employee').value.trim()  // ← هنا,
+    ,    job_title: document.getElementById('reg-job-title').value.trim()
+
   };
 
   // تحقق من القسم (مال admins)
@@ -259,7 +261,11 @@ if (username !== 'admin' && !formData.employee_number) {
   showToast('الرجاء إدخال الرقم الوظيفي.', 'warning');
   return;
 }
-
+  // **تحقق من وجود المسمى الوظيفي**
+if (username !== 'admin' && !formData.job_title) {
+  showToast('الرجاء إدخال المسمى الوظيفي.', 'warning');
+  return;
+}
   try {
     const response = await fetch('http://localhost:3006/api/auth/register', {
       method: 'POST',

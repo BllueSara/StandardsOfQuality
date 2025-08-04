@@ -7,13 +7,24 @@ function getTranslation(key) {
 }
 // في أعلى الملف، بعد parseJwt:
 function parseLocalized(text) {
+  console.log('🔤 parseLocalized input:', text, 'type:', typeof text);
+  
+  // إذا كان النص فارغاً أو null أو undefined
+  if (!text || text === null || text === undefined) {
+    console.log('🔤 parseLocalized: النص فارغ، إرجاع نص فارغ');
+    return '';
+  }
+  
   try {
     const obj = typeof text==='string' && text.trim().startsWith('{')
       ? JSON.parse(text)
       : text;
     const lang = localStorage.getItem('language') || document.documentElement.lang || 'ar';
-    return (obj && obj[lang]) || (obj && obj.ar) || '';
-  } catch {
+    const result = (obj && obj[lang]) || (obj && obj.ar) || text || '';
+    console.log('🔤 parseLocalized result:', result);
+    return result;
+  } catch (error) {
+    console.log('🔤 parseLocalized error, returning original text:', text);
     return text;
   }
 }
@@ -22,7 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const usernameSpan = document.getElementById('profile-username');
     const emailSpan = document.getElementById('profile-email');
     const departmentSpan = document.getElementById('profile-department');
-const employeeNumberSpan = document.getElementById('profile-employee-number');
+    const employeeNumberSpan = document.getElementById('profile-employee-number');
+    const jobTitleSpan = document.getElementById('profile-job-title');
 
     const logoutButton = document.getElementById('logout-button');
 
@@ -41,43 +53,115 @@ const employeeNumberSpan = document.getElementById('profile-employee-number');
         }
     }
 
+    // دالة لجلب معلومات المستخدم من الخادم
+    async function fetchUserProfile(userId) {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No token available');
+            }
+
+            const response = await fetch(`http://localhost:3006/api/users/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Unauthorized - Please login again');
+                } else if (response.status === 404) {
+                    throw new Error('User not found');
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            }
+
+            const result = await response.json();
+            console.log('📡 استجابة الخادم:', result);
+            
+            if (result.status === 'success' && result.data) {
+                console.log('✅ بيانات المستخدم من الخادم:', result.data);
+                console.log('🎯 المسمى الوظيفي من الخادم:', result.data.job_title);
+                return result.data;
+            } else {
+                throw new Error('Invalid response format');
+            }
+        } catch (error) {
+            console.error('Error fetching user profile:', error);
+            return null;
+        }
+    }
+
     // جلب التوكن من localStorage
     const token = localStorage.getItem('token');
 
     if (token) {
         const user = parseJwt(token);
         if (user) {
-            // عرض معلومات المستخدم (اسم المستخدم أو البريد الإلكتروني)
-            // سنفترض أن التوكن يحتوي على 'email'، ويمكن إضافة 'username' إذا كان متاحاً في التوكن
-            emailSpan.textContent = user.email || getTranslation('not-available');
-            // إذا كان التوكن يحتوي على اسم المستخدم، يمكن عرضه هنا
-            // usernameSpan.textContent = user.username || getTranslation('not-available');
-            // بما أن الفورم لا يرسل username، سنعرض الإيميل كاسم مستخدم مؤقتاً أو نتركه فارغاً إذا لم يكن مطلوباً
-            usernameSpan.textContent = user.username || getTranslation('not-available');
-            // جلب اسم القسم من بيانات المستخدم عبر /api/users/:id
-            fetch(`http://localhost:3006/api/users/${user.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-            .then(res => res.json())
-            .then(data => {
-                let deptName = data.data.departmentName;
-                if (typeof deptName === 'string' && deptName.trim().startsWith('{')) {
-                    try {
-                        const obj = JSON.parse(deptName);
-                        const lang = localStorage.getItem('language') || 'ar';
-                        deptName = obj[lang] || obj.ar || obj.en || deptName;
-                    } catch {
-                        // إذا فشل التحويل، استخدم النص كما هو
+            // عرض رسالة تحميل مؤقتة
+            emailSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+            usernameSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+            employeeNumberSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+            jobTitleSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+            departmentSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+            
+            // جلب جميع بيانات البروفايل من الخادم
+            fetchUserProfile(user.id).then(userData => {
+                if (userData) {
+                    console.log('🎨 عرض البيانات في الواجهة:', userData);
+                    console.log('🎯 المسمى الوظيفي قبل العرض:', userData.job_title);
+                    console.log('🎯 المسمى الوظيفي بعد parseLocalized:', parseLocalized(userData.job_title));
+                    
+                    // ✅ عرض جميع المعلومات من الخادم (البيانات الأحدث والأكثر دقة)
+                    emailSpan.textContent = userData.email || getTranslation('not-available');
+                    usernameSpan.textContent = userData.name || getTranslation('not-available');
+                    employeeNumberSpan.textContent = userData.employee_number || getTranslation('not-available');
+                    
+                    // معالجة خاصة للمسمى الوظيفي
+                    const jobTitle = userData.job_title;
+                    if (jobTitle && jobTitle.trim() !== '') {
+                        jobTitleSpan.textContent = parseLocalized(jobTitle);
+                    } else {
+                        jobTitleSpan.textContent = getTranslation('not-available');
                     }
+                    
+                    departmentSpan.textContent = parseLocalized(userData.departmentName) || getTranslation('not-available');
+                } else {
+                    // ⚠️ إذا فشل جلب البيانات من الخادم، استخدم البيانات من JWT كاحتياطي
+                    emailSpan.textContent = user.email || getTranslation('not-available');
+                    usernameSpan.textContent = user.username || getTranslation('not-available');
+                    employeeNumberSpan.textContent = user.employee_number || getTranslation('not-available');
+                    
+                    // معالجة خاصة للمسمى الوظيفي (احتياطي)
+                    const jobTitle = user.job_title;
+                    if (jobTitle && jobTitle.trim() !== '') {
+                        jobTitleSpan.textContent = parseLocalized(jobTitle);
+                    } else {
+                        jobTitleSpan.textContent = getTranslation('not-available');
+                    }
+                    
+                    departmentSpan.textContent = parseLocalized(user.department_name) || getTranslation('not-available');
                 }
-                departmentSpan.textContent = deptName || getTranslation('not-available');
-            })
-            .catch(() => {
-                departmentSpan.textContent = getTranslation('not-available');
+            }).catch(error => {
+                console.error('Error loading user profile:', error);
+                // ⚠️ في حالة الخطأ، استخدم البيانات من JWT كاحتياطي
+                emailSpan.textContent = user.email || getTranslation('not-available');
+                usernameSpan.textContent = user.username || getTranslation('not-available');
+                employeeNumberSpan.textContent = user.employee_number || getTranslation('not-available');
+                
+                // معالجة خاصة للمسمى الوظيفي (في حالة الخطأ)
+                const jobTitle = user.job_title;
+                if (jobTitle && jobTitle.trim() !== '') {
+                    jobTitleSpan.textContent = parseLocalized(jobTitle);
+                } else {
+                    jobTitleSpan.textContent = getTranslation('not-available');
+                }
+                
+                departmentSpan.textContent = parseLocalized(user.department_name) || getTranslation('not-available');
             });
-employeeNumberSpan.textContent = user.employee_number || getTranslation('not-available');
 
         } else {
             // إذا كان التوكن غير صالح، توجيه المستخدم لصفحة تسجيل الدخول

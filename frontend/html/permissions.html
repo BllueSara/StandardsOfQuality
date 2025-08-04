@@ -81,6 +81,8 @@
     <span id="profile-status" class="status"></span>
     <span class="badge-pill dept-badge" id="profile-department"></span>
     <span class="badge-pill role-badge" id="profile-role"></span>
+        <span class="badge-pill job-badge" id="profile-job-title"></span>
+
   </div>
 </div>
 
@@ -534,12 +536,17 @@
 
   <div class="form-group">
     <label for="userName" data-translate="user-name-label">اسم المستخدم</label>
-    <input type="text" id="userName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل اسم المستخدم">
+                            <input type="text" id="userName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل الاسم الاول والثاني">
   </div>
 
   <div class="form-group">
     <label for="employeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
     <input type="text" id="employeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
+  </div>
+
+  <div class="form-group">
+    <label for="jobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
+    <input type="text" id="jobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
   </div>
 
   <div class="form-group">
@@ -585,11 +592,15 @@
       <h3 data-translate="user-info">معلومات المستخدم</h3>
       <div class="form-group">
         <label for="editUserName" data-translate="user-name-label">اسم المستخدم</label>
-        <input type="text" id="editUserName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل اسم المستخدم">
+                                <input type="text" id="editUserName" data-translate-placeholder="user-name-placeholder" placeholder="أدخل الاسم الاول والثاني">
       </div>
       <div class="form-group">
         <label for="editEmployeeNumber" data-translate="employee-number-label">الرقم الوظيفي</label>
         <input type="text" id="editEmployeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
+      </div>
+            <div class="form-group">
+        <label for="editJobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
+        <input type="text" id="editJobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
       </div>
       <div class="form-group">
         <label for="editDepartment" data-translate="department-label">القسم</label>

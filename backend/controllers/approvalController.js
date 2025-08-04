@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 
-const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 
 const { logAction } = require('../models/logger');
 const { insertNotification } = require('../models/notfications-utils');
@@ -17,6 +16,82 @@ const db = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME
 });
+const processArabicText = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  // تنظيف المسافات المتعددة
+  let cleaned = text.replace(/\s+/g, ' ').trim();
+  
+  // تحسين عرض النص العربي في PDF
+  const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+  if (arabicPattern.test(cleaned)) {
+    try {
+      // استخدام arabic-reshaper لمعالجة النص العربي
+      // التحقق من وجود الدالة أولاً
+      if (typeof arabicReshaper.reshape === 'function') {
+        const reshapedText = arabicReshaper.reshape(cleaned);
+        console.log('🔍 Original Arabic text:', cleaned);
+        console.log('🔍 Reshaped Arabic text:', reshapedText);
+        return reshapedText;
+      } else {
+        console.warn('⚠️ arabicReshaper.reshape is not a function, using manual processing');
+        throw new Error('reshape function not available');
+      }
+    } catch (error) {
+      console.warn('⚠️ Error reshaping Arabic text:', error.message);
+      // إذا فشل arabic-reshaper، استخدم المعالجة اليدوية المحسنة
+      // إزالة المسافات الصغيرة التي تم إضافتها سابقاً
+      cleaned = cleaned.replace(/\u200B/g, '');
+      cleaned = cleaned.replace(/\u200C/g, '');
+      cleaned = cleaned.replace(/\u200D/g, '');
+      
+      // تحسين المسافات بين الكلمات العربية
+      cleaned = cleaned.replace(/\s+/g, ' ');
+      
+      // لا نضيف مسافات صغيرة بين الحروف لأنها تمنع الاتصال
+      // بدلاً من ذلك، نترك النص كما هو للسماح للخط بالتعامل مع الاتصال
+      
+      console.log('🔍 Manually processed Arabic text:', cleaned);
+      return cleaned;
+    }
+  }
+  
+  return cleaned;
+};
+
+// دالة تجهيز النص العربي مع تحسينات إضافية
+const prepareArabic = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  // استخدام الدالة الجديدة لمعالجة النص العربي
+  let processed = processArabicText(text);
+  
+  // تحسينات إضافية للنص العربي
+  const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+  if (arabicPattern.test(processed)) {
+    // إزالة المسافات الزائدة في بداية ونهاية النص
+    processed = processed.trim();
+    
+    // تحسين المسافات بين الكلمات العربية
+    processed = processed.replace(/\s+/g, ' ');
+    
+    // إزالة أي مسافات صغيرة متبقية
+    processed = processed.replace(/\u200B/g, '');
+    processed = processed.replace(/\u200C/g, '');
+    processed = processed.replace(/\u200D/g, '');
+    
+    // تحسين عرض النص العربي بإضافة مسافات مناسبة
+    processed = processed.replace(/([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF])\s+([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF])/g, '$1 $2');
+    
+    // تحسين إضافي للنص العربي - إضافة مسافات صغيرة بين الحروف المتصلة
+    // ولكن بطريقة لا تمنع الاتصال
+    processed = processed.replace(/([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF])(?=[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF])/g, '$1\u200E');
+    
+    console.log('🔍 Final processed Arabic text:', processed);
+  }
+  
+  return processed;
+};
 
 // جلب التواقيع المعلقة للمستخدم
 const getUserPendingApprovals = async (req, res) => {
@@ -716,7 +791,9 @@ const handleApproval = async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'خطأ أثناء معالجة الاعتماد', error: err.message, stack: err.stack });
   }
 };
-// توليد نسخة نهائية موقعة من PDF مع دعم "توقيع بالنيابة"
+
+
+// توليد نسخة نهائية موقعة من PDF مع دعم "توقيع بالنيابة" باستخدام pdfmake
 async function generateFinalSignedPDF(contentId) {
   // 1) جلب مسار الملف
   const [fileRows] = await db.execute(
@@ -732,16 +809,19 @@ async function generateFinalSignedPDF(contentId) {
     return console.error('❌ File not found on disk:', fullPath);
   }
 
-  // 2) تحميل وثيقة الـ PDF
-  let pdfDoc;
+  // 2) تحميل وثيقة الـ PDF الأصلية
+  let originalPdfBytes;
+  let electronicSealDataUrl;
   try {
-    const pdfBytes = fs.readFileSync(fullPath);
-    pdfDoc = await PDFDocument.load(pdfBytes);
+    originalPdfBytes = fs.readFileSync(fullPath);
+    // قراءة ختم الاعتماد الإلكتروني كـ base64 مرة واحدة
+    const electronicSealBase64 = fs.readFileSync(path.join(__dirname, '../e3teamdelc.png')).toString('base64');
+    electronicSealDataUrl = 'data:image/png;base64,' + electronicSealBase64;
   } catch (err) {
-    return console.error('❌ Failed to load PDF:', err);
+    return console.error('❌ Failed to load original PDF or electronic seal:', err);
   }
 
-  // 3) جلب سجلات الاعتماد بما فيها التفويض
+  // 3) جلب سجلات الاعتماد بما فيها التفويض مع معلومات إضافية
   const [logs] = await db.execute(`
     SELECT
       al.signed_as_proxy,
@@ -749,7 +829,10 @@ async function generateFinalSignedPDF(contentId) {
       u_original.username AS original_user,
       al.signature,
       al.electronic_signature,
-      al.comments
+      al.comments,
+      al.created_at,
+      u_actual.job_title AS signer_job_title,
+      u_original.job_title AS original_job_title
     FROM approval_logs al
     JOIN users u_actual
       ON al.approver_id = u_actual.id
@@ -759,195 +842,253 @@ async function generateFinalSignedPDF(contentId) {
     ORDER BY al.created_at
   `, [contentId]);
 
+  console.log('PDF logs:', logs); // للتأكد من القيم
+
   if (!logs.length) {
     console.warn('⚠️ No approved signatures found for content', contentId);
     return;
   }
 
-  // 4) حذف أي صفحة تواقيع قديمة في نهاية الملف (عنوانها Signatures Summary)
-  const signatureTitles = ['Signatures Summary', 'Signatures Summary (continued)'];
-  let pageCount = pdfDoc.getPageCount();
-  // ابحث من النهاية للأمام
-  while (pageCount > 0) {
-    const lastPage = pdfDoc.getPage(pageCount - 1);
-    // لا توجد طريقة مباشرة لقراءة النص من الصفحة في pdf-lib،
-    // لكن يمكننا حفظ عدد الصفحات الأصلية في أول توقيع (metadata) أو نفترض أن صفحة التواقيع دائماً في النهاية ونحذفها دائماً
-    // سنحذف آخر صفحة إذا كان عدد صفحات الملف أكبر من 1 (حتى لا نحذف كل الصفحات)
-    // أو إذا كان هناك أكثر من صفحة واحدة وتمت إضافة صفحة تواقيع سابقاً
-    // الحل العملي: احذف آخر صفحة دائماً إذا كان عدد الصفحات > 1
-    if (pageCount > 1) {
-      pdfDoc.removePage(pageCount - 1);
-      pageCount--;
-    } else {
-      break;
+  // 4) إعداد pdfmake
+  const PdfPrinter = require('pdfmake/src/printer');
+  
+  // دالة مساعدة لحل مشكلة ترتيب الكلمات العربية
+  const fixArabicOrder = (text) => {
+    if (typeof text === 'string' && /[\u0600-\u06FF]/.test(text)) {
+      // عكس ترتيب الكلمات للنص العربي لحل مشكلة الترتيب
+      return text.split(' ').reverse().join(' ');
     }
-    // إذا أردت منطق أدق، يمكن حفظ مؤشر في metadata
-  }
+    return text;
+  };
 
-  // 5) أضف صفحة التواقيع في نهاية الملف
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  let page = pdfDoc.addPage();
-  let y = 750;
-  const signatureTitle = 'Signatures Summary';
-  page.drawText(signatureTitle, {
-    x: 200,
-    y,
-    size: 20,
-    font,
-    color: rgb(0, 0, 0)
-  });
-  y -= 40;
-
-  // 6) رسم كل توقيع
-  const uniqueSelf = new Set();
-  for (const log of logs) {
-    if (log.signed_as_proxy) {
-      // اعرض كل proxy
-      if (y < 200) {
-        page = pdfDoc.addPage();
-        y = 750;
-        page.drawText(signatureTitle + ' (continued)', {
-          x: 200,
-          y,
-          size: 20,
-          font,
-          color: rgb(0, 0, 0)
-        });
-        y -= 40;
-      }
-      const label = `Signed by ${log.actual_signer} on behalf of ${log.original_user}`;
-      page.drawText(label, {
-        x: 50, y, size: 14, font, color: rgb(0, 0, 0)
-      });
-      y -= 25;
-      if (log.signature?.startsWith('data:image')) {
-        try {
-          const base64Data = log.signature.split(',')[1];
-          const imgBytes = Buffer.from(base64Data, 'base64');
-          const img = await pdfDoc.embedPng(imgBytes);
-          const dims = img.scale(0.4);
-          page.drawImage(img, {
-            x: 150,
-            y: y - dims.height + 10,
-            width: dims.width,
-            height: dims.height
-          });
-          y -= dims.height + 20;
-        } catch (err) {
-          y -= 20;
-        }
-      }
-      if (log.electronic_signature) {
-        try {
-          const stampPath = path.join(__dirname, '../e3teamdelc.png');
-          const stampBytes = fs.readFileSync(stampPath);
-          const stampImg = await pdfDoc.embedPng(stampBytes);
-          const dims = stampImg.scale(0.5);
-          page.drawImage(stampImg, {
-            x: 150,
-            y: y - dims.height + 10,
-            width: dims.width,
-            height: dims.height
-          });
-          y -= dims.height + 20;
-        } catch (err) {
-          y -= 20;
-        }
-      }
-      if (log.comments) {
-        page.drawText(`Comments: ${log.comments}`, {
-          x: 50, y, size: 12, font, color: rgb(0.3, 0.3, 0.3)
-        });
-        y -= 20;
-      }
-      page.drawLine({
-        start: { x: 50, y },
-        end:   { x: 550, y },
-        thickness: 1,
-        color: rgb(0.8, 0.8, 0.8)
-      });
-      y -= 30;
-    } else {
-      // self: اعرض فقط أول توقيع لكل شخص
-      if (!uniqueSelf.has(log.actual_signer)) {
-        uniqueSelf.add(log.actual_signer);
-        if (y < 200) {
-          page = pdfDoc.addPage();
-          y = 750;
-          page.drawText(signatureTitle + ' (continued)', {
-            x: 200,
-            y,
-            size: 20,
-            font,
-            color: rgb(0, 0, 0)
-          });
-          y -= 40;
-        }
-        const label = `Signed by ${log.actual_signer}`;
-        page.drawText(label, {
-          x: 50, y, size: 14, font, color: rgb(0, 0, 0)
-        });
-        y -= 25;
-        if (log.signature?.startsWith('data:image')) {
-          try {
-            const base64Data = log.signature.split(',')[1];
-            const imgBytes = Buffer.from(base64Data, 'base64');
-            const img = await pdfDoc.embedPng(imgBytes);
-            const dims = img.scale(0.4);
-            page.drawImage(img, {
-              x: 150,
-              y: y - dims.height + 10,
-              width: dims.width,
-              height: dims.height
-            });
-            y -= dims.height + 20;
-          } catch (err) {
-            y -= 20;
-          }
-        }
-        if (log.electronic_signature) {
-          try {
-            const stampPath = path.join(__dirname, '../e3teamdelc.png');
-            const stampBytes = fs.readFileSync(stampPath);
-            const stampImg = await pdfDoc.embedPng(stampBytes);
-            const dims = stampImg.scale(0.5);
-            page.drawImage(stampImg, {
-              x: 150,
-              y: y - dims.height + 10,
-              width: dims.width,
-              height: dims.height
-            });
-            y -= dims.height + 20;
-          } catch (err) {
-            y -= 20;
-          }
-        }
-        if (log.comments) {
-          page.drawText(`Comments: ${log.comments}`, {
-            x: 50, y, size: 12, font, color: rgb(0.3, 0.3, 0.3)
-          });
-          y -= 20;
-        }
-        page.drawLine({
-          start: { x: 50, y },
-          end:   { x: 550, y },
-          thickness: 1,
-          color: rgb(0.8, 0.8, 0.8)
-        });
-        y -= 30;
-      }
+  // تعريف خط Amiri العربي
+  const fonts = {
+    Amiri: {
+      normal: path.join(__dirname, '../../fonts/Amiri-Regular.ttf'),
+      bold: path.join(__dirname, '../../fonts/Amiri-Regular.ttf'),
+      italics: path.join(__dirname, '../../fonts/Amiri-Regular.ttf'),
+      bolditalics: path.join(__dirname, '../../fonts/Amiri-Regular.ttf')
     }
-  }
+  };
 
-  // 7) حفظ التعديلات
+  let printer;
   try {
-    const finalBytes = await pdfDoc.save();
-    fs.writeFileSync(fullPath, finalBytes);
-    console.log(`✅ PDF updated: ${fullPath}`);
+    printer = new PdfPrinter(fonts);
+  } catch (fontError) {
+    console.log('⚠️ Error with Amiri font, using default fonts');
+    printer = new PdfPrinter();
+  }
+
+
+  // 5) جلب اسم الملف لعرضه كعنوان
+  const [contentRows] = await db.execute(
+    `SELECT title FROM contents WHERE id = ?`,
+    [contentId]
+  );
+  const rawTitle = contentRows.length > 0 ? contentRows[0].title : '';
+  
+  // دالة مساعدة لتحليل العنوان حسب اللغة
+  const parseTitleByLang = (titleJson, lang = 'ar') => {
+    try {
+      const obj = JSON.parse(titleJson);
+      return obj[lang] || obj.ar || obj.en || '';
+    } catch {
+      return titleJson || '';
+    }
+  };
+  
+  let fileName = parseTitleByLang(rawTitle, 'ar') || `File ${contentId}`;
+  
+  // إزالة امتداد .pdf من اسم الملف إذا كان موجوداً
+  if (fileName.toLowerCase().endsWith('.pdf')) {
+    fileName = fileName.slice(0, -4);
+  }
+
+  // 6) إنشاء محتوى صفحة الاعتمادات باستخدام pdfmake
+  const approvalTableBody = [];
+  
+  // إضافة رأس الجدول
+  approvalTableBody.push([
+    { text: 'Approvals', style: 'tableHeader' },
+    { text: 'Name', style: 'tableHeader' },
+    { text: 'Position', style: 'tableHeader' },
+    { text: 'Approval Method', style: 'tableHeader' },
+    { text: 'Signature', style: 'tableHeader' },
+    { text: 'Date', style: 'tableHeader' }
+  ]);
+
+  // إضافة بيانات الاعتمادات
+  let rowIndex = 1;
+  const getSignatureCell = (log) => {
+    if (log.signature && log.signature.startsWith('data:image')) {
+      // صورة توقيع يدوي
+      return { image: log.signature, width: 40, height: 20, alignment: 'center' };
+    } else if (log.electronic_signature) {
+      // اعتماد إلكتروني: دائماً صورة الختم
+      return { image: electronicSealDataUrl, width: 40, height: 20, alignment: 'center' };
+    } else {
+      // لا يوجد توقيع
+      return { text: '✓', style: 'tableCell' };
+    }
+  };
+  for (const log of logs) {
+    // نوع الاعتماد
+    const approvalType = rowIndex === 1 ? 'Reviewed' : 
+                        rowIndex === logs.length ? 'Approver' : 'Reviewed';
+    
+    // طريقة الاعتماد
+    const approvalMethod = log.signature ? 'Hand Signature' : 
+                          log.electronic_signature ? 'Electronic Signature' : 'Not Specified';
+    
+    // التاريخ
+    const approvalDate = new Date(log.created_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
+    // إضافة صف الاعتماد مع معالجة النصوص العربية
+    approvalTableBody.push([
+      { text: approvalType, style: 'tableCell' },
+      { text: fixArabicOrder(log.actual_signer || 'N/A'), style: 'tableCell' },
+      { text: fixArabicOrder(log.signer_job_title || 'Not Specified'), style: 'tableCell' },
+      { text: approvalMethod, style: 'tableCell' },
+      getSignatureCell(log),
+      { text: approvalDate, style: 'tableCell' }
+    ]);
+
+    // إذا كان تفويض، أضف صف إضافي للمفوض الأصلي
+    if (log.signed_as_proxy && log.original_user) {
+      approvalTableBody.push([
+        { text: '(Proxy for)', style: 'proxyCell' },
+        { text: fixArabicOrder(log.original_user || 'N/A'), style: 'proxyCell' },
+        { text: fixArabicOrder(log.original_job_title || 'Not Specified'), style: 'proxyCell' },
+        { text: 'Delegated', style: 'proxyCell' },
+        { text: '-', style: 'proxyCell' },
+        { text: '-', style: 'proxyCell' }
+      ]);
+    }
+
+    rowIndex++;
+  }
+
+  // 7) إنشاء تعريف المستند باستخدام pdfmake
+  const docDefinition = {
+    pageSize: 'A4',
+    pageMargins: [40, 60, 40, 60],
+    defaultStyle: {
+      font: 'Amiri',
+      fontSize: 10
+    },
+    styles: {
+      title: {
+        fontSize: 18,
+        bold: true,
+        alignment: 'center',
+        margin: [0, 0, 0, 20]
+      },
+      tableHeader: {
+        bold: true,
+        fontSize: 9,
+        color: 'black',
+        alignment: 'center',
+        fillColor: '#e6e6e6'
+      },
+      tableCell: {
+        fontSize: 8,
+        alignment: 'center'
+      },
+      proxyCell: {
+        fontSize: 8,
+        alignment: 'center',
+        color: '#666666',
+        fillColor: '#f9f9f9'
+      }
+    },
+    content: [
+      // عنوان الملف مع معالجة النص العربي
+      {
+        text: fixArabicOrder(fileName),
+        style: 'title'
+      },
+      // جدول الاعتمادات
+      {
+        table: {
+          headerRows: 1,
+          widths: ['15%', '20%', '20%', '20%', '10%', '15%'],
+          body: approvalTableBody
+        },
+        layout: {
+          hLineWidth: function(i, node) {
+            return 1;
+          },
+          vLineWidth: function(i, node) {
+            return 1;
+          },
+          hLineColor: function(i, node) {
+            return '#000000';
+          },
+          vLineColor: function(i, node) {
+            return '#000000';
+          }
+        }
+      }
+    ]
+  };
+
+  // 8) إنشاء PDF جديد باستخدام pdfmake
+  try {
+    const approvalPdfDoc = printer.createPdfKitDocument(docDefinition);
+    const approvalPdfChunks = [];
+    
+    approvalPdfDoc.on('data', (chunk) => {
+      approvalPdfChunks.push(chunk);
+    });
+    
+    approvalPdfDoc.on('end', async () => {
+      try {
+        const approvalPdfBuffer = Buffer.concat(approvalPdfChunks);
+        
+        // 9) دمج صفحة الاعتمادات مع PDF الأصلي
+        const { PDFDocument } = require('pdf-lib');
+        const mergedPdf = await PDFDocument.create();
+        
+        // إضافة صفحة الاعتمادات
+        const approvalPdfDoc = await PDFDocument.load(approvalPdfBuffer);
+        const approvalPages = await mergedPdf.copyPages(approvalPdfDoc, approvalPdfDoc.getPageIndices());
+        approvalPages.forEach((page) => mergedPdf.addPage(page));
+        
+        // إضافة صفحات PDF الأصلي
+        const originalPdfDoc = await PDFDocument.load(originalPdfBytes);
+        const originalPages = await mergedPdf.copyPages(originalPdfDoc, originalPdfDoc.getPageIndices());
+        originalPages.forEach((page) => mergedPdf.addPage(page));
+        
+        // حفظ PDF المدمج
+        const finalPdfBytes = await mergedPdf.save();
+        fs.writeFileSync(fullPath, finalPdfBytes);
+        console.log(`✅ PDF updated with approval table using pdfmake: ${fullPath}`);
+      } catch (mergeError) {
+        console.error('❌ Error merging PDFs:', mergeError);
+        // في حالة فشل الدمج، احفظ صفحة الاعتمادات فقط
+        try {
+          fs.writeFileSync(fullPath, approvalPdfBuffer);
+          console.log(`✅ Saved approval page only: ${fullPath}`);
+        } catch (saveError) {
+          console.error('❌ Error saving approval page:', saveError);
+        }
+      }
+    });
+    
+    approvalPdfDoc.on('error', (error) => {
+      console.error('❌ Error in PDF generation:', error);
+    });
+    
+    approvalPdfDoc.end();
   } catch (err) {
-    console.error('❌ Error saving PDF:', err);
+    console.error('❌ Error creating approval PDF:', err);
   }
 }
+
 
 
 

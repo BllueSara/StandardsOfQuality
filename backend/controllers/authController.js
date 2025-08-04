@@ -27,16 +27,17 @@ const transporter = nodemailer.createTransport({
 });
 
 
+
 // 1) تسجيل مستخدم جديد
 const register = async (req, res) => {
   try {
-    const { username, email, password, department_id, role, employee_number } = req.body;
+    const { username, email, password, department_id, role, employee_number, job_title } = req.body;
 
     // 1) الحقول الأساسية
     if (!username || !email || !password ) {
       return res.status(400).json({
         status: 'error',
-        message: 'اسم المستخدم، البريد الإلكتروني، كلمة المرور   '
+        message: 'اسم المستخدم، البريد الإلكتروني، كلمة المرور مطلوبة'
       });
     }
 
@@ -81,24 +82,32 @@ const register = async (req, res) => {
       }
     }
 
-    // 6) تشفير كلمة المرور
+    // 6) تحقق من وجود المسمى الوظيفي للمستخدمين غير admin
+    if (username.toLowerCase() !== 'admin' && !job_title) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'المسمى الوظيفي مطلوب'
+      });
+    }
+
+    // 7) تشفير كلمة المرور
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 7) دور المستخدم
+    // 8) دور المستخدم
     const userRole = role || 'user';
 
-    // 8) إدخال المستخدم
+    // 9) إدخال المستخدم
     const [result] = await db.execute(
       `INSERT INTO users 
-        (username, email, employee_number, password, department_id, role, created_at, updated_at)
-       VALUES (?,       ?,     ?,                 ?,        ?,             ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [username, email, employee_number, hashedPassword, department_id || null, userRole]
+        (username, email, employee_number, job_title, password, department_id, role, created_at, updated_at)
+       VALUES (?,       ?,     ?,                 ?,        ?,             ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [username, email, employee_number, job_title, hashedPassword, department_id || null, userRole]
     );
     const userId = result.insertId;
 
-    // 9) إنشاء JWT
+    // 10) إنشاء JWT
     const token = jwt.sign(
-      { id: userId, username, email, employee_number, department_id, role: userRole },
+      { id: userId, username, email, employee_number, job_title, department_id, role: userRole },
       process.env.JWT_SECRET
     );
 
@@ -115,12 +124,12 @@ JSON.stringify(logDescription),      'user',
     );
     
 
-    // 10) ردّ العميل
+    // 11) ردّ العميل
     res.status(201).json({
       status: 'success',
       message: 'تم إنشاء الحساب وتسجيل الدخول تلقائياً',
       token,
-      user: { id: userId, username, email, employee_number, department_id, role: userRole }
+      user: { id: userId, username, email, employee_number, job_title, department_id, role: userRole }
     });
 
   } catch (error) {
@@ -145,7 +154,7 @@ const login = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT 
          u.id, u.username, u.email, u.password,
-         u.employee_number,
+         u.employee_number, u.job_title,
          u.department_id, u.role,
          u.status,
          d.name AS department_name
@@ -189,9 +198,9 @@ const departmentName = departmentRows[0]?.name || '';
         username: user.username,
         email: user.email,
         employee_number: user.employee_number,
+        job_title: user.job_title,
         department_id: user.department_id,
-            department_name: departmentName, // ✅ أضف اسم القسم هنا
-
+        department_name: departmentName, // ✅ أضف اسم القسم هنا
         role: user.role
       },
       process.env.JWT_SECRET
@@ -222,6 +231,7 @@ const departmentName = departmentRows[0]?.name || '';
         username: user.username,
         email: user.email,
         employee_number: user.employee_number,
+        job_title: user.job_title,
         department_id: user.department_id,
         department_name: user.department_name,
         role: user.role
@@ -233,6 +243,7 @@ const departmentName = departmentRows[0]?.name || '';
     res.status(500).json({ message: 'خطأ في تسجيل الدخول' });
   }
 };
+
 
 
 // 3) نسيان كلمة المرور
