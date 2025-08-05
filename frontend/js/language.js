@@ -19,6 +19,7 @@ const translations = {
         'approvals': 'الإعتمادات',
         'permissions': 'الصلاحيات',
         'comittees': 'اللجان والواجهات',
+        'select-section': 'تحديد القسم',
         'click-to-enter': 'اضغط للدخول',
         'internal-transfer': 'التحويل الداخلي',
         'internal-transfer-desc': 'قراءة التحويلات الداخلية',

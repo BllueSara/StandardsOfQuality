@@ -1460,9 +1460,127 @@ function initializeAddJobTitleFromUserModal() {
   });
 }
 
+// =====================
+// Section Permissions Functionality
+// =====================
+
+// تعريف الصلاحيات لكل قسم مع الاستثناءات
+const sectionPermissions = {
+  general: [
+    'view_logs',
+    'view_dashboard'
+  ],
+  departments: [
+    'add_section',
+    'edit_section', 
+    'delete_section'
+    // استثناء: view_own_department
+  ],
+  folder: [
+    'add_folder',
+    'add_folder_name',
+    'edit_folder',
+    'edit_folder_name',
+    'delete_folder',
+    'delete_folder_name'
+  ],
+  content: [
+    'add_content',
+    'add_many_content',
+    'delete_content'
+  ],
+  approvals: [
+    'transfer_credits'
+  ],
+  signature: [
+    'sign',
+    'sign_on_behalf',
+    'delegate_all',
+    'revoke_delegations'
+  ],
+  accounts: [
+    'add_user',
+    'change_status',
+    'change_role',
+    'delete_user',
+    'change_password',
+    'change_user_info'
+  ]
+};
+
+// تهيئة أزرار تحديد الأقسام
+function initializeSectionButtons() {
+  const sectionButtons = document.querySelectorAll('.btn-select-section');
+  
+  sectionButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const section = button.dataset.section;
+      selectSectionPermissions(section);
+    });
+  });
+}
+
+// تحديد صلاحيات قسم معين
+async function selectSectionPermissions(section) {
+  if (!selectedUserId) {
+    showToast(getTranslation('please-select-user') || 'الرجاء اختيار مستخدم أولاً', 'warning');
+    return;
+  }
+
+  const permissions = sectionPermissions[section];
+  if (!permissions) {
+    showToast('قسم غير معروف', 'error');
+    return;
+  }
+
+  try {
+    // تحديد جميع الصلاحيات في القسم
+    const promises = permissions.map(permission => 
+      fetchJSON(`${apiBase}/users/${selectedUserId}/permissions/${encodeURIComponent(permission)}`, {
+        method: 'POST'
+      })
+    );
+
+    await Promise.all(promises);
+
+    // تحديث الواجهة
+    permissions.forEach(permission => {
+      const checkbox = document.querySelector(`label.switch[data-key="${permission}"] input[type="checkbox"]`);
+      if (checkbox) {
+        checkbox.checked = true;
+      }
+    });
+
+    showToast(`تم تحديد جميع صلاحيات قسم ${getSectionName(section)}`, 'success');
+  } catch (error) {
+    console.error('خطأ في تحديد صلاحيات القسم:', error);
+    showToast('فشل في تحديد صلاحيات القسم: ' + error.message, 'error');
+  }
+}
+
+// الحصول على اسم القسم باللغة الحالية
+function getSectionName(section) {
+  const sectionNames = {
+    general: getTranslation('general-group') || 'عامّ',
+    departments: getTranslation('departments-group') || 'الأقسام',
+    folder: getTranslation('folder-group') || 'المجلد',
+    content: getTranslation('content-group') || 'المحتوى',
+    approvals: getTranslation('approvals-group') || 'الاعتمادات',
+    signature: getTranslation('signature-group') || 'التوقيع',
+    accounts: getTranslation('accounts-group') || 'الحسابات'
+  };
+  
+  return sectionNames[section] || section;
+}
+
 // Initialize everything when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!authToken) return console.log('لا يوجد توكن؛ الرجاء تسجيل الدخول');
+  await loadMyPermissions();
+
+  loadUsers();
   initializeJobTitlesManagement();
   initializeJobTitlesForAddUser();
   initializeAddJobTitleFromUserModal();
+  initializeSectionButtons();
 });
