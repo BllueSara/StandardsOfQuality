@@ -36,6 +36,7 @@ const contentRouter          = require('./routers/contentRoutes');
 const approvalRouter         = require('./routers/approvalRoutes');
 const contentController = require('./controllers/contentController');
 const dashboardRouter = require('./routers/dashboardRoutes');
+const jobTitlesRoutes = require('./routers/jobTitles');
 
 app.use(cors());
 app.use(express.json());
@@ -65,6 +66,8 @@ app.use('/api/contents', contentRouter);
 // approval
 app.use('/api/approvals', approvalRouter);
 app.put('/api/contents/:id/approval-sequence', contentController.updateContentApprovalSequence);
+app.use('/api/job-titles', jobTitlesRoutes);
+
 // اختبار الاتصال
 db.connect((err) => {
   if (err) {

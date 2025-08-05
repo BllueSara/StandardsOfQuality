@@ -31,7 +31,7 @@ const transporter = nodemailer.createTransport({
 // 1) تسجيل مستخدم جديد
 const register = async (req, res) => {
   try {
-    const { first_name, second_name, third_name, last_name, username, email, password, department_id, role, employee_number, job_title } = req.body;
+    const { first_name, second_name, third_name, last_name, username, email, password, department_id, role, employee_number, job_title_id } = req.body;
 
     // 1) الحقول الأساسية
     if (!username || !first_name || !last_name || !email || !password ) {
@@ -87,7 +87,7 @@ const register = async (req, res) => {
     const fullName = names.join(' ');
 
     // 7) تحقق من وجود المسمى الوظيفي للمستخدمين غير admin
-    if (username.toLowerCase() !== 'admin' && !job_title) {
+    if (username.toLowerCase() !== 'admin' && !job_title_id) {
       return res.status(400).json({
         status: 'error',
         message: 'المسمى الوظيفي مطلوب'
@@ -103,15 +103,15 @@ const register = async (req, res) => {
         // 9) إدخال المستخدم
     const [result] = await db.execute(
       `INSERT INTO users 
-         (username, email, employee_number, job_title, password, department_id, role, first_name, second_name, third_name, last_name, created_at, updated_at)
+         (username, email, employee_number, job_title_id, password, department_id, role, first_name, second_name, third_name, last_name, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [username, email, employee_number, job_title, hashedPassword, department_id || null, userRole, first_name, second_name || null, third_name || null, last_name]
+      [username, email, employee_number, job_title_id, hashedPassword, department_id || null, userRole, first_name, second_name || null, third_name || null, last_name]
     );
     const userId = result.insertId;
 
     // 10) إنشاء JWT
     const token = jwt.sign(
-      { id: userId, username, email, employee_number, job_title, department_id, role: userRole },
+      { id: userId, username, email, employee_number, job_title_id, department_id, role: userRole },
       process.env.JWT_SECRET
     );
 
@@ -133,7 +133,7 @@ JSON.stringify(logDescription),      'user',
       status: 'success',
       message: 'تم إنشاء الحساب وتسجيل الدخول تلقائياً',
       token,
-      user: { id: userId, username, email, employee_number, job_title, department_id, role: userRole, first_name, second_name, third_name, last_name }
+              user: { id: userId, username, email, employee_number, job_title_id, department_id, role: userRole, first_name, second_name, third_name, last_name }
     });
 
   } catch (error) {
@@ -158,12 +158,14 @@ const login = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT 
          u.id, u.username, u.email, u.password,
-         u.employee_number, u.job_title,
+         u.employee_number, u.job_title_id,
          u.department_id, u.role,
          u.status,
-         d.name AS department_name
+         d.name AS department_name,
+         jt.title AS job_title
        FROM users u
        LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN job_titles jt ON u.job_title_id = jt.id
        WHERE u.username = ? OR u.email = ? OR u.employee_number = ?`,
       [identifier, identifier, identifier]
     );
@@ -202,6 +204,7 @@ const departmentName = departmentRows[0]?.name || '';
         username: user.username,
         email: user.email,
         employee_number: user.employee_number,
+        job_title_id: user.job_title_id,
         job_title: user.job_title,
         department_id: user.department_id,
         department_name: departmentName, // ✅ أضف اسم القسم هنا
@@ -235,6 +238,7 @@ const departmentName = departmentRows[0]?.name || '';
         username: user.username,
         email: user.email,
         employee_number: user.employee_number,
+        job_title_id: user.job_title_id,
         job_title: user.job_title,
         department_id: user.department_id,
         department_name: user.department_name,

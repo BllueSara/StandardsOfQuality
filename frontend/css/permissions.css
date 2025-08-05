@@ -1235,3 +1235,175 @@ body[lang="en"] .toast-container,
     left: auto !important;
     right: 20px !important;
 }
+
+/* Job Titles Management Styles */
+.job-titles-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.job-titles-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.job-title-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.job-title-item:hover {
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.job-title-name {
+  font-weight: 500;
+  color: #495057;
+  flex: 1;
+}
+
+.job-title-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.job-title-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.job-title-actions .btn-edit {
+  background-color: #007bff;
+  color: white;
+}
+
+.job-title-actions .btn-edit:hover {
+  background-color: #0056b3;
+}
+
+.job-title-actions .btn-delete {
+  background-color: #dc3545;
+  color: white;
+}
+
+.job-title-actions .btn-delete:hover {
+  background-color: #c82333;
+}
+
+.job-title-actions .btn-delete:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Modal Overlay for Add Job Title */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-overlay .modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-overlay .modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.modal-overlay .modal-content hr {
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  margin: 20px 0;
+}
+
+.modal-overlay .modal-body {
+  margin-bottom: 20px;
+}
+
+.modal-overlay .modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modal-overlay .modal-buttons button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay .modal-buttons .btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.modal-overlay .modal-buttons .btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.modal-overlay .modal-buttons .btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.modal-overlay .modal-buttons .btn-secondary:hover {
+  background-color: #545b62;
+}
+
+/* Responsive Design for Job Titles */
+@media (max-width: 768px) {
+  .job-title-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .job-title-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .modal-overlay .modal-content {
+    width: 95%;
+    padding: 20px;
+  }
+  
+  .modal-overlay .modal-buttons {
+    flex-direction: column;
+  }
+}

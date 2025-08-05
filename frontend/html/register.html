@@ -154,15 +154,15 @@
                 <div class="form-group">
                     <label for="reg-job-title" data-translate="job-title">المسمى الوظيفي</label>
                     <div class="input-icon-wrapper">
-                        <input
-                            type="text"
+                        <select
                             id="reg-job-title"
                             name="job_title"
-                            data-placeholder="enter-job-title"
-                            placeholder="أدخل المسمى الوظيفي"
                             required
                         >
-                        <img src="../images/person.png" class="icon">
+                            <option value="" data-translate="select-job-title">اختر المسمى الوظيفي</option>
+                            <option value="__ADD_NEW_JOB_TITLE__" data-translate="add-new-job-title">إضافة مسمى وظيفي جديد</option>
+                        </select>
+                        <img src="../images/arrwo.png" alt="أيقونة سهم" class="icon select-arrow-icon">
                     </div>
                 </div>
 
@@ -229,7 +229,23 @@
             </div>
         </div>
     </div>
-
+    <!-- Add New Job Title Modal -->
+    <div id="addJobTitleModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 data-translate="add-job-title">إضافة مسمى وظيفي</h3>
+            <hr>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="jobTitleName" data-translate="job-title-name">المسمى الوظيفي</label>
+                    <input type="text" id="jobTitleName" placeholder="أدخل المسمى الوظيفي">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-primary" id="saveAddJobTitle" data-translate="save">حفظ</button>
+                <button class="btn-secondary" id="cancelAddJobTitle" data-translate="cancel">إلغاء</button>
+            </div>
+        </div>
+    </div>
     <script src="../js/register.js"></script>
     <script src="../js/language.js"></script>
 
@@ -245,5 +261,6 @@
             }, 100);
         });
     </script>
+
 </body>
 </html> 

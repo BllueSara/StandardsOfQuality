@@ -52,7 +52,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const departmentNameInput = document.getElementById('departmentName');
     const departmentImageInput = document.getElementById('departmentImage');
     const departmentNameArInput = document.getElementById('departmentNameAr');
-const departmentNameEnInput = document.getElementById('departmentNameEn');
+    const departmentNameEnInput = document.getElementById('departmentNameEn');
+
+    // عناصر النموذج المنبثق لإضافة مسمى وظيفي
+    const addJobTitleModal = document.getElementById('addJobTitleModal');
+    const saveAddJobTitleBtn = document.getElementById('saveAddJobTitle');
+    const cancelAddJobTitleBtn = document.getElementById('cancelAddJobTitle');
+    const jobTitleNameInput = document.getElementById('jobTitleName');
+    const jobTitleSelect = document.getElementById('reg-job-title');
 
 
     // دالة لفتح المودال
@@ -63,9 +70,18 @@ const departmentNameEnInput = document.getElementById('departmentNameEn');
     // دالة لإغلاق المودال
 function closeModal(modal) {
     modal.style.display = 'none';
-    departmentNameArInput.value = '';
-    departmentNameEnInput.value = '';
-    departmentImageInput.value = '';
+    
+    // إعادة ضبط حقول مودال القسم
+    if (modal === addDepartmentModal) {
+        departmentNameArInput.value = '';
+        departmentNameEnInput.value = '';
+        departmentImageInput.value = '';
+    }
+    
+    // إعادة ضبط حقول مودال المسمى الوظيفي
+    if (modal === addJobTitleModal) {
+        jobTitleNameInput.value = '';
+    }
 }
 
 
@@ -258,6 +274,135 @@ formData.append('image', imageFile);
         selectArrowIcon.style.display = 'block'; // أو أي نمط مناسب لجعله مرئياً
     }
 
+    // دالة لجلب المسميات الوظيفية من الباك اند وتعبئة قائمة الاختيار
+    async function fetchJobTitles() {
+        try {
+            const response = await fetch('http://localhost:3006/api/job-titles', {
+                method: 'GET',
+                headers: { 
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API Error:', errorText);
+                throw new Error(`فشل جلب المسميات الوظيفية: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            
+            // Handle both array and object with data property
+            const jobTitles = Array.isArray(result) ? result : (result.data || []);
+
+            if (!Array.isArray(jobTitles)) {
+                throw new Error('الرد ليس مصفوفة مسميات وظيفية');
+            }
+
+            // حدّد اللغة الحالية:
+            const lang = localStorage.getItem('language') || 'ar';
+            // نص الخيار الافتراضي:
+            const defaultText = lang === 'ar' ? 'اختر المسمى الوظيفي' : 'Select Job Title';
+            jobTitleSelect.innerHTML = `<option value="">${defaultText}</option>`;
+
+            jobTitles.forEach(jobTitle => {
+                const opt = document.createElement('option');
+                opt.value = jobTitle.id;
+                opt.textContent = jobTitle.title;
+                jobTitleSelect.appendChild(opt);
+            });
+
+            // خيار "إضافة جديد"
+            const addNewOption = document.createElement('option');
+            addNewOption.value = '__ADD_NEW_JOB_TITLE__';
+            addNewOption.textContent = lang === 'ar' ? 'إضافة مسمى وظيفي جديد' : 'Add New Job Title';
+            jobTitleSelect.appendChild(addNewOption);
+
+            console.log('تم تحميل المسميات الوظيفية بنجاح:', jobTitles.length);
+
+        } catch (err) {
+            console.error('خطأ في جلب المسميات الوظيفية:', err);
+            showToast(err.message || 'حدث خطأ أثناء جلب المسميات الوظيفية', 'error');
+        }
+    }
+
+    // استدعاء الدالة عند تحميل الصفحة
+    fetchJobTitles();
+
+    // إعادة تعبئة القائمة عند تغيير اللغة
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'language') {
+            fetchJobTitles();
+        }
+    });
+
+    // معالجة حدث التغيير على القائمة المنسدلة للمسمى الوظيفي
+    jobTitleSelect.addEventListener('change', function() {
+        console.log('Job title select changed. New value:', this.value);
+        if (this.value === '__ADD_NEW_JOB_TITLE__') {
+            console.log('__ADD_NEW_JOB_TITLE__ selected. Attempting to open modal...');
+            openModal(addJobTitleModal);
+            // إعادة ضبط القائمة المنسدلة إلى "اختر المسمى الوظيفي" بعد فتح المودال
+            this.value = '';
+            console.log('Modal should be open and dropdown reset.');
+        }
+    });
+
+    // معالجة حفظ المسمى الوظيفي الجديد من المودال
+    saveAddJobTitleBtn.addEventListener('click', async function () {
+        const jobTitleName = jobTitleNameInput.value.trim();
+
+        if (!jobTitleName) {
+            showToast('الرجاء إدخال المسمى الوظيفي', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:3006/api/job-titles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: jobTitleName })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast(data.message);
+                closeModal(addJobTitleModal);
+                await fetchJobTitles();
+
+                // تحديد المسمى الوظيفي الجديد
+                const options = jobTitleSelect.options;
+                for (let i = 0; i < options.length; i++) {
+                    const opt = options[i];
+                    if (opt.textContent.trim() === jobTitleName) {
+                        jobTitleSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            } else {
+                showToast(data.message || 'حدث خطأ عند إضافة المسمى الوظيفي.', 'error');
+            }
+        } catch (error) {
+            console.error('خطأ في إضافة المسمى الوظيفي:', error);
+            showToast('حدث خطأ في الاتصال.', 'error');
+        }
+    });
+
+    // معالجة إلغاء إضافة مسمى وظيفي من المودال
+    cancelAddJobTitleBtn.addEventListener('click', () => {
+        closeModal(addJobTitleModal);
+        jobTitleSelect.value = ''; // إعادة ضبط القائمة المنسدلة
+    });
+
+    // إغلاق المودال عند النقر خارج المحتوى
+    addJobTitleModal.addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeModal(addJobTitleModal);
+            jobTitleSelect.value = ''; // إعادة ضبط القائمة المنسدلة
+        }
+    });
+
 registerForm.addEventListener('submit', async function(e) {
   e.preventDefault();
   
@@ -278,7 +423,7 @@ registerForm.addEventListener('submit', async function(e) {
     password: document.getElementById('reg-password').value,
     department_id: departmentSelect.value,
     employee_number: document.getElementById('reg-employee').value.trim(),
-    job_title: document.getElementById('reg-job-title').value.trim()
+    job_title_id: document.getElementById('reg-job-title').value.trim()
   };
 
   // تحقق من الأسماء المطلوبة
@@ -309,8 +454,8 @@ registerForm.addEventListener('submit', async function(e) {
   }
 
   // **تحقق من وجود المسمى الوظيفي**
-  if (username !== 'admin' && !formData.job_title) {
-    showToast('الرجاء إدخال المسمى الوظيفي.', 'warning');
+  if (username !== 'admin' && !formData.job_title_id) {
+    showToast('الرجاء اختيار المسمى الوظيفي.', 'warning');
     return;
   }
 

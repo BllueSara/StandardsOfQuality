@@ -725,7 +725,7 @@ if (btnSaveUser) {
       password: document.getElementById('password').value,
       role: document.getElementById('role')?.value || 'user',
       employeeNumber: document.getElementById('employeeNumber').value,
-      jobTitle: document.getElementById('jobTitle').value
+      job_title_id: document.getElementById('jobTitle').value
     };
 
     console.log('🚀 departmentId:', data.departmentId);
@@ -867,7 +867,6 @@ async function showEditUserInfoButton(u) {
   }
 }
 
-
 // عند الضغط على زر تعديل معلومات المستخدم
 if (btnEditUserInfo) {
   btnEditUserInfo.addEventListener('click', async () => {
@@ -893,14 +892,79 @@ if (btnEditUserInfo) {
     editUsername.value = u.username || '';
     
     editEmployeeNumber.value = u.employee_number || '';
-    editJobTitle.value = u.job_title || '';
+    // جلب المسميات الوظيفية وتعبئة الدروب داون
+    await fetchJobTitlesForEditModal(u.job_title_id, u.job_title);
     editEmail.value = u.email || '';
     editUserRole = u.role || null;
     
     // جلب الأقسام وتعبئة الدروب داون
     await fetchDepartmentsForEditModal(u.departmentId, u.departmentName);
+    
+    // Handle "Add New Job Title" selection in edit modal
+    editJobTitle.addEventListener('change', function() {
+      if (this.value === '__ADD_NEW_JOB_TITLE__') {
+        this.value = '';
+        document.getElementById('addJobTitleModal').style.display = 'flex';
+      }
+    });
+    
     editUserModal.style.display = 'flex';
   });
+}
+
+// دالة لجلب المسميات الوظيفية وتعبئة الدروب داون مع اختيار المسمى الحالي
+async function fetchJobTitlesForEditModal(selectedId, selectedTitle) {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('لا يوجد توكن مصادقة');
+    }
+
+    const response = await fetch(`${apiBase}/job-titles`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🚨 Job Titles API error (edit modal):', response.status, errorText);
+      throw new Error(`فشل في جلب المسميات الوظيفية (${response.status})`);
+    }
+
+    const result = await response.json();
+    
+    // Handle both array and object with data property
+    const jobTitles = Array.isArray(result) ? result : (result.data || []);
+    
+    if (!Array.isArray(jobTitles)) {
+      console.error('🚨 Invalid job titles response format (edit modal):', result);
+      throw new Error('الرد ليس مصفوفة مسميات وظيفية');
+    }
+    
+    const lang = localStorage.getItem('language') || 'ar';
+    const selectText = lang === 'ar' ? 'اختر المسمى الوظيفي' : 'Select Job Title';
+    editJobTitle.innerHTML = `<option value="">${selectText}</option>`;
+    
+    jobTitles.forEach(jobTitle => {
+      const option = document.createElement('option');
+      option.value = jobTitle.id;
+      option.textContent = jobTitle.title;
+      if (selectedId && Number(jobTitle.id) === Number(selectedId)) {
+        option.selected = true;
+      }
+      editJobTitle.appendChild(option);
+    });
+    
+    // Add "Add New Job Title" option
+    const addNewOption = document.createElement('option');
+    addNewOption.value = '__ADD_NEW_JOB_TITLE__';
+    addNewOption.textContent = getTranslation('add-new-job-title');
+    editJobTitle.appendChild(addNewOption);
+  } catch (error) {
+    console.error('❌ Error fetching job titles for edit modal:', error);
+    showToast('فشل في جلب المسميات الوظيفية: ' + error.message, 'error');
+  }
 }
 // دالة لجلب الأقسام وتعبئة الدروب داون مع اختيار القسم الحالي
 async function fetchDepartmentsForEditModal(selectedId, selectedName) {
@@ -988,7 +1052,7 @@ if (btnSaveEditUser) {
       third_name: thirdName,
       last_name: lastName,
       employee_number: editEmployeeNumber.value,
-      job_title: editJobTitle.value,
+      job_title_id: editJobTitle.value,
       departmentId: editDepartment.value,
       email: editEmail.value,
       role: editUserRole
@@ -1100,3 +1164,305 @@ async function openRevokeDelegationsPopup() {
     }
   };
 }
+
+// Job Titles Management Functions
+let currentEditingJobTitleId = null;
+
+// Initialize job titles management
+function initializeJobTitlesManagement() {
+  const btnManageJobTitles = document.getElementById('btn-manage-job-titles');
+  const btnAddJobTitle = document.getElementById('btn-add-job-title');
+  const cancelJobTitles = document.getElementById('cancelJobTitles');
+  const saveJobTitle = document.getElementById('saveJobTitle');
+  const cancelAddEditJobTitle = document.getElementById('cancelAddEditJobTitle');
+  const jobTitleName = document.getElementById('jobTitleName');
+  const addEditJobTitleTitle = document.getElementById('addEditJobTitleTitle');
+
+  // Open job titles management modal
+  btnManageJobTitles.addEventListener('click', openJobTitlesModal);
+
+  // Close job titles management modal
+  cancelJobTitles.addEventListener('click', () => {
+    document.getElementById('jobTitlesModal').style.display = 'none';
+  });
+
+  // Add new job title button
+  btnAddJobTitle.addEventListener('click', () => {
+    currentEditingJobTitleId = null;
+    jobTitleName.value = '';
+    addEditJobTitleTitle.textContent = getTranslation('add-job-title');
+    document.getElementById('addEditJobTitleModal').style.display = 'flex';
+  });
+
+  // Save job title
+  saveJobTitle.addEventListener('click', saveJobTitleHandler);
+
+  // Cancel add/edit job title
+  cancelAddEditJobTitle.addEventListener('click', () => {
+    document.getElementById('addEditJobTitleModal').style.display = 'none';
+  });
+
+  // Close modal when clicking outside
+  window.addEventListener('click', (event) => {
+    const jobTitlesModal = document.getElementById('jobTitlesModal');
+    const addEditJobTitleModal = document.getElementById('addEditJobTitleModal');
+    if (event.target === jobTitlesModal) {
+      jobTitlesModal.style.display = 'none';
+    }
+    if (event.target === addEditJobTitleModal) {
+      addEditJobTitleModal.style.display = 'none';
+    }
+  });
+}
+
+// Open job titles management modal
+async function openJobTitlesModal() {
+  document.getElementById('jobTitlesModal').style.display = 'flex';
+  await loadJobTitles();
+}
+
+// Load job titles
+async function loadJobTitles() {
+  try {
+    const response = await fetch(`${apiBase}/job-titles`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      renderJobTitlesList(data.data);
+    } else {
+      showToast(data.message || getTranslation('error-occurred'), 'error');
+    }
+  } catch (error) {
+    console.error('Error loading job titles:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Render job titles list
+function renderJobTitlesList(jobTitles) {
+  const jobTitlesList = document.getElementById('jobTitlesList');
+  
+  if (jobTitles.length === 0) {
+    jobTitlesList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">لا توجد مسميات وظيفية</div>';
+    return;
+  }
+
+  jobTitlesList.innerHTML = jobTitles.map(jobTitle => `
+    <div class="job-title-item">
+      <div class="job-title-name">${jobTitle.title}</div>
+      <div class="job-title-actions">
+        <button class="btn-edit" onclick="editJobTitleHandler(${jobTitle.id}, '${jobTitle.title}')">
+          <i class="fas fa-edit"></i> ${getTranslation('edit') || 'تعديل'}
+        </button>
+        <button class="btn-delete" onclick="deleteJobTitle(${jobTitle.id})">
+          <i class="fas fa-trash"></i> ${getTranslation('delete') || 'حذف'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Edit job title
+function editJobTitleHandler(id, title) {
+  currentEditingJobTitleId = id;
+  document.getElementById('jobTitleName').value = title;
+  document.getElementById('addEditJobTitleTitle').textContent = getTranslation('edit-job-title');
+  document.getElementById('addEditJobTitleModal').style.display = 'flex';
+}
+
+// Delete job title
+async function deleteJobTitle(id) {
+  if (!confirm(getTranslation('confirm-delete-job-title'))) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/job-titles/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      showToast(getTranslation('job-title-deleted'), 'success');
+      await loadJobTitles();
+    } else {
+      showToast(data.message || getTranslation('cannot-delete-job-title'), 'error');
+    }
+  } catch (error) {
+    console.error('Error deleting job title:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Save job title handler
+async function saveJobTitleHandler() {
+  const jobTitleName = document.getElementById('jobTitleName').value.trim();
+  
+  if (!jobTitleName) {
+    showToast(getTranslation('enter-job-title'), 'warning');
+    return;
+  }
+
+  try {
+    const url = currentEditingJobTitleId 
+      ? `${apiBase}/job-titles/${currentEditingJobTitleId}`
+      : `${apiBase}/job-titles`;
+    
+    const method = currentEditingJobTitleId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ title: jobTitleName })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showToast(
+        currentEditingJobTitleId 
+          ? getTranslation('job-title-updated')
+          : getTranslation('job-title-added'), 
+        'success'
+      );
+      document.getElementById('addEditJobTitleModal').style.display = 'none';
+      await loadJobTitles();
+    } else {
+      showToast(data.message || getTranslation('error-occurred'), 'error');
+    }
+  } catch (error) {
+    console.error('Error saving job title:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Load job titles for dropdown
+async function loadJobTitlesForDropdown(selectElement, selectedValue = '') {
+  try {
+    const response = await fetch(`${apiBase}/job-titles`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      // Clear existing options except the first one
+      selectElement.innerHTML = '<option value="" data-translate="select-job-title">اختر المسمى الوظيفي</option>';
+      
+      // Add job titles
+      data.data.forEach(jobTitle => {
+        const option = document.createElement('option');
+        option.value = jobTitle.id;
+        option.textContent = jobTitle.title;
+        if (jobTitle.id.toString() === selectedValue.toString()) {
+          option.selected = true;
+        }
+        selectElement.appendChild(option);
+      });
+      
+      // Add "Add New Job Title" option
+      const addNewOption = document.createElement('option');
+      addNewOption.value = '__ADD_NEW_JOB_TITLE__';
+      addNewOption.textContent = getTranslation('add-new-job-title');
+      selectElement.appendChild(addNewOption);
+    }
+  } catch (error) {
+    console.error('Error loading job titles for dropdown:', error);
+  }
+}
+
+// Initialize job titles for add user modal
+function initializeJobTitlesForAddUser() {
+  const jobTitleSelect = document.getElementById('jobTitle');
+  
+  // Load job titles when modal opens
+  btnAddUser.addEventListener('click', async () => {
+    await loadJobTitlesForDropdown(jobTitleSelect);
+  });
+  
+  // Handle "Add New Job Title" selection
+  jobTitleSelect.addEventListener('change', function() {
+    if (this.value === '__ADD_NEW_JOB_TITLE__') {
+      this.value = '';
+      document.getElementById('addJobTitleModal').style.display = 'flex';
+    }
+  });
+}
+
+// Handle add new job title from add user modal
+function initializeAddJobTitleFromUserModal() {
+  const saveAddJobTitle = document.getElementById('saveAddJobTitle');
+  const cancelAddJobTitle = document.getElementById('cancelAddJobTitle');
+  const jobTitleNameForUser = document.getElementById('jobTitleNameForUser');
+  
+  saveAddJobTitle.addEventListener('click', async () => {
+    const title = jobTitleNameForUser.value.trim();
+    
+    if (!title) {
+      showToast(getTranslation('enter-job-title'), 'warning');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${apiBase}/job-titles`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast(getTranslation('job-title-added'), 'success');
+        document.getElementById('addJobTitleModal').style.display = 'none';
+        jobTitleNameForUser.value = '';
+        
+        // Refresh job titles dropdowns
+        await loadJobTitlesForDropdown(document.getElementById('jobTitle'));
+        await fetchJobTitlesForEditModal('', ''); // Refresh edit modal dropdown
+        
+        // Select the newly added job title in the active modal
+        const activeModal = document.getElementById('addUserModal').style.display === 'flex' ? 'addUserModal' : 'editUserModal';
+        if (activeModal === 'addUserModal') {
+          document.getElementById('jobTitle').value = data.data.id;
+        } else {
+          document.getElementById('editJobTitle').value = data.data.id;
+        }
+      } else {
+        showToast(data.message || getTranslation('error-occurred'), 'error');
+      }
+    } catch (error) {
+      console.error('Error adding job title:', error);
+      showToast(getTranslation('error-occurred'), 'error');
+    }
+  });
+  
+  cancelAddJobTitle.addEventListener('click', () => {
+    document.getElementById('addJobTitleModal').style.display = 'none';
+    jobTitleNameForUser.value = '';
+  });
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', (event) => {
+    const modal = document.getElementById('addJobTitleModal');
+    if (event.target === modal) {
+      modal.style.display = 'none';
+      jobTitleNameForUser.value = '';
+    }
+  });
+}
+
+// Initialize everything when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  initializeJobTitlesManagement();
+  initializeJobTitlesForAddUser();
+  initializeAddJobTitleFromUserModal();
+});

@@ -59,6 +59,8 @@
         </div>
         <button class="add-user-btn" id="add-user-btn"><i class="fas fa-user-plus"></i><span data-translate="add-user">إضافة مستخدم جديد</span></button>
         <button class="btn-primary" id="btn-revoke-files" style="margin-top: 10px; display: none;"><i class="fas fa-file-export"></i> <span>سحب الملفات</span></button>
+                <button class="btn-primary" id="btn-manage-job-titles" style="margin-top: 10px;"><i class="fas fa-briefcase"></i><span data-translate="manage-job-titles">إدارة المسميات الوظيفية</span></button>
+
         <div class="user-list" id="user-list">
           <!-- سيتم تحميل المستخدمين هنا ديناميكياً -->
         </div>
@@ -574,7 +576,10 @@
                     </div>
                     <div class="form-group">
                         <label for="jobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
-                        <input type="text" id="jobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
+                        <select id="jobTitle" required>
+                            <option value="" data-translate="select-job-title">اختر المسمى الوظيفي</option>
+                            <option value="__ADD_NEW_JOB_TITLE__" data-translate="add-new-job-title">إضافة مسمى وظيفي جديد</option>
+                        </select>
                     </div>
                 </div>
 
@@ -655,8 +660,10 @@
           <input type="text" id="editEmployeeNumber" data-translate-placeholder="employee-number-placeholder" placeholder="أدخل الرقم الوظيفي">
         </div>
         <div class="form-group">
-          <label for="editJobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
-          <input type="text" id="editJobTitle" data-translate-placeholder="job-title-placeholder" placeholder="أدخل المسمى الوظيفي">
+                                  <label for="editJobTitle" data-translate="job-title-label">المسمى الوظيفي</label>
+                        <select id="editJobTitle" required>
+                            <option value="" data-translate="select-job-title">اختر المسمى الوظيفي</option>
+                        </select>
         </div>
       </div>
 
@@ -678,6 +685,63 @@
         <script src="/frontend/js/language.js"></script>
 
     <script src="../js/permissions.js"></script>
+            <!-- Job Titles Management Modal -->
+        <div id="jobTitlesModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title" data-translate="manage-job-titles">إدارة المسميات الوظيفية</h2>
+                
+                <div class="modal-section">
+                    <div class="job-titles-header">
+                        <button class="btn-primary" id="btn-add-job-title"><i class="fas fa-plus"></i><span data-translate="add-job-title">إضافة مسمى وظيفي</span></button>
+                    </div>
+                    
+                    <div class="job-titles-list" id="jobTitlesList">
+                        <!-- سيتم تحميل المسميات الوظيفية هنا -->
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-secondary" id="cancelJobTitles"><span data-translate="close">إغلاق</span></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Job Title Modal -->
+        <div id="addEditJobTitleModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title" id="addEditJobTitleTitle" data-translate="add-job-title">إضافة مسمى وظيفي</h2>
+                
+                <div class="modal-section">
+                    <div class="form-group">
+                        <label for="jobTitleName" data-translate="job-title-name">المسمى الوظيفي</label>
+                        <input type="text" id="jobTitleName" data-translate-placeholder="enter-job-title" placeholder="أدخل المسمى الوظيفي" required>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-secondary" id="cancelAddEditJobTitle"><span data-translate="cancel">إلغاء</span></button>
+                    <button class="btn-primary" id="saveJobTitle"><span data-translate="save">حفظ</span></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add New Job Title Modal (for user registration) -->
+        <div id="addJobTitleModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 data-translate="add-job-title">إضافة مسمى وظيفي</h3>
+                <hr>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="jobTitleNameForUser" data-translate="job-title-name">المسمى الوظيفي</label>
+                        <input type="text" id="jobTitleNameForUser" placeholder="أدخل المسمى الوظيفي">
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn-primary" id="saveAddJobTitle" data-translate="save">حفظ</button>
+                    <button class="btn-secondary" id="cancelAddJobTitle" data-translate="cancel">إلغاء</button>
+                </div>
+            </div>
+        </div>
   </body>
   
   <script>
@@ -692,4 +756,5 @@
           }, 100);
       });
   </script>
+
   </html>
