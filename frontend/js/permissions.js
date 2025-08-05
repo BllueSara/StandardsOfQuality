@@ -1110,8 +1110,12 @@ async function openRevokeDelegationsPopup() {
     if (fileDelegates.length > 0) {
       box.innerHTML += `<div style='font-weight:bold;margin:12px 0 6px;'>${getTranslation('file-delegations') || 'تفويضات الملفات'}:</div>`;
       fileDelegates.forEach(d => {
+        const filesText = d.files_count > 0 
+          ? `(${getTranslation('files-count') || 'عدد الملفات'}: ${d.files_count})`
+          : `(${getTranslation('permanent-delegation') || 'تفويض دائم'})`;
+        
         box.innerHTML += `<div style='margin:8px 0;padding:8px 0;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;'>
-          <span style='flex:1;text-align:right;'>${d.approver_name || d.email || (getTranslation('user') || 'مستخدم') + ' ' + d.approver_id} <span style='color:#888;font-size:0.95em;'>(${getTranslation('files-count') || 'عدد الملفات'}: ${d.files_count})</span></span>
+          <span style='flex:1;text-align:right;'>${d.approver_name || d.email || (getTranslation('user') || 'مستخدم') + ' ' + d.approver_id} <span style='color:#888;font-size:0.95em;'>${filesText}</span></span>
           <button style='background:#e53e3e;color:#fff;border:none;border-radius:6px;padding:4px 16px;cursor:pointer;margin-right:12px;' onclick='window.__revokeAllToUser(${selectedUserId},${d.approver_id},false,this)'>${getTranslation('revoke-delegations') || 'إلغاء التفويضات'}</button>
         </div>`;
       });
@@ -1133,6 +1137,7 @@ async function openRevokeDelegationsPopup() {
     btn.disabled = true;
     btn.textContent = '...';
     try {
+      // إلغاء التفويضات من approval_logs
       const url = isCommittee
         ? `${apiBase}/committee-approvals/delegations/by-user/${delegatorId}?to=${delegateeId}`
         : `${apiBase}/approvals/delegations/by-user/${delegatorId}?to=${delegateeId}`;
@@ -1141,7 +1146,21 @@ async function openRevokeDelegationsPopup() {
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
       const json = await res.json();
-      if (json.status === 'success') {
+      
+      // إلغاء التفويض الدائم من active_delegations
+      const resActive = await fetch(`${apiBase}/approvals/revoke-active-delegation`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          delegatorId: delegatorId,
+          delegateeId: delegateeId
+        })
+      });
+      
+      if (json.status === 'success' || resActive.ok) {
         btn.parentNode.style.opacity = '0.5';
         btn.textContent = getTranslation('revoked') || 'تم الإلغاء';
         btn.disabled = true;

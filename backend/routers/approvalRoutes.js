@@ -15,7 +15,8 @@ const {
   getPendingDelegationsUnified,
   getDelegationLogs,
   processDirectDelegationUnified,
-  processBulkDelegationUnified
+  processBulkDelegationUnified,
+  revokeActiveDelegation
 } = require('../controllers/approvalController');
 
 router.get('/', getUserPendingApprovals);
@@ -35,5 +36,6 @@ router.post('/direct-delegation-unified/process', processDirectDelegationUnified
 router.post('/bulk-delegation-unified/process', processBulkDelegationUnified);
 router.get('/delegation-status/:userId', getDelegationStatus);
 router.get('/delegation-logs/:userId/:delegatorId', getDelegationLogs);
+router.delete('/revoke-active-delegation', revokeActiveDelegation);
 
 module.exports = router;

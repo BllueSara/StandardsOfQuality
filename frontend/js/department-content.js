@@ -1637,9 +1637,9 @@ document.addEventListener('DOMContentLoaded', async function () {
   function openDeleteFolderModal(folderId) {
     console.log('Opening delete modal for folder:', folderId);
     if (deleteFolderModal) {
-      deleteFolderIdInput.value = folderId; // Store folder ID
-      deleteFolderNameInput.value = deleteFolderNameInput.value; // Store folder name
-      deleteFolderFileInput.value = deleteFolderFileInput.value; // Store folder file
+      if (deleteFolderIdInput) {
+        deleteFolderIdInput.value = folderId; // Store folder ID
+      }
       deleteFolderModal.style.display = 'flex';
     }
   }
@@ -1647,9 +1647,9 @@ document.addEventListener('DOMContentLoaded', async function () {
   function closeDeleteFolderModal() {
     if (deleteFolderModal) {
       deleteFolderModal.style.display = 'none';
-      deleteFolderIdInput.value = ''; // Clear ID
-      deleteFolderNameInput.value = ''; // Clear folder name
-      deleteFolderFileInput.value = ''; // Clear folder file
+      if (deleteFolderIdInput) {
+        deleteFolderIdInput.value = ''; // Clear ID
+      }
     }
   }
 

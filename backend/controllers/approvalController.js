@@ -100,7 +100,48 @@ const getUserPendingApprovals = async (req, res) => {
     if (!token) return res.status(401).json({ status: 'error', message: 'لا يوجد توكن' });
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
+    const userRole = decoded.role;
 
+    // إذا كان المستخدم admin، اعرض جميع الملفات المعلقة
+    if (userRole === 'admin') {
+      const [rows] = await db.execute(`
+        SELECT 
+          CONCAT('dept-', c.id) AS id, 
+          c.title, 
+          c.file_path, 
+          c.notes, 
+          c.approval_status, 
+          CAST(c.approvers_required AS CHAR) AS approvers_required,
+          c.approvals_log, 
+          c.created_at,
+          f.name AS folderName,
+          COALESCE(d.name, '-') AS source_name,
+          GROUP_CONCAT(DISTINCT u2.username) AS assigned_approvers
+        FROM contents c
+        JOIN folders f ON c.folder_id = f.id
+        LEFT JOIN departments d ON f.department_id = d.id
+        LEFT JOIN content_approvers ca ON ca.content_id = c.id
+        LEFT JOIN users u2 ON ca.user_id = u2.id
+        WHERE c.is_approved = 0
+        GROUP BY c.id
+      `);
+
+      rows.forEach(row => {
+        if (typeof row.approvers_required === 'string') {
+          try {
+            row.approvers_required = JSON.parse(row.approvers_required);
+          } catch (e) {
+            row.approvers_required = [];
+          }
+        } else if (row.approvers_required === null || !Array.isArray(row.approvers_required)) {
+          row.approvers_required = [];
+        }
+      });
+
+      return res.status(200).json({ status: 'success', data: rows });
+    }
+
+    // للمستخدمين العاديين، اعرض فقط الملفات التي هم في تسلسل الاعتماد
     const [rows] = await db.execute(`
       SELECT 
         CONCAT('dept-', c.id) AS id, 
@@ -113,18 +154,51 @@ const getUserPendingApprovals = async (req, res) => {
         c.created_at,
         f.name AS folderName,
         COALESCE(d.name, '-') AS source_name,
-        GROUP_CONCAT(DISTINCT u2.username) AS assigned_approvers
+        GROUP_CONCAT(DISTINCT u2.username) AS assigned_approvers,
+        c.custom_approval_sequence,
+        d.approval_sequence AS department_approval_sequence
       FROM contents c
       JOIN folders f ON c.folder_id = f.id
       LEFT JOIN departments d ON f.department_id = d.id
       LEFT JOIN content_approvers ca ON ca.content_id = c.id
       LEFT JOIN users u2 ON ca.user_id = u2.id
       WHERE c.is_approved = 0
-        AND JSON_CONTAINS(c.approvers_required, JSON_ARRAY(?))
       GROUP BY c.id
-    `, [userId]);
+    `);
 
-    rows.forEach(row => {
+    // فلترة الملفات بناءً على تسلسل الاعتماد
+    const filteredRows = rows.filter(row => {
+      let approvalSequence = [];
+      
+      // جرب custom_approval_sequence أولاً
+      if (row.custom_approval_sequence) {
+        try {
+          approvalSequence = JSON.parse(row.custom_approval_sequence);
+        } catch (e) {
+          approvalSequence = [];
+        }
+      }
+      
+      // إذا لم يوجد custom، استخدم approval_sequence من القسم
+      if (!Array.isArray(approvalSequence) || approvalSequence.length === 0) {
+        if (row.department_approval_sequence) {
+          try {
+            if (Array.isArray(row.department_approval_sequence)) {
+              approvalSequence = row.department_approval_sequence;
+            } else {
+              approvalSequence = JSON.parse(row.department_approval_sequence);
+            }
+          } catch (e) {
+            approvalSequence = [];
+          }
+        }
+      }
+
+      // تحقق إذا كان المستخدم في التسلسل
+      return approvalSequence.includes(Number(userId));
+    });
+
+    filteredRows.forEach(row => {
       if (typeof row.approvers_required === 'string') {
         try {
           row.approvers_required = JSON.parse(row.approvers_required);
@@ -136,8 +210,9 @@ const getUserPendingApprovals = async (req, res) => {
       }
     });
 
-    res.status(200).json({ status: 'success', data: rows });
+    res.status(200).json({ status: 'success', data: filteredRows });
   } catch (err) {
+    console.error('getUserPendingApprovals error:', err);
     res.status(500).json({ status: 'error', message: 'خطأ في جلب الموافقات المعلقة للمستخدم' });
   }
 };
@@ -206,58 +281,49 @@ const handleApproval = async (req, res) => {
       console.log('[PERM-DELEG] Found permanent delegator:', permanentDelegator, 'for user:', currentUserId);
     }
 
-    // إذا كان هناك تفويض دائم، سجّل سجل بالنيابة دائماً، وإذا كان للمستخدم موقع أصلي سجّل سجل شخصي أيضًا
-    if (approved && permanentDelegator) {
-      // جلب التسلسل
+    // إذا كان هناك تفويض دائم أو نيابة، سجّل سجلين (شخصي + نيابة) وتوقف هنا
+    if (approved && (permanentDelegator || isProxy)) {
+  
+      // جلب التسلسل للتحقق من الموقع الأصلي
       let approvalSequence = [];
       const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
-      console.log('[PERM-DELEG] custom_approval_sequence for content', contentId, ':', customRows);
       if (customRows.length && customRows[0].custom_approval_sequence) {
         try {
           const parsed = JSON.parse(customRows[0].custom_approval_sequence);
           if (Array.isArray(parsed) && parsed.length > 0) {
             approvalSequence = parsed;
           }
-        } catch (e) { console.log('[PERM-DELEG] Error parsing custom_approval_sequence:', e); }
+        } catch (e) {}
       }
       if (approvalSequence.length === 0) {
         // جلب من القسم
         const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [contentId]);
-        console.log('[PERM-DELEG] folderRows:', folderRows);
         if (folderRows.length) {
           const folderId = folderRows[0].folder_id;
           const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
-          console.log('[PERM-DELEG] deptRows:', deptRows);
           if (deptRows.length) {
             const departmentId = deptRows[0].department_id;
             const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
-            console.log('[PERM-DELEG] seqRows:', seqRows);
             if (seqRows.length) {
               let approvalSequenceRaw = seqRows[0].approval_sequence;
               if (Array.isArray(approvalSequenceRaw)) {
                 approvalSequence = approvalSequenceRaw;
-                console.log('[PERM-DELEG] approval_sequence is Array:', approvalSequenceRaw);
               } else if (typeof approvalSequenceRaw === 'string') {
                 try {
                   approvalSequence = JSON.parse(approvalSequenceRaw);
-                  console.log('[PERM-DELEG] approval_sequence parsed from string:', approvalSequence);
                 } catch (e) {
-                  console.log('[PERM-DELEG] Error parsing dept approval_sequence:', e);
                   approvalSequence = [];
                 }
-              } else {
-                approvalSequence = [];
-                console.log('[PERM-DELEG] approval_sequence unknown type:', typeof approvalSequenceRaw);
               }
             }
           }
         }
       }
       approvalSequence = (approvalSequence || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
-      console.log('[PERM-DELEG] Final approvalSequence:', approvalSequence);
+      
       // تحقق هل للمستخدم موقع أصلي
       const hasSelf = approvalSequence.some(id => Number(id) === Number(currentUserId));
-      console.log('[PERM-DELEG] hasSelf:', hasSelf, 'permanentDelegator:', permanentDelegator);
+      
       // سجل شخصي إذا كان له موقع أصلي
       if (hasSelf) {
         try {
@@ -284,7 +350,9 @@ const handleApproval = async (req, res) => {
           console.log('[PERM-DELEG] Error inserting self approval log:', e);
         }
       }
-      // سجل بالنيابة دائماً إذا كان هناك تفويض دائم
+      
+      // سجل بالنيابة (إما تفويض دائم أو نيابة عادية)
+      const delegatorId = permanentDelegator || delegatedBy;
       try {
         await db.execute(`
           INSERT INTO approval_logs (
@@ -299,17 +367,17 @@ const handleApproval = async (req, res) => {
         `, [
           contentId,
           currentUserId,
-          permanentDelegator,
+          delegatorId,
           approved ? 'approved' : 'rejected',
           signature || null,
           electronic_signature || null,
           notes || ''
         ]);
-        console.log('[PERM-DELEG] Inserted proxy approval log for user', currentUserId, 'on behalf of', permanentDelegator, 'content', contentId);
+        console.log('[PERM-DELEG] Inserted proxy approval log for user', currentUserId, 'on behalf of', delegatorId, 'content', contentId);
       } catch (e) {
         console.log('[PERM-DELEG] Error inserting proxy approval log:', e);
       }
-      // أكمل الدالة ولا تنفذ الإدخال الافتراضي بالأسفل
+      
       // تحديث ملف PDF مباشرة بعد كل عملية اعتماد
       try {
         await generateFinalSignedPDF(contentId);
@@ -317,6 +385,7 @@ const handleApproval = async (req, res) => {
       } catch (e) {
         console.log('[PERM-DELEG] Error generating PDF:', e);
       }
+      
       // تحديث حقل approvals_log في جدول contents ليعكس آخر حالة من جدول approval_logs
       try {
         const [allLogs] = await db.execute(
@@ -331,9 +400,14 @@ const handleApproval = async (req, res) => {
       } catch (e) {
         console.log('[PERM-DELEG] Error updating approvals_log:', e);
       }
+      
       // الاستجابة النهائية
-      return res.status(200).json({ status: 'success', message: 'تم تسجيل اعتمادك بنجاح (شخصي و/أو نيابة)' });
+  
+      return res.status(200).json({ status: 'success', message: 'تم تسجيل اعتمادك بنجاح (شخصي ونيابة)' });
     }
+
+    // إذا وصلنا هنا، يعني لا يوجد تفويض، لذا نضيف توقيع واحد فقط
+
 
     // للمدير: السماح بالاعتماد بغض النظر عن التسلسل
     if (canViewAll) {
@@ -518,7 +592,8 @@ const handleApproval = async (req, res) => {
     const contentsTable = 'contents';
     const generatePdfFunction = generateFinalSignedPDF;
 
-    // أولاً: نفذ جملة الإدخال كما كانت سابقاً (بدون WHERE)
+
+    // إضافة أو تحديث سجل الاعتماد باستخدام INSERT ... ON DUPLICATE KEY UPDATE
     await db.execute(`
       INSERT INTO ${approvalLogsTable} (
         content_id,
@@ -549,25 +624,7 @@ const handleApproval = async (req, res) => {
       notes || ''
     ]);
 
-    // ثانياً: نفذ جملة UPDATE منفصلة لتحديث السجل الصحيح فقط
-    await db.execute(
-      `UPDATE ${approvalLogsTable}
-       SET status = ?, signature = ?, electronic_signature = ?, comments = ?, created_at = NOW()
-       WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = ? AND (delegated_by = ? OR (? IS NULL AND delegated_by IS NULL))`,
-      [
-        approved ? 'approved' : 'rejected',
-        signature || null,
-        electronic_signature || null,
-        notes || '',
-        contentId,
-        currentUserId,
-        isProxy ? 1 : 0,
-        delegatedBy,
-        delegatedBy
-      ]
-    );
-
-    // تحديث ملف PDF مباشرة بعد كل عملية اعتماد
+    // تحديث ملف PDF مباشرة بعد كل عملية اعتماد (لكن بدون توقيعات مكررة)
     await generatePdfFunction(contentId);
 
     // تحديث حقل approvals_log في جدول contents ليعكس آخر حالة من جدول approval_logs
@@ -757,7 +814,6 @@ const handleApproval = async (req, res) => {
       }
     }
     if (allApproved && approvalSequence.length > 0) {
-      await generatePdfFunction(contentId);
       await db.execute(`
         UPDATE ${contentsTable}
         SET is_approved = 1,
@@ -853,7 +909,7 @@ async function generateFinalSignedPDF(contentId) {
     ORDER BY al.created_at
   `, [contentId]);
 
-  console.log('PDF logs:', logs); // للتأكد من القيم
+  
 
   if (!logs.length) {
     console.warn('⚠️ No approved signatures found for content', contentId);
@@ -1081,16 +1137,24 @@ async function generateFinalSignedPDF(contentId) {
       try {
         const approvalPdfBuffer = Buffer.concat(approvalPdfChunks);
         
-        // 9) دمج صفحة الاعتمادات مع PDF الأصلي
+        // 9) دمج صفحة الاعتمادات مع PDF الأصلي (مع حذف صفحات الاعتمادات القديمة)
         const { PDFDocument } = require('pdf-lib');
         const mergedPdf = await PDFDocument.create();
         
-        // إضافة صفحات PDF الأصلي أولاً
+        // تحميل PDF الأصلي
         const originalPdfDoc = await PDFDocument.load(originalPdfBytes);
-        const originalPages = await mergedPdf.copyPages(originalPdfDoc, originalPdfDoc.getPageIndices());
-        originalPages.forEach((page) => mergedPdf.addPage(page));
         
-        // إضافة صفحة الاعتمادات في النهاية
+        // إضافة صفحات PDF الأصلي فقط (بدون صفحات الاعتمادات القديمة)
+        // نفترض أن صفحة الاعتمادات هي الصفحة الأخيرة دائماً
+        const originalPageCount = originalPdfDoc.getPageCount();
+        const pagesToCopy = originalPageCount > 1 ? originalPageCount - 1 : originalPageCount;
+        
+        if (pagesToCopy > 0) {
+          const originalPages = await mergedPdf.copyPages(originalPdfDoc, Array.from({length: pagesToCopy}, (_, i) => i));
+          originalPages.forEach((page) => mergedPdf.addPage(page));
+        }
+        
+        // إضافة صفحة الاعتمادات الجديدة في النهاية
         const approvalPdfDoc = await PDFDocument.load(approvalPdfBuffer);
         const approvalPages = await mergedPdf.copyPages(approvalPdfDoc, approvalPdfDoc.getPageIndices());
         approvalPages.forEach((page) => mergedPdf.addPage(page));
@@ -1145,61 +1209,33 @@ const getAssignedApprovals = async (req, res) => {
     const canViewAll = userRole === 'admin';
 
     // جلب كل الملفات (حسب الصلاحية)
-    const departmentContentQuery = canViewAll
-      ? `
-        SELECT
-          c.id,
-          c.title,
-          c.file_path,
-          c.approval_status,
-          d.id AS department_id,
-          d.name AS source_name,
-          d.approval_sequence AS department_approval_sequence,
-          c.custom_approval_sequence,
-          f.name AS folder_name,
-          u.username AS created_by_username,
-          'department' AS type,
-          CAST(c.approvers_required AS CHAR) AS approvers_required,
-          c.created_at,
-          MAX(al_reject.approver_id) AS rejected_by_id,
-          MAX(u_reject.username) AS rejected_by_username,
-          c.approvals_log
-        FROM contents c
-        JOIN folders f        ON c.folder_id = f.id
-        JOIN departments d    ON f.department_id = d.id
-        JOIN users u          ON c.created_by = u.id
-        LEFT JOIN approval_logs al_reject ON c.id = al_reject.content_id AND al_reject.status = 'rejected'
-        LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
-        WHERE c.approval_status IN ('pending', 'approved', 'rejected')
-        GROUP BY c.id
-      `
-      : `
-        SELECT
-          c.id,
-          c.title,
-          c.file_path,
-          c.approval_status,
-          d.id AS department_id,
-          d.name AS source_name,
-          d.approval_sequence AS department_approval_sequence,
-          c.custom_approval_sequence,
-          f.name AS folder_name,
-          u.username AS created_by_username,
-          'department' AS type,
-          CAST(c.approvers_required AS CHAR) AS approvers_required,
-          c.created_at,
-          MAX(al_reject.approver_id) AS rejected_by_id,
-          MAX(u_reject.username) AS rejected_by_username,
-          c.approvals_log
-        FROM contents c
-        JOIN folders f        ON c.folder_id = f.id
-        JOIN departments d    ON f.department_id = d.id
-        JOIN users u          ON c.created_by = u.id
-        LEFT JOIN approval_logs al_reject ON c.id = al_reject.content_id AND al_reject.status = 'rejected'
-        LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
-        WHERE c.approval_status IN ('pending', 'approved', 'rejected')
-        GROUP BY c.id
-      `;
+    const departmentContentQuery = `
+      SELECT
+        c.id,
+        c.title,
+        c.file_path,
+        c.approval_status,
+        d.id AS department_id,
+        d.name AS source_name,
+        d.approval_sequence AS department_approval_sequence,
+        c.custom_approval_sequence,
+        f.name AS folder_name,
+        u.username AS created_by_username,
+        'department' AS type,
+        CAST(c.approvers_required AS CHAR) AS approvers_required,
+        c.created_at,
+        MAX(al_reject.approver_id) AS rejected_by_id,
+        MAX(u_reject.username) AS rejected_by_username,
+        c.approvals_log
+      FROM contents c
+      JOIN folders f        ON c.folder_id = f.id
+      JOIN departments d    ON f.department_id = d.id
+      JOIN users u          ON c.created_by = u.id
+      LEFT JOIN approval_logs al_reject ON c.id = al_reject.content_id AND al_reject.status = 'rejected'
+      LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
+      WHERE c.approval_status IN ('pending', 'approved', 'rejected')
+      GROUP BY c.id
+    `;
 
     const params = [];
     const finalQuery = `
@@ -1257,8 +1293,16 @@ const getAssignedApprovals = async (req, res) => {
 
     // تجهيز الملفات للمستخدم الحالي بحيث يظهر الملف لكل من هو في التسلسل أو مفوض له
     const assignedApprovals = [];
+    
     for (const row of rows) {
-      const sequence = Array.isArray(row.approval_sequence) ? row.approval_sequence : [];
+      // تحديد التسلسل الصحيح: custom أولاً، ثم department
+      let sequence = [];
+      if (row.custom_approval_sequence && Array.isArray(row.custom_approval_sequence) && row.custom_approval_sequence.length > 0) {
+        sequence = row.custom_approval_sequence;
+      } else if (row.department_approval_sequence && Array.isArray(row.department_approval_sequence) && row.department_approval_sequence.length > 0) {
+        sequence = row.department_approval_sequence;
+      }
+      
       const logs = Array.isArray(row.approvals_log) ? row.approvals_log : [];
       const userInSequence = sequence.some(id => Number(id) === Number(userId));
       // دعم التفويض: هل المستخدم مفوض له من أحد أعضاء التسلسل؟
@@ -1311,13 +1355,19 @@ const getAssignedApprovals = async (req, res) => {
             break;
           }
         }
-        assignedApprovals.push({
-          ...row,
-          isProxy,
-          delegatedBy,
-          isCurrentTurn: Number(firstPendingUser) === Number(userId) || (isProxy && Number(firstPendingUser) === Number(delegatedBy)),
-          isAdmin: false
-        });
+        
+        const isCurrentTurn = Number(firstPendingUser) === Number(userId) || (isProxy && Number(firstPendingUser) === Number(delegatedBy));
+        
+        // اعرض الملف فقط إذا كان دوره الحالي
+        if (isCurrentTurn) {
+          assignedApprovals.push({
+            ...row,
+            isProxy,
+            delegatedBy,
+            isCurrentTurn,
+            isAdmin: false
+          });
+        }
       }
     }
     return res.json({ status: 'success', data: assignedApprovals });
@@ -1601,45 +1651,9 @@ const acceptProxyDelegation = async (req, res) => {
           console.log('[ACCEPT PROXY] Updated custom_approval_sequence:', sequence);
         }
         
-        // تحديث approval_sequence في جدول departments أيضاً إذا كان هناك folder_id
-        if (contentRows.length && contentRows[0].folder_id) {
-          const folderId = contentRows[0].folder_id;
-          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
-          if (deptRows.length) {
-            const departmentId = deptRows[0].department_id;
-            
-            // جلب approval_sequence الحالي من جدول departments
-            const [currentDeptSeq] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
-            let currentSequence = [];
-            if (currentDeptSeq.length && currentDeptSeq[0].approval_sequence) {
-              try {
-                currentSequence = Array.isArray(currentDeptSeq[0].approval_sequence) 
-                  ? currentDeptSeq[0].approval_sequence 
-                  : JSON.parse(currentDeptSeq[0].approval_sequence);
-              } catch { currentSequence = []; }
-            }
-            console.log('[ACCEPT PROXY] Current department approval_sequence:', currentSequence);
-            
-            // إزالة المفوض الأصلي من approval_sequence في جدول departments
-            let newDeptSequence = [];
-            for (let i = 0; i < currentSequence.length; i++) {
-              if (Number(currentSequence[i]) !== Number(delegatedBy)) {
-                newDeptSequence.push(currentSequence[i]);
-              } else {
-                console.log('[ACCEPT PROXY] Removed delegator from department sequence:', delegatedBy);
-              }
-            }
-            
-            // إضافة المفوض الجديد إذا لم يكن موجوداً بالفعل
-            if (!newDeptSequence.includes(Number(userId))) {
-              newDeptSequence.push(Number(userId));
-              console.log('[ACCEPT PROXY] Added delegatee to department sequence:', userId);
-            }
-            
-            await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(newDeptSequence), departmentId]);
-            console.log('[ACCEPT PROXY] Updated department approval_sequence:', newDeptSequence, 'for department:', departmentId);
-          }
-        }
+        // لا نحدث approval_sequence في جدول departments للتوقيع بالنيابة الفردي
+        // لأن هذا يؤثر فقط على الملف الحالي وليس الملفات المستقبلية
+        console.log('[ACCEPT PROXY] Individual proxy signature - not updating department approval_sequence');
       }
       // جلب اسم المفوض الأصلي
       let delegatedByName = '';
@@ -1886,6 +1900,8 @@ const revokeAllDelegations = async (req, res) => {
     const delegateeId = req.query.to ? parseInt(req.query.to, 10) : null; // المفوض إليه
     if (!userId) return res.status(400).json({ status: 'error', message: 'userId مطلوب' });
 
+    console.log('[REVOKE ALL DELEGATIONS] Starting revocation for delegator:', userId, 'delegatee:', delegateeId);
+
     // جلب كل الملفات التي سيتم حذف التفويض منها
     let selectSql = 'SELECT content_id, approver_id, delegated_by FROM approval_logs WHERE delegated_by = ? AND signed_as_proxy = 1';
     let selectParams = [userId];
@@ -1894,6 +1910,8 @@ const revokeAllDelegations = async (req, res) => {
       selectParams.push(delegateeId);
     }
     const [rows] = await db.execute(selectSql, selectParams);
+
+    console.log('[REVOKE ALL DELEGATIONS] Found delegation records:', rows.length);
 
     // حذف سجلات التفويض بالنيابة
     let deleteSql = 'DELETE FROM approval_logs WHERE delegated_by = ? AND signed_as_proxy = 1';
@@ -1913,7 +1931,106 @@ const revokeAllDelegations = async (req, res) => {
     }
     await db.execute(deleteActiveDelegationSql, deleteActiveDelegationParams);
 
-    // إعادة المفوض الأصلي إلى التسلسل وإزالة تكرار التفويض فقط
+    // إعادة المفوض الأصلي إلى جميع التسلسلات المتأثرة
+    console.log('[REVOKE ALL DELEGATIONS] Restoring delegator to all affected sequences');
+
+    // تحديث custom_approval_sequence في جميع المحتويات
+    const [allContentRows] = await db.execute(`
+      SELECT id, custom_approval_sequence 
+      FROM contents
+    `);
+    
+    console.log('[REVOKE ALL DELEGATIONS] Processing all contents:', allContentRows.length);
+    
+    for (const contentRow of allContentRows) {
+      const contentId = contentRow.id;
+      let currentSequence = [];
+      
+      if (contentRow.custom_approval_sequence) {
+        try {
+          currentSequence = Array.isArray(contentRow.custom_approval_sequence) 
+            ? contentRow.custom_approval_sequence 
+            : JSON.parse(contentRow.custom_approval_sequence);
+        } catch { currentSequence = []; }
+      }
+      
+      // فحص إذا كان المحتوى يحتوي على المفوض إليه
+      const hasDelegatee = delegateeId ? currentSequence.some(id => Number(id) === Number(delegateeId)) : false;
+      
+      if (hasDelegatee) {
+        console.log('[REVOKE ALL DELEGATIONS] Content contains delegatee, restoring delegator');
+        
+        // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+        let newContentSequence = [];
+        
+        for (let i = 0; i < currentSequence.length; i++) {
+          if (Number(currentSequence[i]) === Number(delegateeId)) {
+            // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+            newContentSequence.push(Number(userId));
+            console.log('[REVOKE ALL DELEGATIONS] Replaced delegatee with delegator in content sequence at position:', i);
+          } else {
+            // إضافة باقي الأعضاء
+            newContentSequence.push(currentSequence[i]);
+          }
+        }
+        
+        // إزالة التكرار مع الحفاظ على الترتيب
+        newContentSequence = newContentSequence.filter((item, pos) => newContentSequence.indexOf(item) === pos);
+        
+        await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(newContentSequence), contentId]);
+        console.log('[REVOKE ALL DELEGATIONS] Updated content custom_approval_sequence:', newContentSequence, 'for content:', contentId);
+      }
+    }
+    
+    // تحديث approval_sequence في جميع الأقسام
+    const [allDeptRows] = await db.execute(`
+      SELECT id, approval_sequence 
+      FROM departments
+    `);
+    
+    console.log('[REVOKE ALL DELEGATIONS] Processing all departments:', allDeptRows.length);
+    
+    for (const deptRow of allDeptRows) {
+      const departmentId = deptRow.id;
+      let currentSequence = [];
+      
+      if (deptRow.approval_sequence) {
+        try {
+          currentSequence = Array.isArray(deptRow.approval_sequence) 
+            ? deptRow.approval_sequence 
+            : JSON.parse(deptRow.approval_sequence);
+        } catch { currentSequence = []; }
+      }
+      
+      // فحص إذا كان القسم يحتوي على المفوض إليه
+      const hasDelegatee = delegateeId ? currentSequence.some(id => Number(id) === Number(delegateeId)) : false;
+      
+      if (hasDelegatee) {
+        console.log('[REVOKE ALL DELEGATIONS] Department contains delegatee, restoring delegator');
+        
+        // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+        let newDeptSequence = [];
+        
+        for (let i = 0; i < currentSequence.length; i++) {
+          if (Number(currentSequence[i]) === Number(delegateeId)) {
+            // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+            newDeptSequence.push(Number(userId));
+            console.log('[REVOKE ALL DELEGATIONS] Replaced delegatee with delegator in department sequence at position:', i);
+          } else {
+            // إضافة باقي الأعضاء
+            newDeptSequence.push(currentSequence[i]);
+          }
+        }
+        
+        // إزالة التكرار مع الحفاظ على الترتيب
+        newDeptSequence = newDeptSequence.filter((item, pos) => newDeptSequence.indexOf(item) === pos);
+        
+        await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(newDeptSequence), departmentId]);
+        console.log('[REVOKE ALL DELEGATIONS] Updated department approval_sequence:', newDeptSequence, 'for department:', departmentId);
+      }
+    }
+
+    // إعادة المفوض الأصلي إلى التسلسل وإزالة تكرار التفويض فقط (للتفويضات الفردية)
     for (const row of rows) {
       if (row.delegated_by) {
         // إعادة المفوض الأصلي إلى content_approvers
@@ -1921,6 +2038,7 @@ const revokeAllDelegations = async (req, res) => {
           'INSERT IGNORE INTO content_approvers (content_id, user_id) VALUES (?, ?)',
           [row.content_id, row.delegated_by]
         );
+        
         // جلب القسم المرتبط بالملف
         const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [row.content_id]);
         if (folderRows.length) {
@@ -1988,6 +2106,8 @@ const revokeAllDelegations = async (req, res) => {
       }
     }
 
+    console.log('[REVOKE ALL DELEGATIONS] Revocation completed successfully');
+
     return res.status(200).json({ status: 'success', message: `تم حذف ${result.affectedRows} تفويض بالنيابة بنجاح وتمت إعادة المفوض الأصلي للملفات والتسلسل.` });
   } catch (err) {
     console.error('خطأ أثناء حذف جميع التفويضات:', err);
@@ -2004,18 +2124,191 @@ const getDelegationSummaryByUser = async (req, res) => {
     jwt.verify(token, process.env.JWT_SECRET);
     const { userId } = req.params;
     if (!userId) return res.status(400).json({ status: 'error', message: 'يرجى تحديد المستخدم' });
+    
+    // جلب التفويضات من approval_logs
     const [rows] = await db.execute(
       `SELECT al.approver_id, u.username AS approver_name, u.email, COUNT(al.content_id) AS files_count
        FROM approval_logs al
        JOIN users u ON al.approver_id = u.id
-       WHERE al.delegated_by = ? AND al.signed_as_proxy = 1 AND al.status = 'pending'
+       WHERE al.delegated_by = ? AND al.signed_as_proxy = 1 AND al.status IN ('pending')
        GROUP BY al.approver_id, u.username, u.email`,
       [userId]
     );
-    res.status(200).json({ status: 'success', data: rows });
+    
+    // جلب التفويضات الدائمة من active_delegations
+    const [activeDelegations] = await db.execute(
+      `SELECT ad.delegate_id as approver_id, u.username AS approver_name, u.email, 0 AS files_count
+       FROM active_delegations ad
+       JOIN users u ON ad.delegate_id = u.id
+       WHERE ad.user_id = ?`,
+      [userId]
+    );
+    
+    // دمج النتائج مع إزالة التكرار
+    const allDelegations = [...rows, ...activeDelegations];
+    const uniqueDelegations = [];
+    const seenIds = new Set();
+    
+    for (const delegation of allDelegations) {
+      if (!seenIds.has(delegation.approver_id)) {
+        seenIds.add(delegation.approver_id);
+        uniqueDelegations.push(delegation);
+      } else {
+        // إذا كان موجود بالفعل، أضف عدد الملفات
+        const existing = uniqueDelegations.find(d => d.approver_id === delegation.approver_id);
+        if (existing) {
+          existing.files_count += delegation.files_count;
+        }
+      }
+    }
+    
+    res.status(200).json({ status: 'success', data: uniqueDelegations });
   } catch (err) {
     console.error('getDelegationSummaryByUser error:', err);
     res.status(500).json({ status: 'error', message: 'فشل جلب ملخص التفويضات' });
+  }
+};
+
+// إلغاء التفويض الدائم من active_delegations
+const revokeActiveDelegation = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ status: 'error', message: 'لا يوجد توكن' });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { delegatorId, delegateeId } = req.body;
+    
+    if (!delegatorId || !delegateeId) {
+      return res.status(400).json({ status: 'error', message: 'بيانات ناقصة' });
+    }
+    
+    console.log('[REVOKE ACTIVE DELEGATION] Starting revocation for delegator:', delegatorId, 'delegatee:', delegateeId);
+    
+    // حذف التفويض الدائم
+    await db.execute(
+      'DELETE FROM active_delegations WHERE user_id = ? AND delegate_id = ?',
+      [delegatorId, delegateeId]
+    );
+    
+    // حذف جميع سجلات التفويض من approval_logs
+    await db.execute(
+      'DELETE FROM approval_logs WHERE delegated_by = ? AND approver_id = ? AND signed_as_proxy = 1',
+      [delegatorId, delegateeId]
+    );
+    
+    // إعادة المفوض الأصلي إلى جميع التسلسلات المتأثرة
+    console.log('[REVOKE ACTIVE DELEGATION] Restoring delegator to all affected sequences');
+    
+    // تحديث custom_approval_sequence في جميع المحتويات
+    const [allContentRows] = await db.execute(`
+      SELECT id, custom_approval_sequence 
+      FROM contents
+    `);
+    
+    console.log('[REVOKE ACTIVE DELEGATION] Processing all contents:', allContentRows.length);
+    
+    for (const contentRow of allContentRows) {
+      const contentId = contentRow.id;
+      let currentSequence = [];
+      
+      if (contentRow.custom_approval_sequence) {
+        try {
+          currentSequence = Array.isArray(contentRow.custom_approval_sequence) 
+            ? contentRow.custom_approval_sequence 
+            : JSON.parse(contentRow.custom_approval_sequence);
+        } catch { currentSequence = []; }
+      }
+      
+      // فحص إذا كان المحتوى يحتوي على المفوض إليه
+      const hasDelegatee = currentSequence.some(id => Number(id) === Number(delegateeId));
+      
+      if (hasDelegatee) {
+        console.log('[REVOKE ACTIVE DELEGATION] Content contains delegatee, restoring delegator');
+        
+        // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+        let newContentSequence = [];
+        let delegatorRestored = false;
+        
+        for (let i = 0; i < currentSequence.length; i++) {
+          if (Number(currentSequence[i]) === Number(delegateeId)) {
+            // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+            newContentSequence.push(Number(delegatorId));
+            delegatorRestored = true;
+            console.log('[REVOKE ACTIVE DELEGATION] Replaced delegatee with delegator in content sequence at position:', i);
+          } else {
+            // إضافة باقي الأعضاء
+            newContentSequence.push(currentSequence[i]);
+          }
+        }
+        
+        // إزالة التكرار مع الحفاظ على الترتيب
+        newContentSequence = newContentSequence.filter((item, pos) => newContentSequence.indexOf(item) === pos);
+        
+        await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(newContentSequence), contentId]);
+        console.log('[REVOKE ACTIVE DELEGATION] Updated content custom_approval_sequence:', newContentSequence, 'for content:', contentId);
+      }
+    }
+    
+    // تحديث approval_sequence في جميع الأقسام
+    const [allDeptRows] = await db.execute(`
+      SELECT id, approval_sequence 
+      FROM departments
+    `);
+    
+    console.log('[REVOKE ACTIVE DELEGATION] Processing all departments:', allDeptRows.length);
+    
+    for (const deptRow of allDeptRows) {
+      const departmentId = deptRow.id;
+      let currentSequence = [];
+      
+      if (deptRow.approval_sequence) {
+        try {
+          currentSequence = Array.isArray(deptRow.approval_sequence) 
+            ? deptRow.approval_sequence 
+            : JSON.parse(deptRow.approval_sequence);
+        } catch { currentSequence = []; }
+      }
+      
+      // فحص إذا كان القسم يحتوي على المفوض إليه
+      const hasDelegatee = currentSequence.some(id => Number(id) === Number(delegateeId));
+      
+      if (hasDelegatee) {
+        console.log('[REVOKE ACTIVE DELEGATION] Department contains delegatee, restoring delegator');
+        
+        // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+        let newDeptSequence = [];
+        let delegatorRestored = false;
+        
+        for (let i = 0; i < currentSequence.length; i++) {
+          if (Number(currentSequence[i]) === Number(delegateeId)) {
+            // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
+            newDeptSequence.push(Number(delegatorId));
+            delegatorRestored = true;
+            console.log('[REVOKE ACTIVE DELEGATION] Replaced delegatee with delegator in department sequence at position:', i);
+          } else {
+            // إضافة باقي الأعضاء
+            newDeptSequence.push(currentSequence[i]);
+          }
+        }
+        
+        // إزالة التكرار مع الحفاظ على الترتيب
+        newDeptSequence = newDeptSequence.filter((item, pos) => newDeptSequence.indexOf(item) === pos);
+        
+        await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(newDeptSequence), departmentId]);
+        console.log('[REVOKE ACTIVE DELEGATION] Updated department approval_sequence:', newDeptSequence, 'for department:', departmentId);
+      }
+    }
+    
+    console.log('[REVOKE ACTIVE DELEGATION] Revocation completed successfully');
+    
+    return res.status(200).json({
+      status: 'success',
+      message: 'تم إلغاء التفويض الدائم بنجاح وتمت إعادة المفوض الأصلي إلى جميع التسلسلات'
+    });
+    
+  } catch (err) {
+    console.error('خطأ في إلغاء التفويض الدائم:', err);
+    return res.status(500).json({ status: 'error', message: 'فشل إلغاء التفويض الدائم' });
   }
 };
 
@@ -2237,7 +2530,7 @@ const getDelegationStatus = async (req, res) => {
     
     console.log('🔍 [getDelegationStatus] Checking for user:', userId);
     
-    // فحص التفويض المباشر من جدول active_delegations
+    // فحص تفويض جميع الملفات من جدول active_delegations
     const [delegationRows] = await db.execute(
       'SELECT user_id as delegated_by FROM active_delegations WHERE delegate_id = ?',
       [userId]
@@ -2258,19 +2551,19 @@ const getDelegationStatus = async (req, res) => {
         ? userRows[0].username 
         : 'المفوض';
       
-      console.log('🔍 [getDelegationStatus] Found direct delegation from:', delegatorId, delegatorName);
+      console.log('🔍 [getDelegationStatus] Found bulk delegation from:', delegatorId, delegatorName);
       
       return res.status(200).json({
         status: 'success',
         data: {
           delegated_by: delegatorId,
           delegated_by_name: delegatorName,
-          type: 'direct'
+          type: 'bulk'
         }
       });
     }
     
-    console.log('🔍 [getDelegationStatus] No direct delegation found');
+    console.log('🔍 [getDelegationStatus] No bulk delegation found');
     
     return res.status(200).json({
       status: 'success',
@@ -2283,7 +2576,7 @@ const getDelegationStatus = async (req, res) => {
   }
 };
 
-// دالة فحص التفويضات المعلقة الموحدة (للأقسام فقط)
+// دالة فحص التفويضات الجماعية المعلقة
 const getPendingDelegationsUnified = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -2294,45 +2587,39 @@ const getPendingDelegationsUnified = async (req, res) => {
     
     console.log('🔍 [getPendingDelegationsUnified] Checking for user:', userId);
     
-    // جلب التفويضات المعلقة من approval_logs للأقسام فقط
+    // فحص التفويضات الجماعية المعلقة من approval_logs
+    // هذه التفويضات التي تم إنشاؤها بواسطة delegateAllApprovals
     const [delegationRows] = await db.execute(`
-      SELECT DISTINCT 
+      SELECT 
         al.delegated_by,
         u.username as delegated_by_name,
-        COUNT(al.content_id) as file_count
+        COUNT(al.content_id) as file_count,
+        MIN(al.created_at) as first_delegation,
+        MAX(al.created_at) as last_delegation
       FROM approval_logs al
       JOIN users u ON al.delegated_by = u.id
       WHERE al.approver_id = ? 
         AND al.signed_as_proxy = 1 
         AND al.status = 'pending'
+        AND al.comments LIKE '%تفويض جماعي%'
       GROUP BY al.delegated_by, u.username
-      ORDER BY al.created_at DESC
+      ORDER BY last_delegation DESC
     `, [userId]);
     
-    console.log('🔍 [getPendingDelegationsUnified] Found delegation rows:', delegationRows);
-    
-    // Let's also check what's in the approval_logs table for this user
-    const [allLogs] = await db.execute(`
-      SELECT content_id, approver_id, delegated_by, status, signed_as_proxy, created_at
-      FROM approval_logs 
-      WHERE approver_id = ?
-      ORDER BY created_at DESC
-      LIMIT 10
-    `, [userId]);
-    
-    console.log('🔍 [getPendingDelegationsUnified] All approval logs for user:', allLogs);
+    console.log('🔍 [getPendingDelegationsUnified] Found bulk delegation rows:', delegationRows);
     
     if (delegationRows.length > 0) {
       // تحويل البيانات إلى الشكل المطلوب
       const delegations = delegationRows.map(row => ({
-        id: `delegation-${row.delegated_by}`,
+        id: `bulk-${row.delegated_by}`,
         delegated_by: row.delegated_by,
         delegated_by_name: row.delegated_by_name,
         file_count: row.file_count,
-        type: 'bulk'
+        type: 'bulk',
+        created_at: row.last_delegation
       }));
       
-      console.log('🔍 [getPendingDelegationsUnified] Returning delegations:', delegations);
+      console.log('🔍 [getPendingDelegationsUnified] Returning bulk delegations:', delegations);
       
       return res.status(200).json({
         status: 'success',
@@ -2340,7 +2627,7 @@ const getPendingDelegationsUnified = async (req, res) => {
       });
     }
     
-    console.log('🔍 [getPendingDelegationsUnified] No delegations found, returning empty array');
+    console.log('🔍 [getPendingDelegationsUnified] No bulk delegations found, returning empty array');
     
     return res.status(200).json({
       status: 'success',
@@ -2403,10 +2690,10 @@ const processDirectDelegationUnified = async (req, res) => {
     
     if (action === 'accept') {
       // قبول التفويض المباشر
-      // تحديث سجلات التفويض إلى مقبولة
+      // تحديث سجلات التفويض إلى معتمدة
       await db.execute(`
         UPDATE approval_logs 
-        SET status = 'accepted', comments = 'تم قبول التفويض المباشر'
+        SET status = 'approved', comments = 'تم قبول التفويض المباشر'
         WHERE approver_id = ? AND delegated_by = ? AND signed_as_proxy = 1 AND status = 'pending'
       `, [userId, delegatorId]);
       
@@ -2466,17 +2753,18 @@ const processBulkDelegationUnified = async (req, res) => {
     }
     
     // استخراج معرف المفوض من delegationId
-    const delegatorId = delegationId.replace('delegation-', '');
+    const delegatorId = delegationId.replace('bulk-', '');
     console.log('[PROCESS BULK UNIFIED] Processing delegationId:', delegationId, 'delegatorId:', delegatorId, 'action:', action);
     
     if (action === 'accept') {
-      // جلب ملفات التفويض المعلقة
+      // جلب ملفات التفويض المعلقة (التفويضات الجماعية فقط)
       const [pendingLogs] = await db.execute(`
         SELECT content_id FROM approval_logs 
         WHERE approver_id = ? AND delegated_by = ? AND signed_as_proxy = 1 AND status = 'pending'
+        AND (comments LIKE '%تفويض جماعي%' OR comments LIKE '%bulk%')
       `, [userId, delegatorId]);
       
-      console.log('[PROCESS BULK UNIFIED] Found pending logs:', pendingLogs);
+      console.log('[PROCESS BULK UNIFIED] Found pending bulk logs:', pendingLogs);
       
       // معالجة كل ملف
       for (const log of pendingLogs) {
@@ -2520,10 +2808,18 @@ const processBulkDelegationUnified = async (req, res) => {
         
         console.log('[PROCESS BULK UNIFIED] Processing fileId:', fileId, 'delegatorId:', delegatorId, 'userId:', userId, 'sequence:', sequence);
         
-        // أضف سجل بالنيابة وسجل عادي إذا كان للمستخدم موقع أصلي
+        // تحديث التسلسل: استبدال المفوض الأصلي بالمفوض الجديد في نفس المكان
+        let newSequence = [];
+        let delegateeAdded = false;
+        
         for (let i = 0; i < sequence.length; i++) {
           if (Number(sequence[i]) === Number(delegatorId)) {
             console.log('[PROCESS BULK UNIFIED] Found delegator in sequence at position', i, ':', sequence[i]);
+            
+            // إضافة المفوض الجديد في نفس المكان
+            newSequence.push(Number(userId));
+            delegateeAdded = true;
+            
             // سجل بالنيابة
             const [existingProxy] = await db.execute(
               `SELECT * FROM approval_logs WHERE content_id = ? AND approver_id = ? AND delegated_by = ? AND signed_as_proxy = 1`,
@@ -2537,10 +2833,12 @@ const processBulkDelegationUnified = async (req, res) => {
                 [fileId, userId, delegatorId]
               );
             }
-            sequence[i] = Number(userId);
-            console.log('[PROCESS BULK UNIFIED] Replaced delegator with delegatee in sequence:', sequence);
-          }
-          if (Number(sequence[i]) === Number(userId)) {
+            
+            console.log('[PROCESS BULK UNIFIED] Replaced delegator with delegatee in sequence at position:', i);
+          } else if (Number(sequence[i]) === Number(userId)) {
+            // المفوض الجديد موجود بالفعل
+            newSequence.push(Number(sequence[i]));
+            
             // سجل عادي
             const [existingSelf] = await db.execute(
               `SELECT * FROM approval_logs WHERE content_id = ? AND approver_id = ? AND signed_as_proxy = 0`,
@@ -2554,8 +2852,20 @@ const processBulkDelegationUnified = async (req, res) => {
                 [fileId, userId]
               );
             }
+          } else {
+            // باقي الأعضاء
+            newSequence.push(Number(sequence[i]));
           }
         }
+        
+        // إذا لم نجد المفوض الأصلي في التسلسل، نضيف المفوض الجديد في النهاية
+        if (!delegateeAdded && !newSequence.includes(Number(userId))) {
+          newSequence.push(Number(userId));
+          console.log('[PROCESS BULK UNIFIED] Added delegatee to end of sequence:', userId);
+        }
+        
+        // تحديث التسلسل
+        sequence = newSequence;
         
         // تحديث التسلسل في الملف أو القسم
         if (useCustom) {
@@ -2563,61 +2873,137 @@ const processBulkDelegationUnified = async (req, res) => {
           console.log('[PROCESS BULK UNIFIED] Updated custom_approval_sequence:', sequence);
         }
         
-        // تحديث approval_sequence في جدول departments أيضاً إذا كان هناك folder_id
-        if (contentRows.length && contentRows[0].folder_id) {
-          const folderId = contentRows[0].folder_id;
-          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
-          if (deptRows.length) {
-            const departmentId = deptRows[0].department_id;
-            
-            // جلب approval_sequence الحالي من جدول departments
-            const [currentDeptSeq] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
-            let currentSequence = [];
-            if (currentDeptSeq.length && currentDeptSeq[0].approval_sequence) {
-              try {
-                currentSequence = Array.isArray(currentDeptSeq[0].approval_sequence) 
-                  ? currentDeptSeq[0].approval_sequence 
-                  : JSON.parse(currentDeptSeq[0].approval_sequence);
-              } catch { currentSequence = []; }
-            }
-            console.log('[PROCESS BULK UNIFIED] Current department approval_sequence:', currentSequence);
-            
-            // إزالة المفوض الأصلي من approval_sequence في جدول departments
-            let newDeptSequence = [];
-            console.log('[PROCESS BULK UNIFIED] Processing department sequence. Current:', currentSequence, 'Looking for delegator:', delegatorId);
-            for (let i = 0; i < currentSequence.length; i++) {
-              if (Number(currentSequence[i]) !== Number(delegatorId)) {
-                newDeptSequence.push(currentSequence[i]);
-              } else {
-                console.log('[PROCESS BULK UNIFIED] Removed delegator from department sequence:', delegatorId, 'at position:', i);
-              }
-            }
-            
-            // إضافة المفوض الجديد إذا لم يكن موجوداً بالفعل
-            if (!newDeptSequence.includes(Number(userId))) {
-              newDeptSequence.push(Number(userId));
-              console.log('[PROCESS BULK UNIFIED] Added delegatee to department sequence:', userId);
-            }
-            
-            await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(newDeptSequence), departmentId]);
-            console.log('[PROCESS BULK UNIFIED] Updated department approval_sequence:', newDeptSequence, 'for department:', departmentId);
-            
-            // التحقق من أن التحديث تم بنجاح
-            const [verifyUpdate] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
-            if (verifyUpdate.length) {
-              console.log('[PROCESS BULK UNIFIED] Verification - department approval_sequence after update:', verifyUpdate[0].approval_sequence);
-            }
-          }
-        }
         console.log('[PROCESS BULK UNIFIED] Finished processing fileId:', fileId);
       }
       
+      // تحديث جميع الملفات في جدول contents التي تحتوي على المفوض الأصلي في custom_approval_sequence
+      console.log('[PROCESS BULK UNIFIED] Updating all contents for delegator:', delegatorId);
+      
+      const [allContentRows] = await db.execute(`
+        SELECT id, custom_approval_sequence 
+        FROM contents 
+        WHERE custom_approval_sequence IS NOT NULL AND custom_approval_sequence != ''
+      `);
+      
+      console.log('[PROCESS BULK UNIFIED] Processing all contents with custom sequence:', allContentRows.length);
+      
+      for (const contentRow of allContentRows) {
+        const contentId = contentRow.id;
+        let currentSequence = [];
+        
+        if (contentRow.custom_approval_sequence) {
+          try {
+            currentSequence = Array.isArray(contentRow.custom_approval_sequence) 
+              ? contentRow.custom_approval_sequence 
+              : JSON.parse(contentRow.custom_approval_sequence);
+          } catch { currentSequence = []; }
+        }
+        
+        console.log('[PROCESS BULK UNIFIED] Processing content:', contentId, 'Current sequence:', currentSequence);
+        
+        // فحص إذا كان الملف يحتوي على المفوض الأصلي
+        const hasDelegator = currentSequence.some(id => Number(id) === Number(delegatorId));
+        
+        if (hasDelegator) {
+          console.log('[PROCESS BULK UNIFIED] Content contains delegator, updating sequence');
+          
+          // استبدال المفوض الأصلي بالمفوض الجديد في نفس المكان
+          let newContentSequence = [];
+          let delegateeAdded = false;
+          
+          for (let i = 0; i < currentSequence.length; i++) {
+            if (Number(currentSequence[i]) === Number(delegatorId)) {
+              // استبدال المفوض الأصلي بالمفوض الجديد في نفس المكان
+              newContentSequence.push(Number(userId));
+              delegateeAdded = true;
+              console.log('[PROCESS BULK UNIFIED] Replaced delegator with delegatee in content sequence at position:', i);
+            } else {
+              // إضافة باقي الأعضاء
+              newContentSequence.push(currentSequence[i]);
+            }
+          }
+          
+          // إذا لم نجد المفوض الأصلي في التسلسل، نضيف المفوض الجديد في النهاية
+          if (!delegateeAdded && !newContentSequence.includes(Number(userId))) {
+            newContentSequence.push(Number(userId));
+            console.log('[PROCESS BULK UNIFIED] Added delegatee to end of content sequence:', userId);
+          }
+          
+          await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(newContentSequence), contentId]);
+          console.log('[PROCESS BULK UNIFIED] Updated content custom_approval_sequence:', newContentSequence, 'for content:', contentId);
+        } else {
+          console.log('[PROCESS BULK UNIFIED] Content does not contain delegator, skipping');
+        }
+      }
+      
+      // تحديث approval_sequence في جميع الأقسام التي ينتمي إليها المفوض الأصلي
+      // هذا يضمن أن جميع الملفات المستقبلية ستذهب للمفوض الجديد
+      console.log('[PROCESS BULK UNIFIED] Updating all departments for delegator:', delegatorId);
+      
+      // جلب جميع الأقسام
+      const [allDeptRows] = await db.execute(`
+        SELECT id, approval_sequence 
+        FROM departments
+      `);
+      
+      console.log('[PROCESS BULK UNIFIED] Processing all departments:', allDeptRows.length);
+      
+      for (const deptRow of allDeptRows) {
+        const departmentId = deptRow.id;
+        let currentSequence = [];
+        
+        if (deptRow.approval_sequence) {
+          try {
+            currentSequence = Array.isArray(deptRow.approval_sequence) 
+              ? deptRow.approval_sequence 
+              : JSON.parse(deptRow.approval_sequence);
+          } catch { currentSequence = []; }
+        }
+        
+        console.log('[PROCESS BULK UNIFIED] Processing department:', departmentId, 'Current sequence:', currentSequence);
+        
+        // فحص إذا كان القسم يحتوي على المفوض الأصلي
+        const hasDelegator = currentSequence.some(id => Number(id) === Number(delegatorId));
+        
+        if (hasDelegator) {
+          console.log('[PROCESS BULK UNIFIED] Department contains delegator, updating sequence');
+          
+          // استبدال المفوض الأصلي بالمفوض الجديد في نفس المكان
+          let newDeptSequence = [];
+          let delegateeAdded = false;
+          
+          for (let i = 0; i < currentSequence.length; i++) {
+            if (Number(currentSequence[i]) === Number(delegatorId)) {
+              // استبدال المفوض الأصلي بالمفوض الجديد في نفس المكان
+              newDeptSequence.push(Number(userId));
+              delegateeAdded = true;
+              console.log('[PROCESS BULK UNIFIED] Replaced delegator with delegatee in department sequence at position:', i);
+            } else {
+              // إضافة باقي الأعضاء
+              newDeptSequence.push(currentSequence[i]);
+            }
+          }
+          
+          // إذا لم نجد المفوض الأصلي في التسلسل، نضيف المفوض الجديد في النهاية
+          if (!delegateeAdded && !newDeptSequence.includes(Number(userId))) {
+            newDeptSequence.push(Number(userId));
+            console.log('[PROCESS BULK UNIFIED] Added delegatee to end of department sequence:', userId);
+          }
+          
+          await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(newDeptSequence), departmentId]);
+          console.log('[PROCESS BULK UNIFIED] Updated department approval_sequence:', newDeptSequence, 'for department:', departmentId);
+        } else {
+          console.log('[PROCESS BULK UNIFIED] Department does not contain delegator, skipping');
+        }
+      }
+      
       // قبول التفويض الجماعي
-      // تحديث سجلات التفويض إلى مقبولة
+      // تحديث سجلات التفويض إلى معتمدة
       await db.execute(`
         UPDATE approval_logs 
-        SET status = 'accepted', comments = 'تم قبول التفويض الجماعي'
+        SET status = 'approved', comments = 'تم قبول التفويض الجماعي'
         WHERE approver_id = ? AND delegated_by = ? AND signed_as_proxy = 1 AND status = 'pending'
+        AND (comments LIKE '%تفويض جماعي%' OR comments LIKE '%bulk%')
       `, [userId, delegatorId]);
       
       // إضافة تفويض دائم
@@ -2633,10 +3019,11 @@ const processBulkDelegationUnified = async (req, res) => {
       
     } else if (action === 'reject') {
       // رفض التفويض الجماعي
-      // حذف سجلات التفويض
+      // حذف سجلات التفويض الجماعية فقط
       await db.execute(`
         DELETE FROM approval_logs 
         WHERE approver_id = ? AND delegated_by = ? AND signed_as_proxy = 1 AND status = 'pending'
+        AND (comments LIKE '%تفويض جماعي%' OR comments LIKE '%bulk%')
       `, [userId, delegatorId]);
       
       // حذف التفويض الدائم
@@ -2670,6 +3057,7 @@ module.exports = {
   delegateAllApprovals,
   revokeAllDelegations,
   getDelegationSummaryByUser,
+  revokeActiveDelegation,
   processBulkDelegation,
   getDelegationStatus,
   getPendingDelegationsUnified,
@@ -2677,6 +3065,7 @@ module.exports = {
   processDirectDelegationUnified,
   processBulkDelegationUnified,
 };
+
 
 
 

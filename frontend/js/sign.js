@@ -46,7 +46,7 @@ async function checkDelegationStatus() {
   console.log('🔍 Checking delegation status for userId:', userId);
   
   try {
-    // 1. فحص التفويض المباشر من جدول active_delegations
+    // 1. فحص تفويض جميع الملفات من جدول active_delegations
     const delegationUrl = `http://localhost:3006/api/approvals/delegation-status/${userId}`;
     const delegationRes = await fetch(delegationUrl, { 
       headers: authHeaders() 
@@ -62,22 +62,22 @@ async function checkDelegationStatus() {
     const delegationJson = await delegationRes.json();
     
     if (delegationJson.status === 'success' && delegationJson.data && delegationJson.data.delegated_by) {
-      console.log('✅ Found direct delegation from user:', delegationJson.data.delegated_by);
+      console.log('✅ Found bulk delegation from user:', delegationJson.data.delegated_by);
       
       // تحقق من سجلات الموافقة قبل عرض البوب أب
-      const hasProcessedDelegation = await checkDelegationApprovalLogs(delegationJson.data.delegated_by, 'direct');
+      const hasProcessedDelegation = await checkDelegationApprovalLogs(delegationJson.data.delegated_by, 'bulk');
       if (!hasProcessedDelegation) {
-        // المستخدم مفوض له - عرض بوب أب التفويض المباشر
-        await showDirectDelegationPopup(delegationJson.data.delegated_by);
+        // المستخدم مفوض له - عرض بوب أب تفويض جميع الملفات
+        await showBulkDelegationPopup('bulk-' + delegationJson.data.delegated_by, delegationJson.data.delegated_by_name);
       } else {
-        console.log('✅ Direct delegation already processed, skipping popup');
+        console.log('✅ Bulk delegation already processed, skipping popup');
       }
       return;
     } else {
-      console.log('❌ No direct delegation found');
+      console.log('❌ No bulk delegation found');
     }
     
-    // 2. فحص التفويضات المعلقة الموحدة (أقسام فقط)
+    // 2. فحص التفويضات الجماعية المعلقة من approval_logs
     const pendingDelegationsUrl = `http://localhost:3006/api/approvals/pending-delegations-unified/${userId}`;
     console.log('Calling pending delegations unified URL:', pendingDelegationsUrl);
     const pendingDelegationsRes = await fetch(pendingDelegationsUrl, { 
@@ -95,23 +95,25 @@ async function checkDelegationStatus() {
     console.log('Pending delegations unified response:', pendingDelegationsJson);
     
     if (pendingDelegationsJson.status === 'success' && pendingDelegationsJson.data && pendingDelegationsJson.data.length > 0) {
-      console.log('✅ Found pending unified delegations:', pendingDelegationsJson.data.length);
+      console.log('✅ Found pending bulk delegations:', pendingDelegationsJson.data.length);
       
       // تحقق من سجلات الموافقة قبل عرض البوب أب
       const latestDelegation = pendingDelegationsJson.data[0]; // أحدث تفويض
       const hasProcessedDelegation = await checkDelegationApprovalLogs(latestDelegation.delegated_by, 'bulk', latestDelegation.id);
       if (!hasProcessedDelegation) {
-        // هناك تفويضات معلقة - عرض بوب أب التفويض الجماعي الموحد
+        // هناك تفويضات جماعية معلقة - عرض بوب أب التفويض الجماعي
         await showBulkDelegationPopup(latestDelegation.id, latestDelegation.delegated_by_name);
       } else {
         console.log('✅ Bulk delegation already processed, skipping popup');
       }
       return;
     } else {
-      console.log('❌ No pending unified delegations found');
+      console.log('❌ No pending bulk delegations found');
     }
     
-    console.log('🔍 No delegations found for user:', userId);
+    // 3. فحص التوقيع بالنيابة الفردي - لا نعرض بوب أب له
+    // هذه التفويضات ستظهر في الجدول العادي في الصفحة
+    console.log('🔍 Individual proxy signatures will be shown in the table');
     
   } catch (err) {
     console.error('خطأ في فحص حالة التفويض:', err);
@@ -127,13 +129,13 @@ async function checkDelegationApprovalLogs(delegatorId, delegationType, delegati
     const userId = getCurrentUserId();
     console.log('🔍 Checking delegation approval logs:', { delegatorId, delegationType, delegationId, userId });
     
-    // التحقق من سجلات الموافقة للأقسام
+    // التحقق من سجلات الموافقة للتفويض
     const deptLogsUrl = `http://localhost:3006/api/approvals/delegation-logs/${userId}/${delegatorId}`;
     const deptLogsRes = await fetch(deptLogsUrl, { headers: authHeaders() });
     
     if (deptLogsRes.ok) {
       const deptLogsJson = await deptLogsRes.json();
-      console.log('Department delegation logs:', deptLogsJson);
+      console.log('Delegation logs:', deptLogsJson);
       
       if (deptLogsJson.status === 'success' && deptLogsJson.data && deptLogsJson.data.length > 0) {
         // تحقق من وجود سجلات مقبولة أو مرفوضة
@@ -141,7 +143,7 @@ async function checkDelegationApprovalLogs(delegatorId, delegationType, delegati
           log.status === 'accepted' || log.status === 'rejected'
         );
         if (hasProcessed) {
-          console.log('✅ Found processed department delegation logs');
+          console.log('✅ Found processed delegation logs');
           return true;
         }
       }
@@ -156,48 +158,12 @@ async function checkDelegationApprovalLogs(delegatorId, delegationType, delegati
   }
 }
 
-// دالة عرض بوب أب التفويض المباشر
-async function showDirectDelegationPopup(delegatorId) {
-  try {
-    console.log('🎯 Showing direct delegation popup for delegator:', delegatorId);
-    
-    // جلب اسم المفوض
-    const userRes = await fetch(`http://localhost:3006/api/users/${delegatorId}`, { headers: authHeaders() });
-    const userJson = await userRes.json();
-    const delegatorName = userJson.data?.name || userJson.data?.username || 'المفوض';
-    
-    const message = `${delegatorName} قام بتفويضك بالنيابة عنه في جميع ملفاته. هل توافق على التفويض المباشر؟`;
-    
-    showDelegationPopup(
-      message,
-      async () => {
-        try {
-          await processDirectDelegationUnified(delegatorId, 'accept');
-        } catch (err) {
-          alert('خطأ في قبول التفويض المباشر');
-        }
-      },
-      async () => {
-        try {
-          await processDirectDelegationUnified(delegatorId, 'reject');
-          alert('تم رفض التفويض المباشر');
-        } catch (err) {
-          alert('خطأ في رفض التفويض المباشر');
-        }
-      }
-    );
-    
-  } catch (err) {
-    console.error('خطأ في عرض بوب أب التفويض المباشر:', err);
-  }
-}
-
-// دالة عرض بوب أب التفويض الجماعي الموحد
+// دالة عرض بوب أب تفويض جميع الملفات
 async function showBulkDelegationPopup(delegationId, delegatorName) {
   try {
     console.log('🎯 Showing bulk delegation popup for delegation:', delegationId);
     
-    const message = `${delegatorName} قام بتفويضك بالنيابة عنه في جميع ملفاته. هل توافق على التفويض الجماعي؟`;
+    const message = `${delegatorName} قام بتفويضك بالنيابة عنه في جميع ملفاته. هل توافق على هذا التفويض؟`;
     
     showDelegationPopup(
       message,
@@ -205,23 +171,25 @@ async function showBulkDelegationPopup(delegationId, delegatorName) {
         try {
           await processBulkDelegationUnified(delegationId, 'accept');
         } catch (err) {
-          alert('خطأ في قبول التفويض الجماعي');
+          alert('خطأ في قبول التفويض');
         }
       },
       async () => {
         try {
           await processBulkDelegationUnified(delegationId, 'reject');
-          alert('تم رفض التفويض الجماعي');
+          alert('تم رفض التفويض');
         } catch (err) {
-          alert('خطأ في رفض التفويض الجماعي');
+          alert('خطأ في رفض التفويض');
         }
       }
     );
     
   } catch (err) {
-    console.error('خطأ في عرض بوب أب التفويض الجماعي:', err);
+    console.error('خطأ في عرض بوب أب التفويض:', err);
   }
 }
+
+
 
 // دالة موحدة لعرض بوب أب التفويض
 function showDelegationPopup(message, onAccept, onReject) {
@@ -264,26 +232,7 @@ function showDelegationPopup(message, onAccept, onReject) {
   document.body.appendChild(overlay);
 }
 
-// دالة معالجة التفويض المباشر الموحد
-async function processDirectDelegationUnified(delegatorId, action) {
-  try {
-    const res = await fetch('http://localhost:3006/api/approvals/direct-delegation-unified/process', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ delegatorId, action })
-    });
-    const json = await res.json();
-    if (json.status !== 'success') {
-      throw new Error(json.message);
-    }
-    console.log('✅ Direct delegation unified result:', json);
-  } catch (err) {
-    console.error('خطأ في معالجة التفويض المباشر الموحد:', err);
-    throw err;
-  }
-}
-
-// دالة معالجة التفويض الجماعي الموحد
+// دالة معالجة تفويض جميع الملفات
 async function processBulkDelegationUnified(delegationId, action) {
   try {
     const res = await fetch('http://localhost:3006/api/approvals/bulk-delegation-unified/process', {
@@ -297,10 +246,12 @@ async function processBulkDelegationUnified(delegationId, action) {
     }
     console.log('✅ Bulk delegation unified result:', json);
   } catch (err) {
-    console.error('خطأ في معالجة التفويض الجماعي الموحد:', err);
+    console.error('خطأ في معالجة تفويض جميع الملفات:', err);
     throw err;
   }
 }
+
+
 
 // دالة الترجمة
 function getTranslation(key) {
