@@ -598,3 +598,180 @@ body[lang="en"] .toast-container,
     left: auto !important;
     right: 20px !important;
 }
+
+/* ============================
+   أنماط أزرار الحذف والاختيار
+============================ */
+
+/* حاوية أزرار الحذف */
+.delete-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+/* زر حذف المحدد */
+.delete-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.delete-btn.delete-selected {
+  background-color: #dc3545;
+  color: white;
+}
+
+.delete-btn.delete-selected:hover {
+  background-color: #c82333;
+}
+
+.delete-btn.delete-all {
+  background-color: #6c757d;
+  color: white;
+}
+
+.delete-btn.delete-all:hover {
+  background-color: #5a6268;
+}
+
+.export-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.export-btn:hover {
+  background-color: #218838;
+}
+
+.delete-btn:disabled {
+  background-color: #6c757d;
+  color: #adb5bd;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* حاوية تحديد الكل */
+.select-all-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select-all-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #1D4ED8;
+}
+
+.select-all-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* عمود الاختيار في الجدول */
+.checkbox-column {
+  width: 40px;
+  text-align: center;
+}
+
+.log-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #1D4ED8;
+}
+
+/* عمود الإجراءات */
+.actions-column {
+  width: 80px;
+  text-align: center;
+}
+
+/* زر حذف الصف */
+.delete-row-btn {
+  padding: 4px 8px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.delete-row-btn:hover {
+  background-color: #c82333;
+}
+
+/* تحسينات للجدول مع الأعمدة الجديدة */
+.logs-table th.checkbox-column,
+.logs-table td.checkbox-column {
+  width: 40px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.logs-table th.actions-column,
+.logs-table td.actions-column {
+  width: 80px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* تحسين مظهر الصفوف عند التحديد */
+.logs-table tbody tr.selected {
+  background-color: #e3f2fd;
+}
+
+.logs-table tbody tr.selected:hover {
+  background-color: #bbdefb;
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+  .delete-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .select-all-container {
+    justify-content: center;
+  }
+  
+  .checkbox-column {
+    width: 30px;
+  }
+  
+  .actions-column {
+    width: 60px;
+  }
+  
+  .delete-row-btn {
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+}

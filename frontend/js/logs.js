@@ -5,10 +5,226 @@ document.addEventListener('DOMContentLoaded', () => {
   const userNameSelect   = document.getElementById('user-name');
   const searchInput      = document.getElementById('search-input');
   const logsBody         = document.getElementById('logs-body');
+  
+  // متغيرات جديدة للحذف والتحديد
+  const headerSelectAllCheckbox = document.getElementById('header-select-all');
+  const deleteSelectedBtn = document.getElementById('delete-selected');
+  const deleteAllBtn = document.getElementById('delete-all');
+  
+  // مصفوفة لتخزين السجلات المحددة
+  let selectedLogs = [];
+  let allLogs = [];
 
   function authHeader() {
     const token = localStorage.getItem('token');
     return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
+  // دالة لعرض رسائل التأكيد
+  function showConfirmDialog(message, onConfirm) {
+    const lang = localStorage.getItem('language') || 'ar';
+    const confirmText = lang === 'ar' ? 'تأكيد' : 'Confirm';
+    const cancelText = lang === 'ar' ? 'إلغاء' : 'Cancel';
+    
+    if (confirm(message)) {
+      onConfirm();
+    }
+  }
+
+  // دالة لعرض رسائل النجاح والخطأ
+  function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+
+  // دالة حذف سجل واحد
+  async function deleteLog(logId) {
+    try {
+      const response = await fetch(`http://localhost:3006/api/users/logs/${logId}`, {
+        method: 'DELETE',
+        headers: {
+          ...authHeader(),
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        showToast(getTranslation('log-deleted-successfully') || 'تم حذف السجل بنجاح');
+        loadLogs(); // إعادة تحميل السجلات
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || getTranslation('error-deleting-log') || 'خطأ في حذف السجل', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting log:', error);
+      showToast(getTranslation('error-deleting-log') || 'خطأ في حذف السجل', 'error');
+    }
+  }
+
+  // دالة حذف سجلات متعددة
+  async function deleteMultipleLogs(logIds) {
+    try {
+      const response = await fetch('http://localhost:3006/api/users/logs/bulk-delete', {
+        method: 'DELETE',
+        headers: {
+          ...authHeader(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ logIds })
+      });
+
+      if (response.ok) {
+        showToast(getTranslation('logs-deleted-successfully') || 'تم حذف السجلات بنجاح');
+        loadLogs(); // إعادة تحميل السجلات
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || getTranslation('error-deleting-logs') || 'خطأ في حذف السجلات', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting logs:', error);
+      showToast(getTranslation('error-deleting-logs') || 'خطأ في حذف السجلات', 'error');
+    }
+  }
+
+  // دالة حذف جميع السجلات
+  async function deleteAllLogs() {
+    try {
+      const response = await fetch('http://localhost:3006/api/users/logs/delete-all', {
+        method: 'DELETE',
+        headers: {
+          ...authHeader(),
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        showToast(getTranslation('all-logs-deleted-successfully') || 'تم حذف جميع السجلات بنجاح');
+        loadLogs(); // إعادة تحميل السجلات
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || getTranslation('error-deleting-all-logs') || 'خطأ في حذف جميع السجلات', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting all logs:', error);
+      showToast(getTranslation('error-deleting-all-logs') || 'خطأ في حذف جميع السجلات', 'error');
+    }
+  }
+
+  // دالة تصدير السجلات
+  async function exportLogs() {
+    try {
+      const exportBtn = document.getElementById('export-logs');
+      const originalText = exportBtn.innerHTML;
+      
+      // تغيير نص الزر أثناء التصدير
+      exportBtn.innerHTML = `
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>${getTranslation('exporting-logs') || 'جاري التصدير...'}</span>
+      `;
+      exportBtn.disabled = true;
+
+      const response = await fetch('http://localhost:3006/api/users/logs/export/excel', {
+        method: 'GET',
+        headers: authHeader()
+      });
+
+      if (response.ok) {
+        // تحميل الملف
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `system_logs_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showToast(getTranslation('logs-exported-successfully') || 'تم تصدير السجلات بنجاح');
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || getTranslation('error-exporting-logs') || 'خطأ في تصدير السجلات', 'error');
+      }
+    } catch (error) {
+      console.error('Error exporting logs:', error);
+      showToast(getTranslation('error-exporting-logs') || 'خطأ في تصدير السجلات', 'error');
+    } finally {
+      // إعادة نص الزر الأصلي
+      const exportBtn = document.getElementById('export-logs');
+      exportBtn.innerHTML = `
+        <i class="fas fa-file-excel"></i>
+        <span data-translate="export-logs">تصدير السجلات</span>
+      `;
+      exportBtn.disabled = false;
+    }
+  }
+
+  // دالة تحديث حالة أزرار الحذف
+  function updateDeleteButtons() {
+    const hasSelected = selectedLogs.length > 0;
+    deleteSelectedBtn.disabled = !hasSelected;
+    
+    // تحديث نص زر حذف المحدد
+    const selectedCount = selectedLogs.length;
+    const deleteSelectedText = getTranslation('delete-selected') || 'حذف المحدد';
+    deleteSelectedBtn.innerHTML = `
+      <i class="fas fa-trash"></i>
+      <span>${deleteSelectedText} (${selectedCount})</span>
+    `;
+  }
+
+  // دالة تحديث حالة تحديد الكل
+  function updateSelectAllState() {
+    const totalLogs = allLogs.length;
+    const selectedCount = selectedLogs.length;
+    
+      // تحديث حالة checkbox تحديد الكل
+  if (selectedCount === 0) {
+    headerSelectAllCheckbox.checked = false;
+    headerSelectAllCheckbox.indeterminate = false;
+  } else if (selectedCount === totalLogs) {
+    headerSelectAllCheckbox.checked = true;
+    headerSelectAllCheckbox.indeterminate = false;
+  } else {
+    headerSelectAllCheckbox.checked = false;
+    headerSelectAllCheckbox.indeterminate = true;
+  }
+  }
+
+  // دالة تحديد/إلغاء تحديد سجل
+  function toggleLogSelection(logId, checkbox) {
+    if (checkbox.checked) {
+      if (!selectedLogs.includes(logId)) {
+        selectedLogs.push(logId);
+      }
+    } else {
+      selectedLogs = selectedLogs.filter(id => id !== logId);
+    }
+    
+    updateDeleteButtons();
+    updateSelectAllState();
+  }
+
+  // دالة تحديد/إلغاء تحديد الكل
+  function toggleSelectAll(checked) {
+    selectedLogs = checked ? allLogs.map(log => log.id) : [];
+    
+    // تحديث جميع checkboxes في الجدول
+    const logCheckboxes = document.querySelectorAll('.log-checkbox');
+    logCheckboxes.forEach(checkbox => {
+      checkbox.checked = checked;
+    });
+    
+    updateDeleteButtons();
+    updateSelectAllState();
   }
 
   // دالة للحصول على الترجمة
@@ -449,11 +665,13 @@ document.addEventListener('DOMContentLoaded', () => {
       logsBody.innerHTML = '';
 
       if (json.data && Array.isArray(json.data)) {
-        json.data.forEach(log => {
+        allLogs = json.data; // تخزين جميع السجلات
+        allLogs.forEach(log => {
           const tr = document.createElement('tr');
           tr.dataset.date   = log.created_at;
           tr.dataset.user   = log.user;
           tr.dataset.action = log.action;
+          tr.dataset.id     = log.id; // إضافة ID للسجل
 
           // تحديد اللغة الحالية
           const lang = localStorage.getItem('language') || document.documentElement.lang || 'ar';
@@ -519,12 +737,24 @@ document.addEventListener('DOMContentLoaded', () => {
           const translatedAction = translateActionName(action);
 
           tr.innerHTML = `
+            <td><input type="checkbox" class="log-checkbox" value="${log.id}"></td>
             <td>${processedUser}</td>
             <td>${translatedDescription}</td>
             <td>${new Date(log.created_at).toLocaleString(locale)}</td>
             <td><span class="action-text">${translatedAction}</span></td>
+            <td>
+              <button class="delete-row-btn" onclick="deleteSingleLog('${log.id}')" title="${getTranslation('delete-log') || 'حذف السجل'}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
           `;
           logsBody.appendChild(tr);
+          
+          // إضافة حدث لتحديد السجل
+          const checkbox = tr.querySelector('.log-checkbox');
+          checkbox.addEventListener('change', (e) => {
+            toggleLogSelection(log.id, e.target);
+          });
         });
       } else {
         // عرض رسالة إذا لم تكن هناك بيانات
@@ -610,6 +840,53 @@ document.addEventListener('DOMContentLoaded', () => {
   searchInput.addEventListener('input', () => {
     setTimeout(loadLogs, 300); // قليل من التأخير لتحسين التجربة
   });
+
+  // أحداث تحديد الكل
+  headerSelectAllCheckbox.addEventListener('change', (e) => {
+    toggleSelectAll(e.target.checked);
+  });
+
+  // أحداث أزرار الحذف
+  deleteSelectedBtn.addEventListener('click', () => {
+    if (selectedLogs.length === 0) return;
+    
+    const lang = localStorage.getItem('language') || 'ar';
+    const message = lang === 'ar' 
+      ? `هل أنت متأكد من حذف ${selectedLogs.length} سجل محدد؟`
+      : `Are you sure you want to delete ${selectedLogs.length} selected logs?`;
+    
+    showConfirmDialog(message, () => {
+      deleteMultipleLogs(selectedLogs);
+    });
+  });
+
+  deleteAllBtn.addEventListener('click', () => {
+    const lang = localStorage.getItem('language') || 'ar';
+    const message = lang === 'ar' 
+      ? 'هل أنت متأكد من حذف جميع السجلات؟ هذا الإجراء لا يمكن التراجع عنه.'
+      : 'Are you sure you want to delete all logs? This action cannot be undone.';
+    
+    showConfirmDialog(message, () => {
+      deleteAllLogs();
+    });
+  });
+
+  // حدث زر التصدير
+  document.getElementById('export-logs').addEventListener('click', () => {
+    exportLogs();
+  });
+
+  // دالة حذف سجل واحد (متاحة عالمياً)
+  window.deleteSingleLog = function(logId) {
+    const lang = localStorage.getItem('language') || 'ar';
+    const message = lang === 'ar' 
+      ? 'هل أنت متأكد من حذف هذا السجل؟'
+      : 'Are you sure you want to delete this log?';
+    
+    showConfirmDialog(message, () => {
+      deleteLog(logId);
+    });
+  };
 
   // مراقبة تغيير اللغة
   window.addEventListener('languageChanged', () => {

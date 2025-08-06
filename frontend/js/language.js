@@ -7,7 +7,7 @@ const translations = {
         'logs': 'السجلات',
         'notifications': 'الإشعارات',
         'language': 'عربي',
-        'add-folder-name"': 'اضافة اسم المجلد',
+        'add-folder-name': 'اضافة اسم المجلد',
         'folder-name-ar': 'اسم المجلد بالعربية',
         'folder-name-en': 'اسم المجلد بالانجليزية',
         
@@ -98,6 +98,19 @@ const translations = {
         'folder-name': 'اسم المجلد',
         'content-name': 'عنوان المحتوى',
         'add-folder-name': ' إضافة اسم جديد',
+        
+        // Logs deletion translations
+        'select-all': 'تحديد الكل',
+        'delete-selected': 'حذف المحدد',
+        'delete-all': 'حذف الكل',
+        'delete-log': 'حذف السجل',
+        'actions': 'الإجراءات',
+        'log-deleted-successfully': 'تم حذف السجل بنجاح',
+        'logs-deleted-successfully': 'تم حذف السجلات بنجاح',
+        'all-logs-deleted-successfully': 'تم حذف جميع السجلات بنجاح',
+        'error-deleting-log': 'خطأ في حذف السجل',
+        'error-deleting-logs': 'خطأ في حذف السجلات',
+        'error-deleting-all-logs': 'خطأ في حذف جميع السجلات',
         'add-content-name': ' إضافة عنوان جديد',
         'choose-file': 'اختر ملف لإرفاقه',
         'choose-new-file': 'اختر ملف جديد لإرفاقه',
@@ -1127,6 +1140,7 @@ const translations = {
         'choose-type': 'اختر النوع',
         'yes': 'نعم',
         'no': 'لا',
+        'edit-profile': 'تعديل الملف الشخصي',
         
         // Pagination translations
         'page': 'صفحة',
@@ -1146,6 +1160,10 @@ const translations = {
         'job-title-added': 'تم إضافة المسمى الوظيفي بنجاح',
         'confirm-delete-job-title': 'هل أنت متأكد من حذف هذا المسمى الوظيفي؟',
         'cannot-delete-job-title': 'لا يمكن حذف المسمى الوظيفي لأنه مستخدم من قبل مستخدمين',
+        'export-logs': 'تصدير السجلات',
+        'exporting-logs': 'جاري تصدير السجلات...',
+        'logs-exported-successfully': 'تم تصدير السجلات بنجاح',
+        'error-exporting-logs': 'خطأ في تصدير السجلات'
     },
     en: {
               'enter-job-title': 'Enter job title',
@@ -1246,6 +1264,23 @@ const translations = {
         'sign_elctronic': 'Electronic Approval',
         'logs': 'Logs',
         'notifications': 'Notifications',
+        
+        // Logs deletion translations
+        'select-all': 'Select All',
+        'delete-selected': 'Delete Selected',
+        'delete-all': 'Delete All',
+        'delete-log': 'Delete Log',
+        'actions': 'Actions',
+        'log-deleted-successfully': 'Log deleted successfully',
+        'logs-deleted-successfully': 'Logs deleted successfully',
+        'all-logs-deleted-successfully': 'All logs deleted successfully',
+        'error-deleting-log': 'Error deleting log',
+        'error-deleting-logs': 'Error deleting logs',
+        'error-deleting-all-logs': 'Error deleting all logs',
+        'export-logs': 'Export Logs',
+        'exporting-logs': 'Exporting logs...',
+        'logs-exported-successfully': 'Logs exported successfully',
+        'error-exporting-logs': 'Error exporting logs',
         'language': 'English',
         'committee-name-ar': 'Committee Name (Arabic)',
         'committee-name-en': 'Committee Name (English)',
@@ -1273,7 +1308,7 @@ const translations = {
         // System title
         'system-title': 'Quality and Safety Management System',
 'dashboard-overview': 'Dashboard Overview',
-'delete-folder-name-confirm': 'Are you sure you want to delete this folder name? This will only remove the name from the list and won’t affect any existing contents that uses it.',
+'delete-folder-name-confirm': 'Are you sure you want to delete this folder name? This will only remove the name from the list and won\'t affect any existing contents that uses it.',
 'delete-folder-name-title': 'Delete Folder Name',
         // Login & Register
         'login': 'Login',
@@ -1344,7 +1379,7 @@ const translations = {
         'transfer-tickets-desc': 'Manage and transfer current OVR smoothly',
 'edit-content-name': 'Edit Content Name',
 'delete-content-name-title': 'Delete Content Name',
-'delete-content-name-confirm': 'Are you sure you want to delete this content name? This will only remove the name from the list and won’t affect any existing content that uses it.',
+'delete-content-name-confirm': 'Are you sure you want to delete this content name? This will only remove the name from the list and won\'t affect any existing content that uses it.',
         // Approvals
         'approval-list': 'Approval List',
         'file-name-label': 'File Name:',
@@ -1546,7 +1581,7 @@ const translations = {
         'add_many_content': 'Add Many Content',
     'transfer-title': 'Transfer Files',
     'transfer-desc' :'Transfer files to other users',
-    // أضف هذا السطر:
+        // أضف هذا السطر:
     'no-new-approvers': 'No new approvers to send',
     'add-more-success': 'New approvers added successfully',
         'error-occurred': 'An error occurred',
@@ -1963,6 +1998,7 @@ const translations = {
         'reporter-email': 'Email',
         
         'actions-taken': 'Actions Taken',
+        'edit-profile' : 'Edit Profile',
         
         'event-classification': 'Event Classification',
         'medical-equipment': 'Medical Equipment',

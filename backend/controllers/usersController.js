@@ -2,6 +2,7 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const ExcelJS = require('exceljs');
 const db = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -1174,6 +1175,512 @@ const getUserApprovalSequenceFiles = async (req, res) => {
   }
 };
 
+// حذف سجل واحد
+const deleteLog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'غير مصرح' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    // التحقق من وجود السجل
+    const [logRows] = await db.execute('SELECT * FROM activity_logs WHERE id = ?', [id]);
+    
+    if (logRows.length === 0) {
+      return res.status(404).json({ message: 'السجل غير موجود' });
+    }
+
+    // حذف السجل
+    const [result] = await db.execute('DELETE FROM activity_logs WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'فشل في حذف السجل' });
+    }
+
+    res.json({ 
+      status: 'success', 
+      message: 'تم حذف السجل بنجاح' 
+    });
+  } catch (error) {
+    console.error('Error deleting log:', error);
+    res.status(500).json({ message: 'خطأ في حذف السجل' });
+  }
+};
+
+// حذف عدة سجلات
+const deleteMultipleLogs = async (req, res) => {
+  try {
+    const { logIds } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'غير مصرح' });
+    }
+
+    if (!logIds || !Array.isArray(logIds) || logIds.length === 0) {
+      return res.status(400).json({ message: 'معرفات السجلات مطلوبة' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    // حذف السجلات المحددة
+    const placeholders = logIds.map(() => '?').join(',');
+    const [result] = await db.execute(
+      `DELETE FROM activity_logs WHERE id IN (${placeholders})`,
+      logIds
+    );
+    
+    res.json({ 
+      status: 'success', 
+      message: `تم حذف ${result.affectedRows} سجل بنجاح`,
+      deletedCount: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Error deleting multiple logs:', error);
+    res.status(500).json({ message: 'خطأ في حذف السجلات' });
+  }
+};
+
+// حذف جميع السجلات
+const deleteAllLogs = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'غير مصرح' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    // حذف جميع السجلات
+    const [result] = await db.execute('DELETE FROM activity_logs');
+    
+    res.json({ 
+      status: 'success', 
+      message: `تم حذف جميع السجلات بنجاح (${result.affectedRows} سجل)`,
+      deletedCount: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Error deleting all logs:', error);
+    res.status(500).json({ message: 'خطأ في حذف جميع السجلات' });
+  }
+};
+
+// دالة تصدير السجلات إلى Excel
+const exportLogsToExcel = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'غير مصرح' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    // جلب جميع السجلات مع معلومات إضافية
+    const [logs] = await db.execute(`
+      SELECT 
+        l.id,
+        u.username as user_name,
+        l.description,
+        l.action,
+        l.reference_type,
+        l.reference_id,
+        l.created_at
+      FROM activity_logs l
+      LEFT JOIN users u ON l.user_id = u.id
+      ORDER BY l.created_at DESC
+    `);
+
+    // دالة لترجمة الإجراءات - محسنة ومحدثة
+    function translateAction(action, lang = 'ar') {
+      const actionTranslations = {
+        ar: {
+          'create_folder': 'إنشاء مجلد',
+          'update_folder': 'تعديل مجلد',
+          'delete_folder': 'حذف مجلد',
+          'add_folder_name': 'إضافة اسم مجلد',
+          'update_folder_name': 'تعديل اسم مجلد',
+          'delete_folder_name': 'حذف اسم مجلد',
+          'add_content': 'إضافة محتوى',
+          'update_content': 'تعديل محتوى',
+          'delete_content': 'حذف محتوى',
+          'add_department': 'إضافة قسم',
+          'update_department': 'تعديل قسم',
+          'add_sub_department': 'إضافة قسم فرعي',
+          'update_sub_department': 'تعديل قسم فرعي',
+          'delete_sub_department': 'حذف قسم فرعي',
+          'add_user_permission': 'إضافة صلاحية مستخدم',
+          'delete_department': 'حذف قسم',
+          'add_user': 'إضافة مستخدم',
+          'update_user': 'تعديل مستخدم',
+          'delete_user': 'حذف مستخدم',
+          'change_role': 'تغيير دور',
+          'login': 'تسجيل دخول',
+          'logout': 'تسجيل خروج',
+          'register_user': 'تسجيل مستخدم جديد',
+          'create_ticket': 'إنشاء تذكرة',
+          'update_ticket': 'تحديث تذكرة',
+          'delete_ticket': 'حذف تذكرة',
+          'add_reply': 'إضافة رد',
+          'approve_content': 'اعتماد محتوى',
+          'reject_content': 'رفض محتوى',
+          'sign_document': 'توقيع مستند',
+          'delegate_signature': 'تفويض توقيع',
+          'view_department_content': 'عرض محتوى القسم',
+          'view_committee_content': 'عرض محتوى اللجنة',
+          'send_approval_request': 'إرسال طلب اعتماد',
+          'partial_approve_content': 'اعتماد جزئي للمحتوى',
+          'upload_file': 'رفع ملف',
+          'download_file': 'تحميل ملف',
+          'view_file': 'عرض ملف',
+          'share_file': 'مشاركة ملف',
+          'move_file': 'نقل ملف',
+          'copy_file': 'نسخ ملف',
+          'rename_file': 'إعادة تسمية ملف',
+          'archive_file': 'أرشفة ملف',
+          'restore_file': 'استعادة ملف',
+          'permanent_delete': 'حذف نهائي',
+          'change_permissions': 'تغيير الصلاحيات',
+          'grant_access': 'منح صلاحية',
+          'revoke_access': 'سحب صلاحية',
+          'create_backup': 'إنشاء نسخة احتياطية',
+          'restore_backup': 'استعادة نسخة احتياطية',
+          'system_maintenance': 'صيانة النظام',
+          'update_system': 'تحديث النظام',
+          'generate_report': 'إنشاء تقرير',
+          'export_data': 'تصدير بيانات',
+          'import_data': 'استيراد بيانات',
+          'sync_data': 'مزامنة البيانات',
+          'validate_data': 'التحقق من صحة البيانات',
+          'approve_request': 'اعتماد طلب',
+          'reject_request': 'رفض طلب',
+          'forward_request': 'تحويل طلب',
+          'escalate_request': 'تصعيد طلب',
+          'close_request': 'إغلاق طلب',
+          'reopen_request': 'إعادة فتح طلب',
+          'assign_task': 'تعيين مهمة',
+          'complete_task': 'إكمال مهمة',
+          'cancel_task': 'إلغاء مهمة',
+          'schedule_meeting': 'جدولة اجتماع',
+          'join_meeting': 'الانضمام لاجتماع',
+          'leave_meeting': 'مغادرة اجتماع',
+          'record_meeting': 'تسجيل اجتماع',
+          'send_notification': 'إرسال إشعار',
+          'read_notification': 'قراءة إشعار',
+          'delete_notification': 'حذف إشعار',
+          'mark_as_read': 'تحديد كمقروء',
+          'mark_as_unread': 'تحديد كغير مقروء',
+          'filter_logs': 'تصفية السجلات',
+          'search_logs': 'البحث في السجلات',
+          'clear_logs': 'مسح السجلات',
+          'export_logs': 'تصدير السجلات',
+          'backup_logs': 'نسخ احتياطي للسجلات',
+          'restore_logs': 'استعادة السجلات',
+          'analyze_logs': 'تحليل السجلات',
+          'generate_log_report': 'إنشاء تقرير السجلات',
+          'set_log_level': 'تعيين مستوى السجل',
+          'configure_logging': 'تكوين التسجيل',
+          'test_connection': 'اختبار الاتصال',
+          'reset_password': 'إعادة تعيين كلمة المرور',
+          'change_password': 'تغيير كلمة المرور',
+          'lock_account': 'قفل الحساب',
+          'unlock_account': 'إلغاء قفل الحساب',
+          'suspend_account': 'تعليق الحساب',
+          'activate_account': 'تفعيل الحساب',
+          'verify_email': 'التحقق من البريد الإلكتروني',
+          'confirm_registration': 'تأكيد التسجيل',
+          'request_password_reset': 'طلب إعادة تعيين كلمة المرور',
+          'confirm_password_reset': 'تأكيد إعادة تعيين كلمة المرور',
+          'enable_two_factor': 'تفعيل المصادقة الثنائية',
+          'disable_two_factor': 'إلغاء تفعيل المصادقة الثنائية',
+          'generate_api_key': 'إنشاء مفتاح API',
+          'revoke_api_key': 'سحب مفتاح API',
+          'view_audit_trail': 'عرض سجل التدقيق',
+          'export_audit_trail': 'تصدير سجل التدقيق',
+          'clear_audit_trail': 'مسح سجل التدقيق',
+          'configure_security': 'تكوين الأمان',
+          'update_security_settings': 'تحديث إعدادات الأمان',
+          'run_security_scan': 'تشغيل فحص الأمان',
+          'block_ip': 'حظر عنوان IP',
+          'unblock_ip': 'إلغاء حظر عنوان IP',
+          'view_security_logs': 'عرض سجلات الأمان',
+          'generate_security_report': 'إنشاء تقرير الأمان'
+        },
+        en: {
+          'create_folder': 'Create Folder',
+          'update_folder': 'Update Folder',
+          'delete_folder': 'Delete Folder',
+          'add_folder_name': 'Add Folder Name',
+          'update_folder_name': 'Update Folder Name',
+          'delete_folder_name': 'Delete Folder Name',
+          'add_content': 'Add Content',
+          'update_content': 'Update Content',
+          'delete_content': 'Delete Content',
+          'add_department': 'Add Department',
+          'add_user_permission': 'Add User Permission',
+          'update_department': 'Update Department',
+          'delete_department': 'Delete Department',
+
+          'add_user': 'Add User',
+          'update_user': 'Update User',
+          'delete_user': 'Delete User',
+          'change_role': 'Change Role',
+          'login': 'Login',
+          'logout': 'Logout',
+          'register_user': 'Register User',
+          'create_ticket': 'Create Ticket',
+          'update_ticket': 'Update Ticket',
+          'delete_ticket': 'Delete Ticket',
+          'add_reply': 'Add Reply',
+          'approve_content': 'Approve Content',
+          'reject_content': 'Reject Content',
+          'sign_document': 'Sign Document',
+          'delegate_signature': 'Delegate Signature',
+          'view_department_content': 'View Department Content',
+          'view_committee_content': 'View Committee Content',
+          'send_approval_request': 'Send Approval Request',
+          'partial_approve_content': 'Partially Approve Content',
+          'upload_file': 'Upload File',
+          'download_file': 'Download File',
+          'view_file': 'View File',
+          'share_file': 'Share File',
+          'move_file': 'Move File',
+          'copy_file': 'Copy File',
+          'rename_file': 'Rename File',
+          'archive_file': 'Archive File',
+          'restore_file': 'Restore File',
+          'permanent_delete': 'Permanent Delete',
+          'change_permissions': 'Change Permissions',
+          'grant_access': 'Grant Access',
+          'revoke_access': 'Revoke Access',
+          'create_backup': 'Create Backup',
+          'restore_backup': 'Restore Backup',
+          'system_maintenance': 'System Maintenance',
+          'update_system': 'Update System',
+          'generate_report': 'Generate Report',
+          'export_data': 'Export Data',
+          'import_data': 'Import Data',
+          'sync_data': 'Sync Data',
+          'validate_data': 'Validate Data',
+          'approve_request': 'Approve Request',
+          'reject_request': 'Reject Request',
+          'forward_request': 'Forward Request',
+          'escalate_request': 'Escalate Request',
+          'close_request': 'Close Request',
+          'reopen_request': 'Reopen Request',
+          'assign_task': 'Assign Task',
+          'complete_task': 'Complete Task',
+          'cancel_task': 'Cancel Task',
+          'schedule_meeting': 'Schedule Meeting',
+          'join_meeting': 'Join Meeting',
+          'leave_meeting': 'Leave Meeting',
+          'record_meeting': 'Record Meeting',
+          'send_notification': 'Send Notification',
+          'read_notification': 'Read Notification',
+          'delete_notification': 'Delete Notification',
+          'mark_as_read': 'Mark as Read',
+          'mark_as_unread': 'Mark as Unread',
+          'filter_logs': 'Filter Logs',
+          'search_logs': 'Search Logs',
+          'clear_logs': 'Clear Logs',
+          'export_logs': 'Export Logs',
+          'backup_logs': 'Backup Logs',
+          'restore_logs': 'Restore Logs',
+          'analyze_logs': 'Analyze Logs',
+          'generate_log_report': 'Generate Log Report',
+          'set_log_level': 'Set Log Level',
+          'configure_logging': 'Configure Logging',
+          'test_connection': 'Test Connection',
+          'reset_password': 'Reset Password',
+          'change_password': 'Change Password',
+          'lock_account': 'Lock Account',
+          'unlock_account': 'Unlock Account',
+          'suspend_account': 'Suspend Account',
+          'activate_account': 'Activate Account',
+          'verify_email': 'Verify Email',
+          'confirm_registration': 'Confirm Registration',
+          'request_password_reset': 'Request Password Reset',
+          'confirm_password_reset': 'Confirm Password Reset',
+          'enable_two_factor': 'Enable Two Factor',
+          'disable_two_factor': 'Disable Two Factor',
+          'generate_api_key': 'Generate API Key',
+          'revoke_api_key': 'Revoke API Key',
+          'view_audit_trail': 'View Audit Trail',
+          'export_audit_trail': 'Export Audit Trail',
+          'clear_audit_trail': 'Clear Audit Trail',
+          'configure_security': 'Configure Security',
+          'update_security_settings': 'Update Security Settings',
+          'run_security_scan': 'Run Security Scan',
+          'block_ip': 'Block IP',
+          'unblock_ip': 'Unblock IP',
+          'view_security_logs': 'View Security Logs',
+          'generate_security_report': 'Generate Security Report'
+        }
+      };
+      
+      return actionTranslations[lang] && actionTranslations[lang][action] 
+        ? actionTranslations[lang][action] 
+        : action;
+    }
+
+    // دالة لاستخراج النص العربي من الوصف
+    function extractArabicDescription(description) {
+      if (!description) return '';
+      
+      try {
+        // إذا كان الوصف JSON يحتوي على نصوص ثنائية اللغة
+        if (typeof description === 'string' && description.trim().startsWith('{')) {
+          const parsed = JSON.parse(description);
+          return parsed.ar || parsed.en || description;
+        }
+        return description;
+      } catch (e) {
+        return description;
+      }
+    }
+
+    // إنشاء ملف Excel باستخدام ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('سجلات النظام');
+
+    // إضافة العنوان الرئيسي
+    const titleRow = worksheet.addRow(['تقرير سجلات النظام - نظام معايير الجودة ']);
+    titleRow.height = 40;
+    titleRow.font = { 
+      bold: true, 
+      size: 18, 
+      color: { argb: 'FF2E86AB' } 
+    };
+    titleRow.alignment = { 
+      horizontal: 'center', 
+      vertical: 'middle' 
+    };
+    worksheet.mergeCells('A1:E1');
+
+    // إضافة التاريخ
+    const dateRow = worksheet.addRow([`تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}`]);
+    dateRow.font = { 
+      size: 12, 
+      color: { argb: 'FF666666' } 
+    };
+    dateRow.alignment = { 
+      horizontal: 'right' 
+    };
+    worksheet.mergeCells('A2:E2');
+
+    // إضافة مسافة
+    worksheet.addRow([]);
+
+    // إضافة رؤوس الأعمدة
+    const headers = ['اسم المستخدم', 'نوع الإجراء', 'الوصف', 'تاريخ الإنشاء', 'وقت الإنشاء'];
+    const headerRow = worksheet.addRow(headers);
+    headerRow.height = 30;
+    headerRow.font = { 
+      bold: true, 
+      size: 14, 
+      color: { argb: 'FFFFFFFF' } 
+    };
+    headerRow.fill = { 
+      type: 'pattern', 
+      pattern: 'solid', 
+      fgColor: { argb: 'FF2E86AB' } 
+    };
+    headerRow.alignment = { 
+      horizontal: 'center', 
+      vertical: 'middle' 
+    };
+
+    // إضافة البيانات
+    logs.forEach((log, index) => {
+      // ترجمة الإجراء
+      const translatedAction = translateAction(log.action, 'ar');
+      
+      // استخراج الوصف بالعربية
+      const arabicDescription = extractArabicDescription(log.description);
+      
+      // تنسيق التاريخ والوقت
+      const createdDate = new Date(log.created_at);
+      const dateStr = createdDate.toLocaleDateString('ar-SA');
+      const timeStr = createdDate.toLocaleTimeString('ar-SA');
+      
+      const dataRow = worksheet.addRow([
+        log.user_name || 'غير محدد',
+        translatedAction,
+        arabicDescription,
+        dateStr,
+        timeStr
+      ]);
+
+      // تصميم متناوب للصفوف
+      const isEvenRow = index % 2 === 0;
+      dataRow.height = 25;
+      dataRow.font = { 
+        size: 12, 
+        color: { argb: 'FF000000' } 
+      };
+      dataRow.fill = { 
+        type: 'pattern', 
+        pattern: 'solid', 
+        fgColor: { argb: isEvenRow ? 'FFF8F9FA' : 'FFFFFFFF' } 
+      };
+      dataRow.alignment = { 
+        horizontal: 'right', 
+        vertical: 'middle',
+        wrapText: true
+      };
+    });
+
+    // ضبط عرض الأعمدة
+    worksheet.columns.forEach(column => {
+      column.width = 25;
+    });
+
+    // ضبط عرض عمود الوصف ليكون أوسع
+    worksheet.getColumn(3).width = 60;
+
+    // إضافة حدود للخلايا
+    for (let i = 1; i <= worksheet.rowCount; i++) {
+      const row = worksheet.getRow(i);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+          left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+          bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+          right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
+        };
+      });
+    }
+
+    // إعداد اسم الملف
+    const currentDate = new Date().toLocaleDateString('ar-SA').replace(/\//g, '-');
+    const currentTime = new Date().toLocaleTimeString('ar-SA').replace(/:/g, '-');
+    const filename = `سجلات_النظام_${currentDate}_${currentTime}.xlsx`;
+    
+    // ترميز اسم الملف للتوافق مع معايير HTTP
+    const encodedFilename = encodeURIComponent(filename);
+    
+    // إعداد headers للتحميل
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
+    
+    // إرسال الملف
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('Error exporting logs:', error);
+    res.status(500).json({ message: 'خطأ في تصدير السجلات' });
+  }
+};
 
 module.exports = {
   getUsers,
@@ -1194,4 +1701,8 @@ module.exports = {
   getHospitalManager,
   getUserApprovalSequenceFiles,
   revokeUserFromFiles,
+  deleteLog,
+  deleteMultipleLogs,
+  deleteAllLogs,
+  exportLogsToExcel,
 };
