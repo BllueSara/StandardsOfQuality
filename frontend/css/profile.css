@@ -158,7 +158,18 @@ main {
 .btn-secondary:hover {
     background-color: #d0d0d0;
 }
-
+#profile-department,
+#profile-job-title {
+    display: inline !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+}
 /* Basic responsiveness */
 @media (max-width: 600px) {
     main {
