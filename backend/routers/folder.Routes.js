@@ -9,7 +9,8 @@ const {
   getFolderNames,
   addFolderName,
   updateFolderName,
-  deleteFolderName
+  deleteFolderName,
+  getSharedUsersForFolder
 } = require('../controllers/folderController');
 
 // أولاً: routes اسماء المجلدات (ثابتة)
@@ -24,5 +25,8 @@ router.post('/',           createFolder);
 router.get('/:folderId',   getFolderById);
 router.put('/:folderId',   updateFolder);
 router.delete('/:folderId',deleteFolder);
+
+// Route للمستخدمين المشتركين في المجلد
+router.get('/:folderId/shared-users', getSharedUsersForFolder);
 
 module.exports = router;

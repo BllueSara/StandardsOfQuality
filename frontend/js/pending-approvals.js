@@ -133,12 +133,10 @@ function addBulkDelegateButton() {
     if (deptFilter && deptFilter.parentNode) {
       deptFilter.parentNode.insertBefore(btnAll, deptFilter.nextSibling);
     }
-    btnAll.onclick = function() {
+    btnAll.onclick = async function() {
       isBulkDelegation = true;
       selectedContentId = null;
-      document.getElementById('delegateDept').value = '';
-      document.getElementById('delegateUser').innerHTML = '<option value="" disabled selected>' + (getTranslation('select-user') || 'اختر المستخدم') + '</option>';
-      document.getElementById('delegateNotes').value = '';
+      // فتح مودال اختيار المستخدم أولاً
       openModal('delegateModal');
       loadDepartments();
       document.getElementById('delegateNotes').placeholder = getTranslation('notes-bulk') || 'ملاحظات (تنطبق على جميع الملفات)';
@@ -582,8 +580,9 @@ function initActions() {
   });
 
   document.querySelectorAll('.approval-card .btn-delegate').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       selectedContentId = e.target.closest('.approval-card').dataset.id;
+      // فتح مودال اختيار المستخدم أولاً
       openModal('delegateModal');
       loadDepartments();
     });
@@ -849,32 +848,47 @@ function setupSignatureModal() {
       showToast(getTranslation('error-loading') || 'خطأ في تحميل البيانات', 'error');
       return;
     }
+    
+    // استخراج معلومات المستخدم من JWT token
+    const tokenPayload = JSON.parse(atob(token.split('.')[1] || '{}'));
+    
     const contentType = card.dataset.type;
     const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
-    let approvalLog = [];
-    try {
-      // Try to fetch approval log if the function exists
-      if (typeof fetchApprovalLog === 'function') {
-        approvalLog = await fetchApprovalLog(selectedContentId, contentType);
-      }
-    } catch (err) {
-      console.warn('fetchApprovalLog not available:', err);
-      approvalLog = [];
-    }
+    
     const payload = {
       approved: true,
       signature: currentSignature,
       notes: ''
     };
-    const tokenPayload = JSON.parse(atob(token.split('.')[1] || '{}'));
-    const myLog = Array.isArray(approvalLog) ? approvalLog.find(l => l.approver_id == tokenPayload.id) : null;
-    console.log('[SIGN] approvalLog:', approvalLog);
-    console.log('[SIGN] myLog:', myLog);
-    if (myLog && (myLog.signed_as_proxy == 1 || myLog.delegated_by)) {
-      payload.on_behalf_of = myLog.delegated_by;
-      console.log('[SIGN] Sending on_behalf_of:', myLog.delegated_by);
+    
+    // جلب معلومات التفويض من جدول active_delegations
+    try {
+      console.log('[SIGN] Fetching delegation status for user:', tokenPayload.id);
+      const delegationResponse = await fetch(`${apiBase}/approvals/delegation-status/${tokenPayload.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('[SIGN] Delegation response status:', delegationResponse.status);
+      
+      if (delegationResponse.ok) {
+        const delegationData = await delegationResponse.json();
+        console.log('[SIGN] Delegation data:', delegationData);
+        
+        if (delegationData.status === 'success' && delegationData.data && delegationData.data.delegated_by) {
+          payload.on_behalf_of = delegationData.data.delegated_by;
+          console.log('[SIGN] Found delegation, sending on_behalf_of:', delegationData.data.delegated_by);
+        } else {
+          console.log('[SIGN] No delegation found or invalid data structure');
+        }
+      } else {
+        console.log('[SIGN] Delegation response not ok:', delegationResponse.status);
+        const errorText = await delegationResponse.text();
+        console.log('[SIGN] Error response:', errorText);
+      }
+    } catch (err) {
+      console.error('[SIGN] Error fetching delegation status:', err);
     }
-    console.log('[SIGN] payload being sent:', payload);
+    
+    console.log('[SIGN] Final payload being sent:', payload);
     try {
       const response = await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/approve`, {
         method: 'POST',
@@ -1072,47 +1086,24 @@ if (btnDelegateConfirm) {
     const userId = document.getElementById('delegateUser').value;
     const notes = document.getElementById('delegateNotes').value;
     if (!userId) return showToast(getTranslation('please-select-user'), 'warning');
+    
+    // إغلاق مودال التفويض
+    closeModal('delegateModal');
+    
     if (isBulkDelegation) {
-      // تفويض جماعي
-      try {
-        const res = await fetch(`${apiBase}/approvals/delegate-all`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ delegateTo: userId, notes })
-        });
-        const json = await res.json();
-        showToast(json.message || getTranslation('success-delegated') || 'تم التفويض بنجاح', 'success');
-        closeModal('delegateModal');
-        window.location.reload();
-      } catch (err) {
-        showToast(getTranslation('error-sending') || 'حدث خطأ أثناء التفويض الجماعي', 'error');
+      // تفويض جماعي - عرض الإقرار والتوقيع أولاً
+      await showBulkDelegationConfirmation(userId, notes);
+    } else {
+      // تفويض فردي - عرض الإقرار والتوقيع أولاً
+      const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
+      if (!card) {
+        showToast(getTranslation('error-loading') || 'خطأ في تحميل البيانات', 'error');
+        return;
       }
-      isBulkDelegation = false;
-      return;
+      const contentType = card.dataset.type;
+      await showSingleDelegationConfirmation(userId, selectedContentId, contentType, notes);
     }
-    // تفويض فردي (يبقى كما هو)
-    const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
-    if (!card) {
-      showToast(getTranslation('error-loading') || 'خطأ في تحميل البيانات', 'error');
-      return;
-    }
-    const contentType = card.dataset.type;
-    const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
-    try {
-      await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/delegate`, {
-        method: 'POST',
-        body: JSON.stringify({
-          delegateTo: userId,
-          notes: notes
-        })
-      });
-      showToast(getTranslation('success-delegated'), 'success');
-      closeModal('delegateModal');
-      disableActionsFor(selectedContentId);
-    } catch (err) {
-      console.error('Failed to delegate:', err);
-      showToast(getTranslation('error-sending'), 'error');
-    }
+    
     isBulkDelegation = false;
   });
 }
@@ -1497,6 +1488,829 @@ function closeFileTransferModal() {
   document.getElementById('personsFields').innerHTML = '';
   document.getElementById('transferPersonsChain').innerHTML = '';
 }
+
+// إضافة دالة setupPersonCountHandler لمنع الخطأ
+function setupPersonCountHandler() {}
+
+// إضافة دوال الإقرار والتوقيع للتفويض
+let currentDelegationData = null;
+let activeCanvas = null;
+let activeCtx = null;
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+
+// دالة عرض بوب أب الإقرار والتوقيع للتفويض
+function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isBulk = false, delegationData = null) {
+  // تخزين بيانات التفويض الحالي
+  currentDelegationData = delegationData;
+  
+  // إزالة أي بوب أب موجود مسبقاً
+  const existingPopup = document.getElementById('delegationConfirmationPopup');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
+
+  // إزالة أي كانفاس توقيع موجود مسبقاً
+  const existingCanvas = document.getElementById('delegationSignatureCanvas');
+  if (existingCanvas) {
+    existingCanvas.remove();
+  }
+
+  // إعادة تعيين متغيرات التوقيع
+  activeCanvas = null;
+  activeCtx = null;
+  isDrawing = false;
+  lastX = 0;
+  lastY = 0;
+
+  // إنشاء البوب أب
+  const popup = document.createElement('div');
+  popup.id = 'delegationConfirmationPopup';
+  popup.className = 'delegation-confirmation-popup';
+  
+  // إضافة inline styles للتأكد من الظهور
+  popup.style.position = 'fixed';
+  popup.style.top = '0';
+  popup.style.left = '0';
+  popup.style.width = '100%';
+  popup.style.height = '100%';
+  popup.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+  popup.style.display = 'flex';
+  popup.style.justifyContent = 'center';
+  popup.style.alignItems = 'center';
+  popup.style.zIndex = '10000';
+  popup.style.direction = 'rtl';
+  
+  // تحضير قائمة الملفات
+  let filesList = '';
+  if (isBulk) {
+    filesList = '<p class="files-summary">تفويض شامل لجميع ملفات القسم المعلقة</p>';
+  } else {
+    filesList = '<div class="files-list">';
+    files.forEach(file => {
+      filesList += `<div class="file-item">
+        <span class="file-name">${file.title || file.name}</span>
+        <span class="file-type">ملف قسم</span>
+      </div>`;
+    });
+    filesList += '</div>';
+  }
+
+  // إنشاء المحتوى باستخدام DOM بدلاً من innerHTML لتجنب مشاكل الكانفاس
+  const content = document.createElement('div');
+  content.className = 'delegation-confirmation-content';
+  content.style.cssText = 'background: white; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);';
+  
+  // Header
+  const header = document.createElement('div');
+  header.className = 'delegation-header';
+  header.innerHTML = `
+    <h3>إقرار التفويض</h3>
+    <button class="close-btn" onclick="closeDelegationConfirmationPopup()">&times;</button>
+  `;
+  
+  // Body
+  const body = document.createElement('div');
+  body.className = 'delegation-body';
+  
+  // Delegator info
+  const delegatorInfoDiv = document.createElement('div');
+  delegatorInfoDiv.className = 'delegator-info';
+  delegatorInfoDiv.innerHTML = `
+    <h4>معلومات الموظف المفوض</h4>
+    <div class="info-row">
+      <span class="label">الاسم الكامل:</span>
+      <span class="value">${delegatorInfo.fullName}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">رقم الهوية:</span>
+      <span class="value">${delegatorInfo.idNumber}</span>
+    </div>
+  `;
+  
+  // Delegate info
+  const delegateInfoDiv = document.createElement('div');
+  delegateInfoDiv.className = 'delegate-info';
+  delegateInfoDiv.innerHTML = `
+    <h4>معلومات الموظف المفوض له</h4>
+    <div class="info-row">
+      <span class="label">الاسم الكامل:</span>
+      <span class="value">${delegateInfo.fullName}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">رقم الهوية:</span>
+      <span class="value">${delegateInfo.idNumber}</span>
+    </div>
+  `;
+  
+  // Delegation details
+  const detailsDiv = document.createElement('div');
+  detailsDiv.className = 'delegation-details';
+  detailsDiv.innerHTML = `
+    <h4>تفاصيل التفويض</h4>
+    <div class="delegation-type">
+      <span class="label">نوع التفويض:</span>
+      <span class="value">${isBulk ? 'تفويض شامل' : 'تفويض فردي'}</span>
+    </div>
+    ${filesList}
+  `;
+  
+  // Delegation statement
+  const statementDiv = document.createElement('div');
+  statementDiv.className = 'delegation-statement';
+  statementDiv.innerHTML = `
+    <p class="statement-text">
+      أقر بأنني أفوض الموظف <strong>${delegateInfo.fullName}</strong> 
+      ذو رقم الهوية <strong>${delegateInfo.idNumber}</strong> 
+      بالتوقيع بالنيابة عني على ${isBulk ? 'جميع ملفات القسم المعلقة' : 'الملفات المحددة'}.
+    </p>
+  `;
+  
+  // Signature section - إضافة كانفاس للتوقيع
+  const signatureSection = document.createElement('div');
+  signatureSection.className = 'delegation-signature-section';
+  signatureSection.innerHTML = `
+    <h4>توقيع المرسل</h4>
+    <div class="signature-canvas-container">
+      <div class="signature-controls" style="margin-top: 10px;">
+        <button type="button" onclick="clearSignatureCanvas()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-right: 5px; cursor: pointer;">
+          مسح التوقيع
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Footer
+  const footer = document.createElement('div');
+  footer.className = 'delegation-footer';
+  footer.innerHTML = `
+    <button class="btn btn-danger" onclick="rejectDelegation()">رفض التفويض</button>
+    <button class="btn btn-secondary" onclick="closeDelegationConfirmationPopup()">إلغاء</button>
+    <button class="btn btn-primary" onclick="confirmDelegation()">تأكيد التفويض</button>
+  `;
+  
+  // Assembly
+  body.appendChild(delegatorInfoDiv);
+  body.appendChild(delegateInfoDiv);
+  body.appendChild(detailsDiv);
+  body.appendChild(statementDiv);
+  body.appendChild(signatureSection);
+  
+  content.appendChild(header);
+  content.appendChild(body);
+  content.appendChild(footer);
+  
+  popup.appendChild(content);
+  
+  // إنشاء الكانفاس برمجياً بعد إضافة المحتوى
+  const canvasContainer = popup.querySelector('.signature-canvas-container');
+  const delegationCanvasElement = document.createElement('canvas');
+  delegationCanvasElement.id = 'delegationSignatureCanvas';
+  delegationCanvasElement.width = 400;
+  delegationCanvasElement.height = 200;
+  delegationCanvasElement.style.border = '1px solid #ccc';
+  delegationCanvasElement.style.borderRadius = '4px';
+  delegationCanvasElement.style.cursor = 'crosshair';
+  canvasContainer.insertBefore(delegationCanvasElement, canvasContainer.firstChild);
+  
+  // تعيين الكانفاس النشط
+  activeCanvas = delegationCanvasElement;
+  activeCtx = activeCanvas.getContext('2d');
+
+  // إضافة ملف CSS للبوب أب
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/frontend/css/delegation-confirmation.css';
+  link.id = 'delegation-confirmation-css';
+  
+  // إزالة القائمة السابقة إذا وجدت
+  const existingCSS = document.getElementById('delegation-confirmation-css');
+  if (existingCSS) {
+    existingCSS.remove();
+  }
+  
+  document.head.appendChild(link);
+  document.body.appendChild(popup);
+  
+  // تهيئة التوقيع بعد إضافة البوب أب والكانفاس
+  setTimeout(() => {
+    initializeSignatureDrawing();
+  }, 200);
+}
+
+// دالة إغلاق بوب أب الإقرار
+function closeDelegationConfirmationPopup() {
+  const popup = document.getElementById('delegationConfirmationPopup');
+  if (popup) {
+    popup.remove();
+  }
+  
+  // إعادة تعيين متغيرات الكانفاس النشط
+  activeCanvas = null;
+  activeCtx = null;
+  console.log('🔍 Delegation confirmation popup closed, activeCanvas reset');
+}
+
+// دالة تهيئة التوقيع
+function initializeSignatureDrawing() {
+  console.log('🔍 initializeSignatureDrawing called');
+  
+  // التحقق من وجود الكانفاس النشط
+  if (!activeCanvas || !activeCtx) {
+    console.log('🔍 No active canvas found, skipping initialization');
+    return;
+  }
+  
+  console.log('🔍 Found activeCanvas:', activeCanvas);
+
+  // تعيين أبعاد الكانفاس حسب حجم الشاشة
+  const isMobile = window.innerWidth <= 768;
+  const canvasWidth = isMobile ? 350 : 400;
+  const canvasHeight = isMobile ? 150 : 200;
+  
+  console.log('🔍 Setting canvas dimensions:', { canvasWidth, canvasHeight });
+  
+  // تعيين الأبعاد مباشرة على العنصر
+  activeCanvas.width = canvasWidth;
+  activeCanvas.height = canvasHeight;
+  
+  // تعيين الأبعاد في CSS أيضاً للتأكد
+  activeCanvas.style.width = canvasWidth + 'px';
+  activeCanvas.style.height = canvasHeight + 'px';
+
+  // إعادة الحصول على السياق بعد تغيير الأبعاد
+  activeCtx = activeCanvas.getContext('2d');
+  console.log('🔍 Got canvas context:', activeCtx);
+
+  if (activeCtx) {
+    activeCtx.strokeStyle = '#000';
+    activeCtx.lineWidth = 2;
+    activeCtx.lineCap = 'round';
+
+    // إزالة event listeners السابقة لتجنب التكرار
+    activeCanvas.removeEventListener('mousedown', startDrawing);
+    activeCanvas.removeEventListener('mousemove', draw);
+    activeCanvas.removeEventListener('mouseup', stopDrawing);
+    activeCanvas.removeEventListener('mouseout', stopDrawing);
+    activeCanvas.removeEventListener('touchstart', handleTouchStart);
+    activeCanvas.removeEventListener('touchmove', handleTouchMove);
+    activeCanvas.removeEventListener('touchend', stopDrawing);
+
+    // إضافة event listeners للتوقيع
+    activeCanvas.addEventListener('mousedown', startDrawing);
+    activeCanvas.addEventListener('mousemove', draw);
+    activeCanvas.addEventListener('mouseup', stopDrawing);
+    activeCanvas.addEventListener('mouseout', stopDrawing);
+
+    // دعم اللمس للأجهزة المحمولة
+    activeCanvas.addEventListener('touchstart', handleTouchStart);
+    activeCanvas.addEventListener('touchmove', handleTouchMove);
+    activeCanvas.addEventListener('touchend', stopDrawing);
+
+    console.log('🔍 Signature canvas initialized successfully');
+
+  } else {
+    console.error('🔍 Failed to get canvas context!');
+  }
+}
+
+// دوال التوقيع
+function startDrawing(e) {
+  if (!activeCanvas || !activeCtx) {
+    return;
+  }
+  
+  isDrawing = true;
+  const rect = activeCanvas.getBoundingClientRect();
+  lastX = e.clientX - rect.left;
+  lastY = e.clientY - rect.top;
+}
+
+function draw(e) {
+  if (!isDrawing) {
+    return;
+  }
+  
+  if (!activeCanvas || !activeCtx) {
+    return;
+  }
+  
+  e.preventDefault();
+  
+  const rect = activeCanvas.getBoundingClientRect();
+  const currentX = e.clientX - rect.left;
+  const currentY = e.clientY - rect.top;
+  
+  activeCtx.beginPath();
+  activeCtx.moveTo(lastX, lastY);
+  activeCtx.lineTo(currentX, currentY);
+  activeCtx.stroke();
+  
+  lastX = currentX;
+  lastY = currentY;
+}
+
+function stopDrawing() {
+  isDrawing = false;
+}
+
+// معالجة اللمس للأجهزة المحمولة
+function handleTouchStart(e) {
+  e.preventDefault();
+  
+  if (e.touches.length > 0) {
+    const touch = e.touches[0];
+    
+    const mouseEvent = new MouseEvent('mousedown', {
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    });
+    activeCanvas.dispatchEvent(mouseEvent);
+  }
+}
+
+function handleTouchMove(e) {
+  e.preventDefault();
+  
+  if (e.touches.length > 0) {
+    const touch = e.touches[0];
+    
+    const mouseEvent = new MouseEvent('mousemove', {
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    });
+    activeCanvas.dispatchEvent(mouseEvent);
+  }
+}
+
+// دالة مسح التوقيع
+function clearSignatureCanvas() {
+  if (activeCtx && activeCanvas) {
+    // التأكد من أن الكانفاس له أبعاد صحيحة
+    if (activeCanvas.width === 0 || activeCanvas.height === 0) {
+      const isMobile = window.innerWidth <= 768;
+      activeCanvas.width = isMobile ? 350 : 400;
+      activeCanvas.height = isMobile ? 150 : 200;
+      activeCanvas.style.width = activeCanvas.width + 'px';
+      activeCanvas.style.height = activeCanvas.height + 'px';
+    }
+    
+    activeCtx.clearRect(0, 0, activeCanvas.width, activeCanvas.height);
+  }
+}
+
+// دالة الحصول على التوقيع من الكانفاس
+function getSignatureFromCanvas() {
+  if (!activeCanvas) {
+    console.error('🔍 Active canvas not found');
+    return null;
+  }
+  
+  if (!activeCtx) {
+    console.error('🔍 Active canvas context not found');
+    return null;
+  }
+  
+  // التحقق من وجود توقيع على الكانفاس
+  const imageData = activeCtx.getImageData(0, 0, activeCanvas.width, activeCanvas.height);
+  const data = imageData.data;
+  let hasSignature = false;
+  
+  // التحقق من وجود خطوط سوداء (التوقيع)
+  for (let i = 0; i < data.length; i += 4) {
+    // البحث عن بكسل أسود (RGB قيم منخفضة)
+    if (data[i] < 50 && data[i + 1] < 50 && data[i + 2] < 50 && data[i + 3] > 200) {
+      hasSignature = true;
+      break;
+    }
+  }
+  
+  if (!hasSignature) {
+    console.log('🔍 No signature detected on canvas');
+    return null;
+  }
+  
+  const signatureData = activeCanvas.toDataURL('image/png');
+  console.log('🔍 Signature captured successfully:', signatureData.substring(0, 50) + '...');
+  return signatureData;
+}
+
+// دالة تأكيد التفويض
+function confirmDelegation() {
+  console.log('🔍 confirmDelegation called');
+  console.log('🔍 currentDelegationData:', currentDelegationData);
+  
+  if (!currentDelegationData) {
+    showToast('خطأ: لا توجد بيانات تفويض', 'error');
+    return;
+  }
+  
+  // الحصول على توقيع المرسل من الكانفاس
+  const senderSignature = getSignatureFromCanvas();
+  console.log('🔍 senderSignature obtained:', senderSignature ? 'YES' : 'NO');
+  
+  if (!senderSignature) {
+    showToast('يرجى التوقيع أولاً كمرسل للتفويض', 'error');
+    return;
+  }
+  
+  // إضافة توقيع المرسل إلى بيانات التفويض
+  currentDelegationData.senderSignature = senderSignature;
+  console.log('🔍 Updated currentDelegationData with signature');
+  
+  // معالجة قبول التفويض حسب النوع
+  if (currentDelegationData.isBulk) {
+    // قبول تفويض شامل
+    console.log('🔍 Processing bulk delegation');
+    processBulkDelegation(currentDelegationData);
+  } else {
+    // قبول تفويض فردي
+    console.log('🔍 Processing single delegation');
+    processSingleDelegation(currentDelegationData);
+  }
+  
+  // إغلاق البوب أب
+  closeDelegationConfirmationPopup();
+  
+  // مسح البيانات المؤقتة
+  currentDelegationData = null;
+}
+
+// دالة رفض التفويض
+function rejectDelegation() {
+  if (!currentDelegationData) {
+    showToast('خطأ: لا توجد بيانات تفويض', 'error');
+    return;
+  }
+  
+  // إغلاق البوب أب
+  closeDelegationConfirmationPopup();
+  
+  // مسح البيانات المؤقتة
+  currentDelegationData = null;
+  
+  showToast('تم رفض التفويض', 'info');
+}
+
+// دالة معالجة تفويض فردي
+async function processSingleDelegation(data) {
+  try {
+    console.log('🔍 processSingleDelegation called with data:', data);
+    console.log('🔍 senderSignature in data:', data.senderSignature ? 'PRESENT' : 'MISSING');
+    
+    const card = document.querySelector(`.approval-card[data-id="${data.contentId}"]`);
+    if (!card) {
+      showToast('خطأ في جلب معلومات الملف', 'error');
+      return;
+    }
+    
+    const contentType = card.dataset.type;
+    let endpoint;
+    
+    if (contentType === 'committee') {
+      endpoint = `${apiBase}/committee-approvals/committee-delegations/single`;
+    } else {
+      // تصحيح المسار ليتطابق مع الباك إند
+      endpoint = `${apiBase}/approvals/${data.contentId}/delegate`;
+    }
+    
+    console.log('🔍 Using endpoint:', endpoint);
+    
+    const requestBody = {
+      delegateTo: data.delegateTo,
+      notes: data.notes,
+      signature: data.senderSignature // توقيع المرسل
+    };
+    
+    console.log('🔍 Request body:', requestBody);
+    console.log('🔍 Signature in request:', requestBody.signature ? 'PRESENT' : 'MISSING');
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    const result = await response.json();
+    console.log('🔍 Response from server:', result);
+    
+    if (result.status === 'success') {
+      let message;
+      if (contentType === 'committee') {
+        message = 'تم إرسال طلب التفويض للجنة بنجاح';
+      } else {
+        message = 'تم إرسال طلب التفويض بنجاح';
+      }
+      showToast(message, 'success');
+      closeDelegationConfirmationPopup();
+      disableActionsFor(data.contentId);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      showToast(result.message || 'فشل إرسال طلب التفويض', 'error');
+    }
+  } catch (error) {
+    console.error('🔍 Error processing single delegation:', error);
+    showToast('خطأ في إرسال طلب التفويض', 'error');
+  }
+}
+
+// دالة معالجة تفويض شامل
+async function processBulkDelegation(data) {
+  try {
+    console.log('🔍 processBulkDelegation called with data:', data);
+    console.log('🔍 senderSignature in data:', data.senderSignature ? 'PRESENT' : 'MISSING');
+    
+    let endpoint = `${apiBase}/approvals/delegate-all`;
+    console.log('🔍 Using endpoint:', endpoint);
+    
+    const requestBody = {
+      delegateTo: data.delegateTo,
+      notes: data.notes,
+      signature: data.senderSignature // توقيع المرسل
+    };
+    
+    console.log('🔍 Request body:', requestBody);
+    console.log('🔍 Signature in request:', requestBody.signature ? 'PRESENT' : 'MISSING');
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    const result = await response.json();
+    console.log('🔍 Response from server:', result);
+    
+    if (result.status === 'success') {
+      showToast('تم إرسال طلب التفويض الشامل بنجاح', 'success');
+      closeDelegationConfirmationPopup();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      showToast(result.message || 'فشل إرسال طلب التفويض الشامل', 'error');
+    }
+  } catch (error) {
+    console.error('🔍 Error processing bulk delegation:', error);
+    showToast('خطأ في إرسال طلب التفويض الشامل', 'error');
+  }
+}
+
+// دالة authHeaders
+function authHeaders() {
+  const currentToken = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${currentToken}`
+  };
+}
+
+// إضافة دالة setupPersonCountHandler لمنع الخطأ
+function setupPersonCountHandler() {}
+
+// دوال التفويض مع الإقرار والتوقيع
+async function showSingleDelegationConfirmation(delegateTo, contentId, contentType, notes = '') {
+  try {
+    console.log('[showSingleDelegationConfirmation] Starting with:', { delegateTo, contentId, contentType, notes });
+    
+    // جلب معلومات المستخدم المفوض له
+    const userResponse = await fetch(`${apiBase}/users/${delegateTo}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const userData = await userResponse.json();
+    console.log('[showSingleDelegationConfirmation] User data:', userData);
+    
+    if (userData.status !== 'success') {
+      showToast('خطأ في جلب معلومات المستخدم', 'error');
+      return;
+    }
+    
+    // جلب معلومات المستخدم الحالي (المفوض) من قاعدة البيانات
+    const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+    const currentUserId = payload.id;
+    console.log('[showSingleDelegationConfirmation] Current user ID from JWT:', currentUserId);
+    
+    const currentUserResponse = await fetch(`${apiBase}/users/${currentUserId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const currentUserData = await currentUserResponse.json();
+    console.log('[showSingleDelegationConfirmation] Current user data from API:', currentUserData);
+    
+    if (currentUserData.status !== 'success') {
+      showToast('خطأ في جلب معلومات المستخدم الحالي', 'error');
+      return;
+    }
+    
+    // جلب معلومات الملف
+    console.log('[showSingleDelegationConfirmation] Fetching content from:', `${apiBase}/contents/${contentId}`);
+    const contentResponse = await fetch(`${apiBase}/contents/${contentId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log('[showSingleDelegationConfirmation] Content response status:', contentResponse.status);
+    
+    if (!contentResponse.ok) {
+      const errorText = await contentResponse.text();
+      console.error('[showSingleDelegationConfirmation] Content response error:', errorText);
+      showToast(`خطأ في جلب معلومات الملف: ${contentResponse.status}`, 'error');
+      return;
+    }
+    
+    const contentData = await contentResponse.json();
+    console.log('[showSingleDelegationConfirmation] Content data:', contentData);
+    
+    if (contentData.status !== 'success') {
+      showToast('خطأ في جلب معلومات الملف', 'error');
+      return;
+    }
+    
+    // تحضير بيانات التفويض
+    const delegationData = {
+      delegationId: `single-${contentId}`,
+      delegateTo: delegateTo,
+      contentId: contentId,
+      contentType: contentType,
+      notes: notes,
+      isBulk: false
+    };
+    console.log('[showSingleDelegationConfirmation] Delegation data:', delegationData);
+    
+    // عرض بوب أب الإقرار والتوقيع
+    showDelegationConfirmationPopup(
+      {
+        fullName: currentUserData.data.name || currentUserData.data.username || 'مستخدم',
+        idNumber: currentUserData.data.national_id || currentUserData.data.employee_number || currentUserData.data.id || 'غير محدد'
+      },
+      {
+        fullName: userData.data.name || userData.data.username || 'مستخدم',
+        idNumber: userData.data.national_id || userData.data.employee_number || userData.data.id || 'غير محدد'
+      },
+      [contentData.data],
+      false,
+      delegationData
+    );
+    
+  } catch (error) {
+    console.error('[showSingleDelegationConfirmation] Error:', error);
+    showToast('خطأ في عرض تأكيد التفويض', 'error');
+  }
+}
+
+async function showBulkDelegationConfirmation(delegateTo, notes = '') {
+  try {
+    console.log('[showBulkDelegationConfirmation] Starting with:', { delegateTo, notes });
+    
+    // جلب معلومات المستخدم المفوض له
+    const userResponse = await fetch(`${apiBase}/users/${delegateTo}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const userData = await userResponse.json();
+    console.log('[showBulkDelegationConfirmation] User data:', userData);
+    
+    if (userData.status !== 'success') {
+      showToast('خطأ في جلب معلومات المستخدم', 'error');
+      return;
+    }
+    
+    // جلب معلومات المستخدم الحالي (المفوض) من قاعدة البيانات
+    const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+    const currentUserId = payload.id;
+    console.log('[showBulkDelegationConfirmation] Current user ID from JWT:', currentUserId);
+    
+    const currentUserResponse = await fetch(`${apiBase}/users/${currentUserId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const currentUserData = await currentUserResponse.json();
+    console.log('[showBulkDelegationConfirmation] Current user data from API:', currentUserData);
+    
+    if (currentUserData.status !== 'success') {
+      showToast('خطأ في جلب معلومات المستخدم الحالي', 'error');
+      return;
+    }
+    
+    // تحضير بيانات التفويض الشامل
+    const delegationData = {
+      delegationId: `bulk-${Date.now()}`,
+      delegateTo: delegateTo,
+      notes: notes,
+      isBulk: true,
+      delegationData: {
+        delegationId: `bulk-${Date.now()}`
+      }
+    };
+    console.log('[showBulkDelegationConfirmation] Delegation data:', delegationData);
+    
+    // عرض بوب أب الإقرار والتوقيع
+    showDelegationConfirmationPopup(
+      {
+        fullName: currentUserData.data.name || currentUserData.data.username || 'مستخدم',
+        idNumber: currentUserData.data.national_id || currentUserData.data.employee_number || currentUserData.data.id || 'غير محدد'
+      },
+      {
+        fullName: userData.data.name || userData.data.username || 'مستخدم',
+        idNumber: userData.data.national_id || userData.data.employee_number || userData.data.id || 'غير محدد'
+      },
+      [],
+      true,
+      delegationData
+    );
+    
+  } catch (error) {
+    console.error('[showBulkDelegationConfirmation] Error:', error);
+    showToast('خطأ في عرض تأكيد التفويض الشامل', 'error');
+  }
+}
+
+// دالة معالجة التفويض الفردي
+async function handleSingleDelegation(delegateTo, contentId, contentType, notes = '') {
+  await showSingleDelegationConfirmation(delegateTo, contentId, contentType, notes);
+}
+
+// دالة معالجة التفويض الشامل
+async function handleBulkDelegation(delegateTo, notes = '') {
+  await showBulkDelegationConfirmation(delegateTo, notes);
+}
+
+// إضافة event listeners لأزرار التفويض
+document.addEventListener('DOMContentLoaded', function() {
+  // زر التفويض الفردي
+  const delegateButtons = document.querySelectorAll('.btn-delegate');
+  delegateButtons.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const card = e.target.closest('.approval-card');
+      const contentId = card.dataset.id;
+      const contentType = card.dataset.type || 'department';
+      
+      // فتح modal اختيار المستخدم
+      openModal('delegateModal');
+      loadDepartments();
+      
+      // تخزين معرف المحتوى المحدد
+      selectedContentId = contentId;
+    });
+  });
+  
+  // زر التفويض الشامل
+  const bulkDelegateButtons = document.querySelectorAll('.btn-bulk-delegate');
+  bulkDelegateButtons.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      
+      // فتح modal التفويض الشامل
+      openModal('bulkDelegateModal');
+      loadDepartments();
+    });
+  });
+  
+  // معالجة تأكيد التفويض الفردي
+  const confirmSingleDelegationBtn = document.getElementById('confirmSingleDelegation');
+  if (confirmSingleDelegationBtn) {
+    confirmSingleDelegationBtn.addEventListener('click', async () => {
+      const delegateTo = document.getElementById('delegateTo').value;
+      const notes = document.getElementById('delegationNotes').value;
+      
+      if (!delegateTo) {
+        showToast('يرجى اختيار مستخدم للتفويض', 'error');
+        return;
+      }
+      
+      // إغلاق modal
+      closeModal('delegateModal');
+      
+      // عرض بوب أب الإقرار والتوقيع
+      await handleSingleDelegation(delegateTo, selectedContentId, 'department', notes);
+    });
+  }
+  
+  // معالجة تأكيد التفويض الشامل
+  const confirmBulkDelegationBtn = document.getElementById('confirmBulkDelegation');
+  if (confirmBulkDelegationBtn) {
+    confirmBulkDelegationBtn.addEventListener('click', async () => {
+      const delegateTo = document.getElementById('bulkDelegateTo').value;
+      const notes = document.getElementById('bulkDelegationNotes').value;
+      
+      if (!delegateTo) {
+        showToast('يرجى اختيار مستخدم للتفويض', 'error');
+        return;
+      }
+      
+      // إغلاق modal
+      closeModal('bulkDelegateModal');
+      
+      // عرض بوب أب الإقرار والتوقيع
+      await handleBulkDelegation(delegateTo, notes);
+    });
+  }
+});
 
 // إضافة دالة setupPersonCountHandler لمنع الخطأ
 function setupPersonCountHandler() {}

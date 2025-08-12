@@ -1,0 +1,568 @@
+.delegation-confirmation-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  direction: rtl;
+}
+
+.delegation-confirmation-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.delegation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.delegation-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  color: #333;
+  background: #e9ecef;
+}
+
+.delegation-body {
+  padding: 20px;
+}
+
+.delegator-info, .delegate-info, .delegation-details {
+  margin-bottom: 20px;
+}
+
+.delegator-info h4, .delegate-info h4, .delegation-details h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 16px;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 5px;
+  font-weight: bold;
+}
+
+.info-row, .delegation-type {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.info-row:last-child, .delegation-type:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: bold;
+  color: #555;
+  min-width: 120px;
+}
+
+.value {
+  color: #333;
+  text-align: left;
+  font-weight: 500;
+}
+
+.files-summary {
+  background: #e3f2fd;
+  padding: 15px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: bold;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+  margin: 10px 0;
+}
+
+.files-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #f8f9fa;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s ease;
+}
+
+.file-item:hover {
+  background: #e9ecef;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+  margin-left: 10px;
+}
+
+.file-type {
+  background: #007bff;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.delegation-statement {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.statement-text {
+  margin: 0;
+  color: #856404;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.statement-text strong {
+  color: #5a4a00;
+  font-weight: bold;
+}
+
+.delegation-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* تحسينات للأجهزة المحمولة */
+@media (max-width: 768px) {
+  .delegation-confirmation-content {
+    width: 95%;
+    max-width: none;
+    margin: 10px;
+  }
+  
+  .delegation-header {
+    padding: 15px;
+  }
+  
+  .delegation-body {
+    padding: 15px;
+  }
+  
+  .info-row, .delegation-type {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .label {
+    min-width: auto;
+  }
+  
+  .delegation-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+}
+
+/* تحسينات للشاشات الكبيرة */
+@media (min-width: 1200px) {
+  .delegation-confirmation-content {
+    max-width: 700px;
+  }
+}
+
+/* تأثيرات إضافية */
+.delegation-confirmation-popup {
+  animation: fadeIn 0.3s ease;
+}
+
+.delegation-confirmation-content {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Signature Section Styles */
+.delegation-signature-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.delegation-signature-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 5px;
+  font-weight: bold;
+}
+
+.signature-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.signature-tab {
+  padding: 10px 20px;
+  border: 2px solid #007bff;
+  background: white;
+  color: #007bff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  flex: 1;
+  text-align: center;
+}
+
+.signature-tab.active {
+  background: #007bff;
+  color: white;
+}
+
+.signature-tab:hover:not(.active) {
+  background: #e3f2fd;
+  border-color: #0056b3;
+}
+
+.signature-tab-content {
+  display: none;
+}
+
+.signature-tab-content.active {
+  display: block;
+}
+
+.signature-canvas-container {
+  text-align: center;
+}
+
+#signatureCanvas {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  cursor: crosshair;
+  background: white;
+  max-width: 100%;
+  width: 400px;
+  height: 200px;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.signature-controls {
+  margin-top: 10px;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+.electronic-signature-container {
+  text-align: center;
+}
+
+#electronicSignature {
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  font-size: 18px;
+  padding: 15px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-family: 'Amiri', serif;
+  direction: rtl;
+}
+
+#electronicSignature:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Mobile Responsive for Signature */
+@media (max-width: 768px) {
+  .signature-tabs {
+    flex-direction: column;
+  }
+  
+  .signature-tab {
+    width: 100%;
+  }
+  
+  #signatureCanvas {
+    width: 100%;
+    height: 150px;
+    max-width: 350px;
+  }
+  
+  #electronicSignature {
+    font-size: 16px;
+    padding: 12px;
+  }
+}
+
+/* تمييز أنواع التفويض */
+.delegation-confirmation-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.delegation-type-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.delegation-type-badge.sent {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.delegation-type-badge.received {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+/* تمييز البطاقات حسب النوع */
+.delegation-confirmation-item.delegation-sent {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(135deg, #f8fff9 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.1);
+}
+
+.delegation-confirmation-item.delegation-received {
+  border-left: 4px solid #007bff;
+  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1);
+}
+
+.delegation-confirmation-item.delegation-sent:hover {
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.15);
+  transform: translateY(-2px);
+}
+
+.delegation-confirmation-item.delegation-received:hover {
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* تحسينات للأجهزة المحمولة */
+@media (max-width: 768px) {
+  .delegation-confirmation-title-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .delegation-type-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+  
+  .delegation-confirmation-item.delegation-sent,
+  .delegation-confirmation-item.delegation-received {
+    border-left-width: 3px;
+  }
+}
+
+.delegation-type-badge.other {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.delegation-confirmation-item.delegation-other {
+  border-left: 4px solid #667eea;
+  background: linear-gradient(135deg, #f8f7ff 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.delegation-confirmation-item.delegation-other:hover {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.delegation-type-badge.sender {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
+.delegation-type-badge.receiver {
+  background: linear-gradient(135deg, #26de81 0%, #20bf6b 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(38, 222, 129, 0.3);
+}
+
+.delegation-confirmation-item.delegation-sender {
+  border-left: 4px solid #ff6b6b;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.1);
+}
+
+.delegation-confirmation-item.delegation-receiver {
+  border-left: 4px solid #26de81;
+  background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px rgba(38, 222, 129, 0.1);
+}
+
+.delegation-confirmation-item.delegation-sender:hover {
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.15);
+  transform: translateY(-2px);
+}
+
+.delegation-confirmation-item.delegation-receiver:hover {
+  box-shadow: 0 6px 20px rgba(38, 222, 129, 0.15);
+  transform: translateY(-2px);
+}
+
+.delegation-type-badge.delegator {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  margin-right: 8px;
+}
+
+.delegation-type-badge.delegate {
+  background: linear-gradient(135deg, #26de81 0%, #20bf6b 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(38, 222, 129, 0.3);
+}
+
+.delegation-confirmation-item.delegation-admin {
+  border-left: 4px solid #636e72;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px rgba(99, 110, 114, 0.1);
+}
+
+.delegation-confirmation-item.delegation-admin:hover {
+  box-shadow: 0 6px 20px rgba(99, 110, 114, 0.15);
+  transform: translateY(-2px);
+} 

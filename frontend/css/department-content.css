@@ -190,6 +190,7 @@ main h1 {
     font-size: 1.5em;
     color: #333;
     margin-bottom: 20px;
+    text-align: right; /* Align title to the right */
 }
 
 .file-controls-bar {
@@ -765,177 +766,6 @@ main h1 {
   max-height: 200px;      /* أو أي ارتفاع يناسبك */
   overflow-y: auto;
 }
-.file-group-box {
-    background: #fafdff;
-    border: 1.5px solid #1D4ED8;
-    border-radius: 16px;
-    margin-bottom: 32px;
-    padding: 0;
-    box-shadow: 0 4px 18px rgba(25, 118, 210, 0.07);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
-    transition: box-shadow 0.2s;
-}
-
-.file-group-box:hover {
-    box-shadow: 0 8px 24px rgba(25, 118, 210, 0.13);
-}
-
-.file-group-box .file-item.main-file {
-    background: linear-gradient(90deg, #e3f0ff 60%, #fafdff 100%);
-    border: none;
-    border-radius: 0;
-    margin-bottom: 0;
-    box-shadow: none;
-    font-weight: bold;
-    position: relative;
-    padding-right: 32px;
-    border-bottom: 1px solid #e3eaf3;
-    min-height: 56px;
-    display: flex;
-    align-items: center;
-}
-
-.file-group-box .file-item.sub-file-card {
-    background: #fff;
-    border: none;
-    border-radius: 0;
-    margin-bottom: 0;
-    margin-right: 40px;
-    box-shadow: none;
-    border-right: 3.5px solid #1D4ED8;
-    position: relative;
-    min-height: 48px;
-    display: flex;
-    align-items: center;
-    transition: background 0.2s;
-}
-.file-group-box .file-item.sub-file-card:not(:last-child) {
-    border-bottom: 1px solid #f0f4f8;
-}
-
-.file-group-box .file-item:last-child {
-    border-radius: 0 0 12px 12px;
-}
-
-.main-label {
-    font-weight: 600;
-    font-size: 14px;
-    color: #1D4ED8;
-    background: #e3f0ff;
-    border: 1.5px solid #1D4ED8;
-    padding: 3px 16px 3px 12px;
-    border-radius: 20px;
-    margin-left: 14px;
-    margin-right: 0;
-    vertical-align: middle;
-    letter-spacing: 0.5px;
-    box-shadow: 0 1px 4px rgba(25, 118, 210, 0.07);
-    display: inline-block;
-}
-
-.sub-index {
-    font-weight: 600;
-    font-size: 13px;
-    color: #fff;
-    background: linear-gradient(90deg, #1D4ED8 70%, #1D4ED8 100%);
-    padding: 3px 13px 3px 10px;
-    border-radius: 16px;
-    margin-left: 12px;
-    margin-right: 0;
-    vertical-align: middle;
-    display: inline-block;
-    box-shadow: 0 1px 4px rgba(25, 118, 210, 0.09);
-    border: none;
-    letter-spacing: 0.5px;
-}
-
-.file-group-box .file-item .file-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.file-group-box .file-item .file-name {
-    font-size: 1.08em;
-    color: #222;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* LTR adjustments for main-label and sub-index badges */
-[dir="ltr"] .main-label {
-    margin-right: 14px;
-    margin-left: 0;
-}
-[dir="ltr"] .sub-index {
-    margin-right: 12px;
-    margin-left: 0;
-}
-
-/* LTR adjustments for file-group-box paddings */
-[dir="ltr"] .file-group-box .file-item.main-file {
-    padding-left: 32px;
-    padding-right: 0;
-}
-[dir="ltr"] .file-group-box .file-item.sub-file-card {
-    margin-left: 40px;
-    margin-right: 0;
-    border-left: 3.5px solid #1D4ED8;
-    border-right: none;
-}
-
-/* LTR: Align file name and info to the left so badge and text are together */
-[dir="ltr"] .file-group-box .file-item .file-info,
-[dir="ltr"] .file-group-box .file-item .file-name {
-    text-align: left;
-    direction: ltr;
-}
-
-
-@media (max-width: 600px) {
-    .file-group-box .file-item.sub-file-card {
-        margin-right: 12px;
-    }
-    .file-group-box {
-        padding: 0;
-    }
-    [dir="ltr"] .file-group-box .file-item.sub-file-card {
-        margin-left: 12px;
-        margin-right: 0;
-    }
-}
-
-.add-subfile-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #1D4ED8;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 4px 10px 4px 8px;
-  font-size: 15px;
-  margin-left: 4px;
-  cursor: pointer;
-  transition: background 0.18s, box-shadow 0.18s;
-  box-shadow: 0 1px 4px rgba(34,197,94,0.08);
-}
-.add-subfile-btn i {
-  margin-left: 4px;
-  font-size: 15px;
-}
-.add-subfile-btn:hover {
-  background: #1D4ED8;
-  box-shadow: 0 2px 8px rgba(34,197,94,0.18);
-}
-.add-subfile-btn:active {
-  background: #1D4ED8;
-}
-
 /* Toast Notification Styles - إضافة تعريفات التوست */
 .toast-container {
     position: fixed !important;
@@ -1058,4 +888,108 @@ body[lang="en"] .toast-container,
 [dir="ltr"] .toast-container {
     left: auto !important;
     right: 20px !important;
+}
+
+/* Radio Group Styles */
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #fafafa;
+}
+
+.radio-label:hover {
+    background-color: #f0f0f0;
+    border-color: #ccc;
+}
+
+.radio-label input[type="radio"] {
+    margin: 0;
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.radio-label input[type="radio"]:checked + .radio-text {
+    color: #007bff;
+    font-weight: 600;
+}
+
+.radio-text {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.radio-description {
+    font-size: 0.9em;
+    color: #666;
+    display: block;
+    line-height: 1.4;
+}
+
+/* Folder Type Badge */
+.folder-type-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 500;
+    margin-right: 8px;
+}
+
+.folder-type-badge.public {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.folder-type-badge.private {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.folder-type-badge.shared {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+/* RTL Support for Radio Groups */
+[dir="rtl"] .radio-label {
+    text-align: right;
+}
+
+[dir="ltr"] .radio-label {
+    text-align: left;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .radio-group {
+        gap: 8px;
+    }
+    
+    .radio-label {
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .radio-text {
+        font-size: 0.9em;
+    }
+    
+    .radio-description {
+        font-size: 0.8em;
+    }
 }

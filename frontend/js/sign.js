@@ -9,6 +9,10 @@ const token = localStorage.getItem('token');
 const currentLang = localStorage.getItem('language') || 'ar';
 let currentUserId = localStorage.getItem('userId');
 
+// متغيرات نظام الإقرار
+let currentDelegationData = null;
+let pendingDelegationData = null;
+
 // دالة لاستخراج userId من الـ token إذا لم يكن موجوداً في localStorage
 function getCurrentUserId() {
   if (currentUserId) {
@@ -68,7 +72,8 @@ async function checkDelegationStatus() {
       const hasProcessedDelegation = await checkDelegationApprovalLogs(delegationJson.data.delegated_by, 'bulk');
       if (!hasProcessedDelegation) {
         // المستخدم مفوض له - عرض بوب أب تفويض جميع الملفات
-        await showBulkDelegationPopup('bulk-' + delegationJson.data.delegated_by, delegationJson.data.delegated_by_name);
+        console.log('🎯 Showing bulk delegation popup for user:', delegationJson.data.delegated_by_name);
+        await showBulkDelegationPopup('bulk-' + delegationJson.data.delegated_by, delegationJson.data.delegated_by_name, delegationJson.data);
       } else {
         console.log('✅ Bulk delegation already processed, skipping popup');
       }
@@ -102,7 +107,7 @@ async function checkDelegationStatus() {
       const hasProcessedDelegation = await checkDelegationApprovalLogs(latestDelegation.delegated_by, 'bulk', latestDelegation.id);
       if (!hasProcessedDelegation) {
         // هناك تفويضات جماعية معلقة - عرض بوب أب التفويض الجماعي
-        await showBulkDelegationPopup(latestDelegation.id, latestDelegation.delegated_by_name);
+        await showBulkDelegationPopup(latestDelegation.id, latestDelegation.delegated_by_name, latestDelegation);
       } else {
         console.log('✅ Bulk delegation already processed, skipping popup');
       }
@@ -111,9 +116,33 @@ async function checkDelegationStatus() {
       console.log('❌ No pending bulk delegations found');
     }
     
-    // 3. فحص التوقيع بالنيابة الفردي - لا نعرض بوب أب له
-    // هذه التفويضات ستظهر في الجدول العادي في الصفحة
-    console.log('🔍 Individual proxy signatures will be shown in the table');
+    // 3. فحص التوقيع بالنيابة الفردي - عرض بوب أب له أيضاً
+    console.log('🔍 Checking for individual proxy delegations...');
+    const individualDelegationsUrl = `http://localhost:3006/api/approvals/proxy`;
+    const individualDelegationsRes = await fetch(individualDelegationsUrl, { 
+      headers: authHeaders() 
+    });
+    
+    if (individualDelegationsRes.ok) {
+      const individualDelegationsJson = await individualDelegationsRes.json();
+      console.log('Individual delegations response:', individualDelegationsJson);
+      
+      if (individualDelegationsJson.status === 'success' && individualDelegationsJson.data && individualDelegationsJson.data.length > 0) {
+        console.log('✅ Found individual delegations:', individualDelegationsJson.data.length);
+        
+        // عرض بوب أب الإقرار للتفويض الفردي الأول
+        const firstDelegation = individualDelegationsJson.data[0];
+        console.log('🎯 Showing individual delegation popup for:', firstDelegation.title);
+        await showIndividualDelegationPopup(firstDelegation);
+        return;
+      } else {
+        console.log('❌ No individual delegations found');
+      }
+    } else {
+      console.log('❌ Individual delegations request failed:', individualDelegationsRes.status, individualDelegationsRes.statusText);
+    }
+    
+    console.log('🔍 No delegations found to show popup for');
     
   } catch (err) {
     console.error('خطأ في فحص حالة التفويض:', err);
@@ -131,11 +160,13 @@ async function checkDelegationApprovalLogs(delegatorId, delegationType, delegati
     
     // التحقق من سجلات الموافقة للتفويض
     const deptLogsUrl = `http://localhost:3006/api/approvals/delegation-logs/${userId}/${delegatorId}`;
+    console.log('🔍 Calling delegation logs URL:', deptLogsUrl);
+    
     const deptLogsRes = await fetch(deptLogsUrl, { headers: authHeaders() });
     
     if (deptLogsRes.ok) {
       const deptLogsJson = await deptLogsRes.json();
-      console.log('Delegation logs:', deptLogsJson);
+      console.log('Delegation logs response:', deptLogsJson);
       
       if (deptLogsJson.status === 'success' && deptLogsJson.data && deptLogsJson.data.length > 0) {
         // تحقق من وجود سجلات مقبولة أو مرفوضة
@@ -147,6 +178,8 @@ async function checkDelegationApprovalLogs(delegatorId, delegationType, delegati
           return true;
         }
       }
+    } else {
+      console.log('❌ Delegation logs request failed:', deptLogsRes.status, deptLogsRes.statusText);
     }
     
     console.log('❌ No processed delegation logs found');
@@ -158,38 +191,380 @@ async function checkDelegationApprovalLogs(delegatorId, delegationType, delegati
   }
 }
 
+// دالة للحصول على اسم المستخدم الحالي
+async function getCurrentUserName() {
+  try {
+    const userId = getCurrentUserId();
+    if (!userId) return null;
+    
+    const response = await fetch(`http://localhost:3006/api/users/${userId}`, {
+      headers: authHeaders()
+    });
+    
+    if (response.ok) {
+      const userData = await response.json();
+      if (userData.status === 'success' && userData.data) {
+        return userData.data.full_name || userData.data.name || 'مستخدم غير معروف';
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+    return null;
+  }
+}
+
+// دالة للحصول على رقم الهوية الوطني للمستخدم الحالي
+async function getCurrentUserNationalId() {
+  try {
+    const userId = getCurrentUserId();
+    if (!userId) return null;
+
+    const response = await fetch(`http://localhost:3006/api/users/${userId}`, {
+      headers: authHeaders()
+    });
+
+    if (response.ok) {
+      const userData = await response.json();
+      if (userData.status === 'success' && userData.data) {
+        return userData.data.national_id || 'N/A';
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching user national ID:', error);
+    return null;
+  }
+}
+
 // دالة عرض بوب أب تفويض جميع الملفات
-async function showBulkDelegationPopup(delegationId, delegatorName) {
+async function showBulkDelegationPopup(delegationId, delegatorName, delegatorData = null) {
   try {
     console.log('🎯 Showing bulk delegation popup for delegation:', delegationId);
     
-    const message = `${delegatorName} قام بتفويضك بالنيابة عنه في جميع ملفاته. هل توافق على هذا التفويض؟`;
+    // الحصول على اسم المستخدم الحالي
+    const currentUserName = await getCurrentUserName();
     
-    showDelegationPopup(
-      message,
-      async () => {
-        try {
-          await processBulkDelegationUnified(delegationId, 'accept');
-        } catch (err) {
-          alert('خطأ في قبول التفويض');
-        }
-      },
-      async () => {
-        try {
-          await processBulkDelegationUnified(delegationId, 'reject');
-          alert('تم رفض التفويض');
-        } catch (err) {
-          alert('خطأ في رفض التفويض');
-        }
+    // إنشاء بيانات التفويض للعرض
+    const delegationData = {
+      isBulk: true,
+      delegationData: {
+        delegationId: delegationId
       }
-    );
+    };
+    
+    // إنشاء معلومات المفوض والمفوض له
+    const delegatorInfo = {
+      fullName: delegatorName,
+      idNumber: delegatorData?.delegated_by_national_id || 'N/A'
+    };
+    
+    const delegateInfo = {
+      fullName: currentUserName || 'مستخدم غير معروف',
+      idNumber: await getCurrentUserNationalId() || 'N/A'
+    };
+    
+    // عرض بوب أب الإقرار المفصل
+    showDelegationConfirmationPopup(delegatorInfo, delegateInfo, [], true, delegationData);
     
   } catch (err) {
     console.error('خطأ في عرض بوب أب التفويض:', err);
   }
 }
 
+// دالة عرض بوب أب الإقرار والتوقيع
+function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isBulk = false, delegationData = null) {
+  // تخزين بيانات التفويض الحالي
+  currentDelegationData = delegationData;
+  
+  // إزالة أي بوب أب موجود مسبقاً
+  const existingPopup = document.getElementById('delegationConfirmationPopup');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
 
+  // إنشاء البوب أب
+  const popup = document.createElement('div');
+  popup.id = 'delegationConfirmationPopup';
+  popup.className = 'delegation-confirmation-popup';
+  
+  // إضافة inline styles للتأكد من الظهور
+  popup.style.position = 'fixed';
+  popup.style.top = '0';
+  popup.style.left = '0';
+  popup.style.width = '100%';
+  popup.style.height = '100%';
+  popup.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  popup.style.display = 'flex';
+  popup.style.justifyContent = 'center';
+  popup.style.alignItems = 'center';
+  popup.style.zIndex = '10000';
+  popup.style.direction = 'rtl';
+  
+  // منع إغلاق البوب أب بالضغط خارجه
+  popup.addEventListener('click', (e) => {
+    if (e.target === popup) {
+      // لا تفعل شيئاً - منع الإغلاق
+      console.log('🔒 Popup click blocked - user must respond to delegation');
+    }
+  });
+  
+  // تحضير قائمة الملفات
+  let filesList = '';
+  if (isBulk) {
+    filesList = '<p class="files-summary" style="padding: 15px; background: #e3f2fd; border-radius: 4px; color: #1976d2; text-align: center; margin: 10px 0;">تفويض شامل لجميع ملفات القسم المعلقة</p>';
+  } else {
+    filesList = '<div class="files-list">';
+    files.forEach(file => {
+      filesList += `<div class="file-item" style="padding: 10px; background: #f8f9fa; border-radius: 4px; margin: 5px 0; border-left: 3px solid #007bff;">
+        <span class="file-name" style="font-weight: bold;">${file.title || file.name}</span>
+        <span class="file-type" style="color: #666; margin-right: 10px;">ملف قسم</span>
+      </div>`;
+    });
+    filesList += '</div>';
+  }
+
+  // إنشاء المحتوى باستخدام innerHTML مباشرة
+  popup.innerHTML = `
+    <div class="delegation-confirmation-content" style="background: white; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);">
+      <div class="delegation-header" style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; color: #333;">إقرار قبول التفويض</h3>
+        <button class="close-btn" onclick="closeDelegationConfirmationPopup()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+      </div>
+      
+      <div class="delegation-body" style="padding: 20px;">
+        <div class="delegator-info" style="margin-bottom: 20px;">
+          <h4 style="color: #333; margin-bottom: 15px;">معلومات الموظف المفوض</h4>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+            <span class="label" style="font-weight: bold;">الاسم الكامل:</span>
+            <span class="value">${delegatorInfo.fullName}</span>
+          </div>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+            <span class="label" style="font-weight: bold;">رقم الهوية:</span>
+            <span class="value">${delegatorInfo.idNumber}</span>
+          </div>
+        </div>
+        
+        <div class="delegate-info" style="margin-bottom: 20px;">
+          <h4 style="color: #333; margin-bottom: 15px;">معلومات الموظف المفوض له</h4>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+            <span class="label" style="font-weight: bold;">الاسم الكامل:</span>
+            <span class="value">${delegateInfo.fullName}</span>
+          </div>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+            <span class="label" style="font-weight: bold;">رقم الهوية:</span>
+            <span class="value">${delegateInfo.idNumber}</span>
+          </div>
+        </div>
+        
+        <div class="delegation-details" style="margin-bottom: 20px;">
+          <h4 style="color: #333; margin-bottom: 15px;">تفاصيل التفويض</h4>
+          <div class="delegation-type" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+            <span class="label" style="font-weight: bold;">نوع التفويض:</span>
+            <span class="value">${isBulk ? 'تفويض شامل' : 'تفويض فردي'}</span>
+          </div>
+          ${filesList}
+        </div>
+        
+        <div class="delegation-statement" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+          <p class="statement-text" style="margin: 0; line-height: 1.6; color: #333;">
+            أقر بأنني أقبل التفويض من الموظف <strong>${delegatorInfo.fullName}</strong> 
+            ذو رقم الهوية <strong>${delegatorInfo.idNumber}</strong> 
+            للتوقيع بالنيابة عنه على ${isBulk ? 'جميع ملفات القسم المعلقة' : 'الملفات المحددة'}.
+          </p>
+        </div>
+        
+        <div style="padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; margin-bottom: 20px;">
+          <p style="margin: 0; color: #856404; font-weight: bold; text-align: center;">
+            ⚠️ يجب عليك الرد على هذا التفويض قبل المتابعة
+          </p>
+        </div>
+      </div>
+      
+      <div class="delegation-footer" style="padding: 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; gap: 10px;">
+        <button class="btn btn-danger" onclick="rejectDelegation()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">رفض التفويض</button>
+        <button class="btn btn-secondary" onclick="closeDelegationConfirmationPopup()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">إلغاء</button>
+        <button class="btn btn-primary" onclick="confirmDelegation()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">أقبل التفويض</button>
+      </div>
+    </div>
+  `;
+
+  // إضافة ملف CSS للبوب أب
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '../css/delegation-confirmation.css';
+  link.id = 'delegation-confirmation-css';
+  
+  // إزالة أي ملف CSS سابق
+  const existingCSS = document.getElementById('delegation-confirmation-css');
+  if (existingCSS) {
+    existingCSS.remove();
+  }
+  
+  document.head.appendChild(link);
+  document.body.appendChild(popup);
+  
+  console.log('🎯 Delegation confirmation popup created and displayed');
+  
+  // إضافة تنبيه صوتي (اختياري)
+  try {
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+    audio.play().catch(e => console.log('Audio play failed:', e));
+  } catch (e) {
+    console.log('Audio not supported');
+  }
+}
+
+// دالة إغلاق بوب أب الإقرار
+function closeDelegationConfirmationPopup() {
+  const popup = document.getElementById('delegationConfirmationPopup');
+  if (popup) {
+    popup.remove();
+  }
+  
+  console.log('🔍 Delegation confirmation popup closed');
+}
+
+// دالة تأكيد التفويض
+function confirmDelegation() {
+  console.log('🔍 confirmDelegation called');
+  console.log('🔍 currentDelegationData:', currentDelegationData);
+  
+  if (!currentDelegationData) {
+    showToast('خطأ: لا توجد بيانات تفويض', 'error');
+    return;
+  }
+  
+  // معالجة قبول التفويض حسب النوع
+  if (currentDelegationData.isBulk) {
+    // قبول تفويض شامل
+    console.log('🔍 Processing bulk delegation');
+    processBulkDelegation(currentDelegationData);
+  } else {
+    // قبول تفويض فردي
+    console.log('🔍 Processing single delegation');
+    processSingleDelegation(currentDelegationData);
+  }
+  
+  // إغلاق البوب أب
+  closeDelegationConfirmationPopup();
+  
+  // مسح البيانات المؤقتة
+  currentDelegationData = null;
+}
+
+// دالة رفض التفويض
+function rejectDelegation() {
+  if (!currentDelegationData) {
+    showToast('خطأ: لا توجد بيانات تفويض', 'error');
+    return;
+  }
+  
+  // إغلاق البوب أب
+  closeDelegationConfirmationPopup();
+  
+  // مسح البيانات المؤقتة
+  currentDelegationData = null;
+  
+  showToast('تم رفض التفويض', 'info');
+}
+
+// دالة معالجة تفويض فردي
+async function processSingleDelegation(data) {
+  try {
+    console.log('🔍 Processing single delegation with data:', data);
+    
+    // استخراج contentId من البيانات
+    let contentId = data.delegationData.id;
+    
+    // إذا كان contentId يبدأ بـ 'dept-' أو 'committee-'، قم بإزالته
+    if (contentId && typeof contentId === 'string') {
+      if (contentId.includes('-')) {
+        const match = contentId.match(/\d+$/);
+        if (match) contentId = match[0];
+      }
+    }
+    
+    console.log('🔍 Using contentId:', contentId);
+    
+    // تحديد نوع المحتوى
+    const contentType = data.delegationData.type || 'dept';
+    const endpointRoot = (contentType === 'committee') ? 'committee-approvals' : 'approvals';
+    
+    const response = await fetch(`http://localhost:3006/api/${endpointRoot}/proxy/accept/${contentId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders()
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API response error:', response.status, errorText);
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.status === 'success') {
+      showToast('تم قبول التفويض بنجاح', 'success');
+      closeDelegationConfirmationPopup();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } else {
+      showToast(result.message || 'فشل في قبول التفويض', 'error');
+    }
+  } catch (error) {
+    console.error('Error accepting single delegation:', error);
+    showToast('خطأ في قبول التفويض', 'error');
+  }
+}
+
+// دالة معالجة تفويض شامل
+async function processBulkDelegation(data) {
+  try {
+    console.log('🔍 Processing bulk delegation with data:', data);
+    
+    // استخراج delegationId من البيانات
+    let delegationId = data.delegationData.delegationId;
+    
+    // إذا كان delegationId يبدأ بـ 'bulk-'، قم بإزالته
+    if (delegationId && delegationId.startsWith('bulk-')) {
+      delegationId = delegationId.replace('bulk-', '');
+    }
+    
+    console.log('🔍 Using delegationId:', delegationId);
+    
+    const response = await fetch('http://localhost:3006/api/approvals/bulk-delegation-unified/process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders()
+      },
+      body: JSON.stringify({
+        delegationId: delegationId,
+        action: 'accept',
+        signature: null
+      })
+    });
+    
+    const result = await response.json();
+    if (result.status === 'success') {
+      showToast('تم قبول التفويض الشامل بنجاح', 'success');
+      closeDelegationConfirmationPopup();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } else {
+      showToast(result.message || 'فشل في قبول التفويض الشامل', 'error');
+    }
+  } catch (error) {
+    console.error('Error accepting bulk delegation:', error);
+    showToast('خطأ في قبول التفويض الشامل', 'error');
+  }
+}
 
 // دالة موحدة لعرض بوب أب التفويض
 function showDelegationPopup(message, onAccept, onReject) {
@@ -251,8 +626,6 @@ async function processBulkDelegationUnified(delegationId, action) {
   }
 }
 
-
-
 // دالة الترجمة
 function getTranslation(key) {
   const translations = {
@@ -292,11 +665,17 @@ function getLocalizedName(jsonString) {
     return jsonString;
   }
 }
+
 let selectedContentId = null;
 let selectedContentType = null;
 
 async function loadDelegations() {
   const tbody = document.querySelector('.proxy-table tbody');
+  if (!tbody) {
+    console.error('❌ Table body not found');
+    return;
+  }
+  
   tbody.innerHTML = '';
 
   try {
@@ -320,8 +699,8 @@ async function loadDelegations() {
     allData.forEach(d => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
- <td>${escapeHtml(getLocalizedName(d.title))}</td>
-         <td class="col-signer">
+        <td>${escapeHtml(getLocalizedName(d.title))}</td>
+        <td class="col-signer">
           ${escapeHtml(d.delegated_by_name || d.delegated_by || '—')}
         </td>
         <td class="col-action">
@@ -345,23 +724,30 @@ async function loadDelegations() {
           if (match) contentId = match[0];
         }
 
-        showPopup(getTranslation('accept-message'), async () => {
-          try {
-            const endpointRoot = (contentType === 'committee') ? 'committee-approvals' : 'approvals';
-            const res = await fetch(`http://localhost:3006/api/${endpointRoot}/proxy/accept/${contentId}`, {
-              method: 'POST',
-              headers: authHeaders()
-            });
-            const json = await res.json();
-            if (json.status === 'success') {
-              window.location.href = `/frontend/html/${page}?id=${contentId}`;
-            } else {
-              alert(json.message || 'خطأ أثناء قبول التفويض');
+        // عرض بوب أب الإقرار للتفويض الفردي
+        const delegationData = allData.find(item => item.id == contentId);
+        if (delegationData) {
+          await showIndividualDelegationPopup(delegationData);
+        } else {
+          // إذا لم نجد البيانات، استخدم الطريقة القديمة
+          showPopup(getTranslation('accept-message'), async () => {
+            try {
+              const endpointRoot = (contentType === 'committee') ? 'committee-approvals' : 'approvals';
+              const res = await fetch(`http://localhost:3006/api/${endpointRoot}/proxy/accept/${contentId}`, {
+                method: 'POST',
+                headers: authHeaders()
+              });
+              const json = await res.json();
+              if (json.status === 'success') {
+                window.location.href = `/frontend/html/${page}?id=${contentId}`;
+              } else {
+                alert(json.message || 'خطأ أثناء قبول التفويض');
+              }
+            } catch (err) {
+              alert('خطأ أثناء قبول التفويض');
             }
-          } catch (err) {
-            alert('خطأ أثناء قبول التفويض');
-          }
-        });
+          });
+        }
       });
     });
 
@@ -382,6 +768,42 @@ async function loadDelegations() {
   } catch (err) {
     console.error(err);
     alert(getTranslation('error-loading'));
+  }
+}
+
+// دالة عرض بوب أب تفويض فردي
+async function showIndividualDelegationPopup(delegationData) {
+  try {
+    console.log('🎯 Showing individual delegation popup for delegation:', delegationData);
+    
+    // الحصول على اسم المستخدم الحالي
+    const currentUserName = await getCurrentUserName();
+    
+    // إنشاء معلومات المفوض والمفوض له
+    const delegatorInfo = {
+      fullName: delegationData.delegated_by_name || 'مستخدم غير معروف',
+      idNumber: delegationData.delegated_by_national_id || delegationData.delegated_by || 'N/A'
+    };
+    
+    const delegateInfo = {
+      fullName: currentUserName || 'مستخدم غير معروف',
+      idNumber: await getCurrentUserNationalId() || 'N/A'
+    };
+    
+    // إنشاء قائمة الملفات
+    const files = [{
+      title: delegationData.title || 'ملف غير محدد',
+      name: delegationData.title || 'ملف غير محدد'
+    }];
+    
+    // عرض بوب أب الإقرار المفصل
+    showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, false, {
+      isBulk: false,
+      delegationData: delegationData
+    });
+    
+  } catch (err) {
+    console.error('خطأ في عرض بوب أب التفويض الفردي:', err);
   }
 }
 
@@ -446,6 +868,11 @@ function showPopup(message, onConfirm, showReason = false) {
   const btnConfirm = document.getElementById('popupConfirm');
   const btnCancel = document.getElementById('popupCancel');
 
+  if (!overlay || !msgEl || !reasonEl || !btnConfirm || !btnCancel) {
+    console.error('❌ Popup elements not found');
+    return;
+  }
+
   msgEl.textContent = message;
   reasonEl.style.display = showReason ? 'block' : 'none';
 
@@ -463,41 +890,61 @@ function showPopup(message, onConfirm, showReason = false) {
   overlay.style.display = 'flex';
 }
 
-function setupSignatureCanvas() {
-  canvas = document.getElementById('signatureCanvas');
-  if (!canvas) return;
-  ctx = canvas.getContext('2d');
-
-  document.getElementById('btnClear').addEventListener('click', () => {
-    clearCanvas();
-  });
-
-  document.getElementById('btnConfirm').addEventListener('click', async () => {
-    try {
-      const signatureDataUrl = canvas.toDataURL('image/png');
-      // ... existing code ...
-    } catch (err) {
-      // console.error(err);
-      alert('خطأ أثناء إرسال التوقيع.');
-    }
-  });
-}
-
-async function fetchContentAndApprovals(contentId) {
-  try {
-    // ... existing code ...
-  } catch (err) {
-    // console.error(err);
-    alert('خطأ في جلب بيانات المحتوى والاعتمادات.');
+// دالة عرض رسائل Toast
+function showToast(message, type = 'info', duration = 3000) {
+  let toastContainer = document.getElementById('toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    toastContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10001;
+      pointer-events: none;
+    `;
+    document.body.appendChild(toastContainer);
   }
-}
 
-async function sendApproval(contentId, approvalData) {
-  try {
-    // ... existing code ...
-  } catch (err) {
-    // console.error(err);
-    alert('خطأ أثناء إرسال الاعتماد.');
-  }
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  toast.style.cssText = `
+    background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#17a2b8'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    max-width: 300px;
+    word-wrap: break-word;
+  `;
+
+  toastContainer.appendChild(toast);
+
+  // Force reflow to ensure animation plays from start
+  toast.offsetWidth;
+
+  // Animate in
+  setTimeout(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(0)';
+  }, 10);
+
+  // Set a timeout to remove the toast
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    // Remove element after animation completes
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.remove();
+      }
+    }, 300);
+  }, duration);
 }
 

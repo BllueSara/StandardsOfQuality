@@ -157,6 +157,20 @@ function getIconAndColor(type) {
     case 'update': return { iconClass: 'fas fa-edit', bg: 'bg-yellow' };
     case 'delete': return { iconClass: 'fas fa-trash-alt', bg: 'bg-red' };
     case 'approval_reminder': return { iconClass: 'fas fa-clock', bg: 'bg-orange' };
+    case 'rejected': return { iconClass: 'fas fa-times-circle', bg: 'bg-red' };
+    case 'delegation': return { iconClass: 'fas fa-user-shield', bg: 'bg-indigo' };
+    case 'committee': return { iconClass: 'fas fa-users', bg: 'bg-purple' };
+    case 'deadline': return { iconClass: 'fas fa-calendar-times', bg: 'bg-red' };
+    case 'expiry': return { iconClass: 'fas fa-exclamation-triangle', bg: 'bg-orange' };
+    case 'transfer': return { iconClass: 'fas fa-exchange-alt', bg: 'bg-cyan' };
+    case 'upload': return { iconClass: 'fas fa-upload', bg: 'bg-green' };
+    case 'download': return { iconClass: 'fas fa-download', bg: 'bg-blue' };
+    case 'permission': return { iconClass: 'fas fa-key', bg: 'bg-gold' };
+    case 'system': return { iconClass: 'fas fa-cog', bg: 'bg-gray' };
+    case 'warning': return { iconClass: 'fas fa-exclamation-triangle', bg: 'bg-yellow' };
+    case 'info': return { iconClass: 'fas fa-info-circle', bg: 'bg-blue' };
+    case 'success': return { iconClass: 'fas fa-check-circle', bg: 'bg-green' };
+    case 'error': return { iconClass: 'fas fa-times-circle', bg: 'bg-red' };
     default: return { iconClass: 'fas fa-bell', bg: 'bg-gray' };
   }
 }
@@ -384,5 +398,171 @@ function getNotificationTranslation(text) {
   if (approvalReminderMatch) {
     return `You have a file titled "${approvalReminderMatch[1]}" awaiting your approval for more than 3 days. Please take action.`;
   }
+  
+  // إشعارات التفويض والنيابة
+  if (text === 'تم تفويضك للتوقيع بالنيابة عن مستخدم آخر') {
+    return 'You have been delegated to sign on behalf of another user';
+  }
+  if (text === 'تم قبول التفويض') {
+    return 'Delegation accepted';
+  }
+  if (text === 'تم رفض التفويض') {
+    return 'Delegation rejected';
+  }
+  if (text === 'تم إلغاء التفويض') {
+    return 'Delegation cancelled';
+  }
+  if (text === 'تم إنهاء التفويض') {
+    return 'Delegation ended';
+  }
+  if (text === 'تم تجديد التفويض') {
+    return 'Delegation renewed';
+  }
+  
+  // إشعارات اللجان
+  if (text === 'تم إنشاء لجنة جديدة') {
+    return 'A new committee has been created';
+  }
+  if (text === 'تم تحديث اللجنة') {
+    return 'The committee has been updated';
+  }
+  if (text === 'تم إغلاق اللجنة') {
+    return 'The committee has been closed';
+  }
+  if (text === 'تم تعيينك في لجنة') {
+    return 'You have been assigned to a committee';
+  }
+  if (text === 'تم إزالتك من اللجنة') {
+    return 'You have been removed from the committee';
+  }
+  
+  // إشعارات المواعيد النهائية
+  if (text === 'اقتراب الموعد النهائي') {
+    return 'Deadline approaching';
+  }
+  if (text === 'انتهى الموعد النهائي') {
+    return 'Deadline expired';
+  }
+  if (text === 'تم تمديد الموعد النهائي') {
+    return 'Deadline extended';
+  }
+  
+  // إشعارات النقل والتحويل
+  if (text === 'تم نقل الملف') {
+    return 'File transferred';
+  }
+  if (text === 'تم تحويل الملف') {
+    return 'File converted';
+  }
+  if (text === 'تم نسخ الملف') {
+    return 'File copied';
+  }
+  
+  // إشعارات الرفع والتحميل
+  if (text === 'تم رفع الملف بنجاح') {
+    return 'File uploaded successfully';
+  }
+  if (text === 'فشل في رفع الملف') {
+    return 'File upload failed';
+  }
+  if (text === 'تم تحميل الملف') {
+    return 'File downloaded';
+  }
+  
+  // إشعارات الصلاحيات
+  if (text === 'تم منحك صلاحيات جديدة') {
+    return 'New permissions granted to you';
+  }
+  if (text === 'تم إلغاء صلاحياتك') {
+    return 'Your permissions have been revoked';
+  }
+  if (text === 'تم تحديث صلاحياتك') {
+    return 'Your permissions have been updated';
+  }
+  
+  // إشعارات النظام
+  if (text === 'تم تحديث النظام') {
+    return 'System updated';
+  }
+  if (text === 'صيانة النظام') {
+    return 'System maintenance';
+  }
+  if (text === 'تم إعادة تشغيل النظام') {
+    return 'System restarted';
+  }
+  
+  // إشعارات التحذير
+  if (text === 'تحذير: ملف منتهي الصلاحية') {
+    return 'Warning: Expired file';
+  }
+  if (text === 'تحذير: موعد نهائي قريب') {
+    return 'Warning: Deadline approaching';
+  }
+  if (text === 'تحذير: صلاحيات منتهية') {
+    return 'Warning: Expired permissions';
+  }
+  
+  // إشعارات المعلومات
+  if (text === 'معلومات: تم تحديث البيانات') {
+    return 'Info: Data updated';
+  }
+  if (text === 'معلومات: تم إنشاء نسخة احتياطية') {
+    return 'Info: Backup created';
+  }
+  if (text === 'معلومات: تم مزامنة البيانات') {
+    return 'Info: Data synchronized';
+  }
+  
+  // إشعارات النجاح
+  if (text === 'تم حفظ البيانات بنجاح') {
+    return 'Data saved successfully';
+  }
+  if (text === 'تم إرسال الطلب بنجاح') {
+    return 'Request sent successfully';
+  }
+  if (text === 'تم تحديث الحالة بنجاح') {
+    return 'Status updated successfully';
+  }
+  
+  // إشعارات الأخطاء
+  if (text === 'خطأ: فشل في حفظ البيانات') {
+    return 'Error: Failed to save data';
+  }
+  if (text === 'خطأ: فشل في إرسال الطلب') {
+    return 'Error: Failed to send request';
+  }
+  if (text === 'خطأ: فشل في تحديث الحالة') {
+    return 'Error: Failed to update status';
+  }
+  
+  // ترجمة ديناميكية للإشعارات الجديدة
+  // إشعارات الرفض مع السبب
+  const rejectionWithReasonMatch = text.match(/^تم رفض ملفك من قبل (.+?)\. السبب: (.+)$/);
+  if (rejectionWithReasonMatch) {
+    const [, rejector, reason] = rejectionWithReasonMatch;
+    return `Your file has been rejected by ${rejector}. Reason: ${reason}`;
+  }
+  
+  // إشعارات التفويض مع التفاصيل
+  const delegationMatch = text.match(/^تم تفويضك للتوقيع بالنيابة عن (.+?) على ملف جديد رقم (\d+)$/);
+  if (delegationMatch) {
+    const [, delegator, fileNumber] = delegationMatch;
+    return `You have been delegated to sign on behalf of ${delegator} for a new file number ${fileNumber}`;
+  }
+  
+  // إشعارات اللجان مع التفاصيل
+  const committeeMatch = text.match(/^تم إنشاء لجنة جديدة باسم "(.+?)"$/);
+  if (committeeMatch) {
+    const [, committeeName] = committeeMatch;
+    return `A new committee has been created named "${committeeName}"`;
+  }
+  
+  // إشعارات المواعيد النهائية مع التفاصيل
+  const deadlineMatch = text.match(/^الموعد النهائي للملف "(.+?)" هو (.+)$/);
+  if (deadlineMatch) {
+    const [, fileName, deadline] = deadlineMatch;
+    return `The deadline for file "${fileName}" is ${deadline}`;
+  }
+  
   return text;
 }

@@ -37,6 +37,7 @@ const approvalRouter         = require('./routers/approvalRoutes');
 const contentController = require('./controllers/contentController');
 const dashboardRouter = require('./routers/dashboardRoutes');
 const jobTitlesRoutes = require('./routers/jobTitles');
+const jobNamesRoutes = require('./routers/jobNames');
 
 app.use(cors());
 app.use(express.json());
@@ -67,6 +68,7 @@ app.use('/api/contents', contentRouter);
 app.use('/api/approvals', approvalRouter);
 app.put('/api/contents/:id/approval-sequence', contentController.updateContentApprovalSequence);
 app.use('/api/job-titles', jobTitlesRoutes);
+app.use('/api/job-names', jobNamesRoutes);
 
 // اختبار الاتصال
 db.connect((err) => {
@@ -85,11 +87,44 @@ app.use((err, req, res, next) => {
   res.status(500).json({ status: 'error', message: 'Internal Server Error' });
 });
 const PORT = process.env.PORT || 3006;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+    try {
+    await initializeJobNames();
+  } catch (error) {
+    console.error('خطأ في تهيئة جدول job_names:', error);
+  }
 });
 
-
+// تهيئة جدول job_names عند بدء التطبيق
+const initializeJobNames = async () => {
+  try {
+    const { initJobNamesTable } = require('./controllers/jobNamesController');
+    
+    // إنشاء request و response وهمية لاستدعاء الدالة
+    const mockReq = {};
+    const mockRes = {
+      json: (data) => {
+        if (data.success) {
+          console.log('✅ تم تهيئة جدول job_names بنجاح:', data.message);
+        } else {
+          console.log('⚠️ لم يتم تهيئة جدول job_names:', data.message);
+        }
+      },
+      status: (code) => ({
+        json: (data) => {
+          console.log('❌ خطأ في تهيئة جدول job_names:', data.message);
+        }
+      })
+    };
+    
+    await initJobNamesTable(mockReq, mockRes);
+  } catch (error) {
+    console.error('خطأ في تهيئة جدول job_names:', error);
+    // لا نريد إيقاف الخادم بسبب خطأ في إنشاء الجدول
+    console.log('سيستمر الخادم في العمل رغم خطأ إنشاء الجدول');
+  }
+};
 
 // دالة آمنة لتحويل أي تسلسل إلى مصفوفة أرقام
 function safeParseSequence(val) {
@@ -180,3 +215,5 @@ setInterval(async () => {
     console.error('❌ خطأ أثناء إرسال التذكيرات:', err);
   }
 }, 24 * 60 * 60 * 1000); // كل 24 ساعة
+
+

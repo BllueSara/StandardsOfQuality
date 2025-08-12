@@ -454,6 +454,14 @@ function handleEdit(e) {
     editDepartmentHasSubDepartmentsNo.checked = true;
   }
 
+  // حفظ الصورة الحالية في dataset
+  const currentImage = el.closest('.card').querySelector('.card-icon img');
+  if (currentImage && currentImage.src) {
+    editDepartmentModal.dataset.currentImage = currentImage.src;
+  } else {
+    editDepartmentModal.dataset.currentImage = '';
+  }
+
   openModal(editDepartmentModal);
 }
 
@@ -562,7 +570,7 @@ editModalSaveBtn.addEventListener('click', async () => {
         name: name,
         type: type,
         has_sub_departments: hasSubDepartments,
-        image: file ? `backend/uploads/images/${file.name}` : ''
+        image: file ? `backend/uploads/images/${file.name}` : editDepartmentModal.dataset.currentImage || ''
     };
     
     const allIndex = allDepartments.findIndex(d => d.id == id);

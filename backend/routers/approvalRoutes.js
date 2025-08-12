@@ -16,7 +16,8 @@ const {
   getDelegationLogs,
   processDirectDelegationUnified,
   processBulkDelegationUnified,
-  revokeActiveDelegation
+  revokeActiveDelegation,
+  getDelegationConfirmations
 } = require('../controllers/approvalController');
 
 router.get('/', getUserPendingApprovals);
@@ -37,5 +38,8 @@ router.post('/bulk-delegation-unified/process', processBulkDelegationUnified);
 router.get('/delegation-status/:userId', getDelegationStatus);
 router.get('/delegation-logs/:userId/:delegatorId', getDelegationLogs);
 router.delete('/revoke-active-delegation', revokeActiveDelegation);
+
+// مسار جلب اقرارات التفويض (للمديرين)
+router.get('/delegation-confirmations', getDelegationConfirmations);
 
 module.exports = router;

@@ -10,17 +10,6 @@
     <link rel="stylesheet" href="../css/shared.css">
     <link rel="stylesheet" href="../css/register.css">
     <style>
-        /* إخفاء المحتوى حتى يتم تحميل اللغة */
-        .content-hidden {
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        .content-visible {
-            opacity: 1;
-            visibility: visible;
-        }
         .language-switcher {
             position: fixed;
             top: 80px;
@@ -60,10 +49,22 @@
         .language-switcher .dropdown a:hover {
             background: #f5f5f5;
         }
+
+        /* إخفاء المحتوى حتى يتم تحميل اللغة */
+        .content-hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .content-visible {
+            opacity: 1;
+            visibility: visible;
+        }
     </style>
 </head>
-<body class="content-hidden">
-    <header>
+<body>
+    <header class="content-hidden">
         <div class="container">
             <div class="system-title">
                 <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
@@ -74,7 +75,7 @@
         </div>
     </header>
 
-    <div class="language-switcher">
+    <div class="language-switcher content-hidden">
         <a href="#"><img src="../images/langauage.svg" alt=""> <span data-translate="language">عربي</span></a>
         <ul class="dropdown">
             <li><a href="#">عربي</a></li>
@@ -82,13 +83,13 @@
         </ul>
     </div>
 
-    <main>
+    <main class="content-hidden">
         <div class="auth-container">
             <form class="auth-form" id="registerForm">
                 <h2 data-translate="register">إنشاء حساب جديد</h2>
                 <p data-translate="register-description">أدخل بياناتك لإنشاء حساب جديد</p>
 
-                <div class="form-group">
+                <div class="form-group" id="firstNameGroup">
                     <label for="reg-first-name" data-translate="first-name-label">الاسم الأول *</label>
                     <div class="input-icon-wrapper">
                         <input type="text" id="reg-first-name" name="first_name" data-placeholder="enter-first-name" placeholder="أدخل الاسم الأول" required>
@@ -96,7 +97,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="secondNameGroup">
                     <label for="reg-second-name" data-translate="second-name-label">الاسم الثاني</label>
                     <div class="input-icon-wrapper">
                         <input type="text" id="reg-second-name" name="second_name" data-placeholder="enter-second-name" placeholder="أدخل الاسم الثاني (اختياري)">
@@ -104,7 +105,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="thirdNameGroup">
                     <label for="reg-third-name" data-translate="third-name-label">الاسم الثالث</label>
                     <div class="input-icon-wrapper">
                         <input type="text" id="reg-third-name" name="third_name" data-placeholder="enter-third-name" placeholder="أدخل الاسم الثالث (اختياري)">
@@ -112,7 +113,7 @@
                     </div>
                 </div>
 
-                        <div class="form-group">
+                        <div class="form-group" id="lastNameGroup">
             <label for="reg-last-name" data-translate="last-name-label">اسم العائلة *</label>
             <div class="input-icon-wrapper">
                 <input type="text" id="reg-last-name" name="last_name" data-placeholder="enter-last-name" placeholder="أدخل اسم العائلة" required>
@@ -136,7 +137,24 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="nationalIdGroup">
+                    <label for="reg-national-id" data-translate="national-id">رقم الهوية الوطنية / الإقامة</label>
+                    <div class="input-icon-wrapper">
+                        <input 
+                            type="text" 
+                            id="reg-national-id" 
+                            name="national_id" 
+                            data-placeholder="enter-national-id" 
+                            placeholder="أدخل رقم الهوية الوطنية أو الإقامة" 
+                            maxlength="10"
+                            pattern="[0-9]{10}"
+                            required
+                        >
+                        <img src="../images/id-card.png" alt="أيقونة هوية" class="icon">
+                    </div>
+                </div>
+
+                <div class="form-group" id="employeeGroup">
                     <label for="reg-employee" data-translate="employee-number">الرقم الوظيفي</label>
                     <div class="input-icon-wrapper">
                         <input
@@ -151,16 +169,31 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="reg-job-title" data-translate="job-title">المسمى الوظيفي</label>
+                <div class="form-group" id="jobNameGroup">
+                    <label for="reg-job-name" data-translate="job-name">المسمى</label>
+                    <div class="input-icon-wrapper">
+                        <select
+                            id="reg-job-name"
+                            name="job_name"
+                            required
+                        >
+                            <option value="" data-translate="select-job-name">اختر المسمى</option>
+                            <option value="__ADD_NEW_JOB_NAME__" data-translate="add-new-job-name">إضافة مسمى جديد</option>
+                        </select>
+                        <img src="../images/arrwo.png" alt="أيقونة سهم" class="icon select-arrow-icon">
+                    </div>
+                </div>
+
+                <div class="form-group" id="jobTitleGroup">
+                    <label for="reg-job-title" data-translate="job-title">المنصب الإداري</label>
                     <div class="input-icon-wrapper">
                         <select
                             id="reg-job-title"
                             name="job_title"
                             required
                         >
-                            <option value="" data-translate="select-job-title">اختر المسمى الوظيفي</option>
-                            <option value="__ADD_NEW_JOB_TITLE__" data-translate="add-new-job-title">إضافة مسمى وظيفي جديد</option>
+                            <option value="" data-translate="select-job-title">اختر المنصب الإداري</option>
+                            <option value="__ADD_NEW_JOB_TITLE__" data-translate="add-new-job-title">إضافة منصب إداري جديد</option>
                         </select>
                         <img src="../images/arrwo.png" alt="أيقونة سهم" class="icon select-arrow-icon">
                     </div>
@@ -182,7 +215,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="departmentGroup">
                     <label for="reg-department" data-translate="department">القسم</label>
                     <div class="input-icon-wrapper">
                         <select id="reg-department" name="department" required>
@@ -201,7 +234,6 @@
             </form>
         </div>
     </main>
-          <div id="toast-container" class="toast-container"></div>
 
     <!-- Add New Department Modal -->
     <div id="addDepartmentModal" class="modal-overlay">
@@ -229,6 +261,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Add New Job Name Modal -->
+    <div id="addJobNameModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 data-translate="add-job-name">إضافة مسمى</h3>
+            <hr>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="jobNameName" data-translate="job-name-name">المسمى</label>
+                    <input type="text" id="jobNameName" placeholder="أدخل المسمى (مثل: Dr, Eng, Mr, Mrs)">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-primary" id="saveAddJobName" data-translate="save">حفظ</button>
+                <button class="btn-secondary" id="cancelAddJobName" data-translate="cancel">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Add New Job Title Modal -->
     <div id="addJobTitleModal" class="modal-overlay">
         <div class="modal-content">
@@ -246,9 +297,10 @@
             </div>
         </div>
     </div>
-    <script src="../js/register.js"></script>
-    <script src="../js/language.js"></script>
 
+    <script src="../js/language.js"></script>
+    <script src="../js/jobNames.js"></script>
+    <script src="../js/register.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             // إظهار المحتوى بعد تحميل اللغة
@@ -261,6 +313,7 @@
             }, 100);
         });
     </script>
+              <div id="toast-container" class="toast-container"></div>
 
 </body>
 </html> 

@@ -11,6 +11,7 @@ const db = mysql.createPool({
 });
 const { logAction } = require('../models/logger');
 const { insertNotification } = require('../models/notfications-utils');
+const { buildFullName, buildFullNameWithJobName, getFullNameSQLWithAlias, getFullNameSQLWithAliasAndFallback, getFullNameWithJobNameSQLWithAlias } = require('../models/userUtils');
 
 function getUserLang(req) {
   const auth = req.headers.authorization;
@@ -54,7 +55,7 @@ const getUsers = async (req, res) => {
     let query = `
       SELECT 
         u.id,
-        u.username AS name,
+        ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} AS name,
         u.email,
         u.role,
         u.status,  
@@ -64,6 +65,7 @@ const getUsers = async (req, res) => {
         u.updated_at
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
+      LEFT JOIN job_names jn ON u.job_name_id = jn.id
     `;
 
     const params = [];
@@ -87,7 +89,6 @@ const getUsers = async (req, res) => {
 };
 
 
-
 // 2) جلب مستخدم محدد
 const getUserById = async (req, res) => {
   const id = req.params.id;
@@ -103,17 +104,22 @@ const getUserById = async (req, res) => {
          u.department_id AS departmentId,
          d.name AS departmentName,
          u.employee_number,
+         u.national_id,
          u.job_title_id,
          jt.title AS job_title,
+         u.job_name_id,
+         jn.name AS job_name,
          u.first_name,
          u.second_name,
          u.third_name,
          u.last_name,
+         ${getFullNameSQLWithAliasAndFallback('u')} AS name,
          u.created_at,
          u.updated_at
        FROM users u
        LEFT JOIN departments d ON u.department_id = d.id
        LEFT JOIN job_titles jt ON u.job_title_id = jt.id
+       LEFT JOIN job_names jn ON u.job_name_id = jn.id
        WHERE u.id = ?`,
       [id]
     );
@@ -124,22 +130,6 @@ const getUserById = async (req, res) => {
     }
     
     const userData = rows[0];
-    
-    // بناء الاسم الكامل من الأجزاء
-    const buildFullName = (firstName, secondName, thirdName, lastName) => {
-      const nameParts = [firstName, secondName, thirdName, lastName].filter(part => part && part.trim());
-      return nameParts.join(' ');
-    };
-    
-    // إضافة الاسم الكامل أو اليوزرنيم كـ name
-    const fullName = buildFullName(
-      userData.first_name,
-      userData.second_name,
-      userData.third_name,
-      userData.last_name
-    );
-    
-    userData.name = fullName || userData.username;
     
     res.status(200).json({
       status: 'success',
@@ -167,7 +157,7 @@ const addUser = async (req, res) => {
   const adminUserId = payload.id;
   const userLang = getUserLang(req);
 
-  const { first_name, second_name, third_name, last_name, name, email, departmentId, password, role, employeeNumber, job_title_id } = req.body;
+  const { first_name, second_name, third_name, last_name, name, email, departmentId, password, role, employeeNumber, job_title_id, job_name_id } = req.body;
   console.log('🪵 بيانات قادمة:', req.body);
 
   if (!name || !first_name || !last_name || !email || !password || !role) {
@@ -204,8 +194,7 @@ const addUser = async (req, res) => {
     const cleanDeptId = departmentId && departmentId !== '' ? departmentId : null;
 
     // بناء الاسم الكامل من الأسماء
-    const names = [first_name, second_name, third_name, last_name].filter(name => name);
-    const fullName = names.join(' ');
+    const fullName = buildFullName(first_name, second_name, third_name, last_name);
 
     const [result] = await db.execute(
   `INSERT INTO users (
@@ -216,21 +205,22 @@ const addUser = async (req, res) => {
     role,
     employee_number,
     job_title_id,
+    job_name_id,
     first_name,
     second_name,
     third_name,
     last_name,
     created_at,
     updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-  [name, email, cleanDeptId, hashed, role, employeeNumber, job_title_id, first_name, second_name || null, third_name || null, last_name]
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+  [name, email, cleanDeptId, hashed, role, employeeNumber, job_title_id, job_name_id, first_name, second_name || null, third_name || null, last_name]
 );
 
     // Add to logs
     const localizedDeptName = getLocalizedName(departmentName, userLang);
     const logDescription = {
-      ar: `تم إضافة مستخدم جديد: ${fullName}`,
-      en: `Added new user: ${fullName}`
+      ar: `تم إضافة مستخدم جديد: ${fullName || name}`,
+      en: `Added new user: ${fullName || name}`
     };
     
     await logAction(adminUserId, 'add_user', JSON.stringify(logDescription), 'user', result.insertId);
@@ -263,7 +253,7 @@ const updateUser = async (req, res) => {
   const userLang = getUserLang(req);
 
   const id = req.params.id;
-  const { first_name, second_name, third_name, last_name, name, email, departmentId, role, employee_number, job_title_id } = req.body;
+  const { first_name, second_name, third_name, last_name, name, email, departmentId, role, employee_number, job_title_id, job_name_id, national_id } = req.body;
 
   // للادمن: فقط الاسم الأول واسم العائلة واسم المستخدم والدور مطلوبة
   // للمستخدمين الآخرين: جميع الحقول مطلوبة
@@ -280,10 +270,11 @@ const updateUser = async (req, res) => {
   try {
     // Fetch old user details for logging
     const [[oldUser]] = await db.execute(
-      `SELECT u.username, u.email, u.role, u.department_id, u.employee_number, u.job_title_id, jt.title AS job_title, u.first_name, u.second_name, u.third_name, u.last_name, d.name as department_name
+      `SELECT u.first_name, u.second_name, u.third_name, u.last_name, u.job_name_id, u.email, u.role, u.department_id, u.employee_number, u.job_title_id, jt.title AS job_title, jn.name AS job_name, d.name as department_name
        FROM users u
        LEFT JOIN departments d ON u.department_id = d.id
        LEFT JOIN job_titles jt ON u.job_title_id = jt.id
+       LEFT JOIN job_names jn ON u.job_name_id = jn.id
        WHERE u.id = ?`,
       [id]
     );
@@ -307,6 +298,29 @@ const updateUser = async (req, res) => {
       }
     }
 
+    // التحقق من صحة رقم الهوية إذا تم إدخاله
+    if (national_id && !/^[1-9]\d{9}$/.test(national_id)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'رقم الهوية الوطنية أو الإقامة غير صحيح. يجب أن يكون 10 أرقام ولا يبدأ بصفر'
+      });
+    }
+
+    // التحقق من عدم تكرار رقم الهوية مع مستخدم آخر
+    if (national_id && national_id.trim()) {
+      const [existingUser] = await db.execute(
+        'SELECT id FROM users WHERE national_id = ? AND id != ?',
+        [national_id, id]
+      );
+
+      if (existingUser.length > 0) {
+        return res.status(409).json({ 
+          status: 'error', 
+          message: 'رقم الهوية الوطنية أو الإقامة مستخدم بالفعل' 
+        });
+      }
+    }
+
     // Fetch new department details for logging
     let newDepartmentName = null;
     if (departmentId) {
@@ -318,8 +332,7 @@ const updateUser = async (req, res) => {
     }
 
     // بناء الاسم الكامل من الأسماء
-    const names = [first_name, second_name, third_name, last_name].filter(name => name);
-    const fullName = names.join(' ');
+    const fullName = buildFullName(first_name, second_name, third_name, last_name);
 
     const [result] = await db.execute(
       `UPDATE users 
@@ -329,13 +342,15 @@ const updateUser = async (req, res) => {
            role = ?,
            employee_number = ?,
            job_title_id = ?,
+           job_name_id = ?,
+           national_id = ?,
            first_name = ?,
            second_name = ?,
            third_name = ?,
            last_name = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [name, email, departmentId || null, role, employee_number, job_title_id, first_name, second_name || null, third_name || null, last_name, id]
+      [name, email, departmentId || null, role, employee_number, job_title_id, job_name_id, national_id || null, first_name, second_name || null, third_name || null, last_name, id]
     );
 
     if (!result.affectedRows) {
@@ -345,9 +360,10 @@ const updateUser = async (req, res) => {
     // Add to logs
     const changesAr = [];
     const changesEn = [];
-    if (name !== oldUser.username) {
-      changesAr.push(`اسم المستخدم: '${oldUser.username}' ← '${name}'`);
-      changesEn.push(`Username: '${oldUser.username}' → '${name}'`);
+    const oldUserFullName = buildFullNameWithJobName(oldUser.job_name_id, oldUser.first_name, oldUser.second_name, oldUser.third_name, oldUser.last_name);
+    if (name !== oldUserFullName) {
+      changesAr.push(`اسم المستخدم: '${oldUserFullName}' ← '${name}'`);
+      changesEn.push(`Username: '${oldUserFullName}' → '${name}'`);
     }
     if (first_name !== oldUser.first_name) {
       changesAr.push(`الاسم الأول: '${oldUser.first_name || ''}' ← '${first_name}'`);
@@ -377,6 +393,14 @@ const updateUser = async (req, res) => {
       changesAr.push(`المسمى الوظيفي: '${oldUser.job_title || ''}' ← '${req.body.job_title_id || ''}'`);
       changesEn.push(`Job Title: '${oldUser.job_title || ''}' → '${req.body.job_title_id || ''}'`);
     }
+    if (req.body.job_name_id !== undefined && req.body.job_name_id !== oldUser.job_name_id) {
+      changesAr.push(`المسمى: '${oldUser.job_name || ''}' ← '${req.body.job_name_id || ''}'`);
+      changesEn.push(`Job Name: '${oldUser.job_name || ''}' → '${req.body.job_name_id || ''}'`);
+    }
+    if (req.body.national_id !== undefined && req.body.national_id !== oldUser.national_id) {
+      changesAr.push(`رقم الهوية: '${oldUser.national_id || ''}' ← '${req.body.national_id || ''}'`);
+      changesEn.push(`National ID: '${oldUser.national_id || ''}' → '${req.body.national_id || ''}'`);
+    }
     if (role !== oldUser.role) {
       changesAr.push(`الدور: '${oldUser.role}' ← '${role}'`);
       changesEn.push(`Role: '${oldUser.role}' → '${role}'`);
@@ -390,12 +414,13 @@ const updateUser = async (req, res) => {
       changesEn.push(`Department: '${oldDeptNameEn || 'None'}' → '${newDeptNameEn || 'None'}'`);
     }
     let logMessageAr, logMessageEn;
+    const userFullName = buildFullNameWithJobName(oldUser.job_name_id, oldUser.first_name, oldUser.second_name, oldUser.third_name, oldUser.last_name);
     if (changesAr.length > 0) {
-      logMessageAr = `تم تعديل المستخدم '${oldUser.username}':\n${changesAr.join('\n')}`;
-      logMessageEn = `Updated user '${oldUser.username}' (no changes)`;
+      logMessageAr = `تم تعديل المستخدم '${userFullName}':\n${changesAr.join('\n')}`;
+      logMessageEn = `Updated user '${userFullName}':\n${changesEn.join('\n')}`;
     } else {
-      logMessageAr = `تم تعديل المستخدم '${oldUser.username}' (لا توجد تغييرات)`;
-      logMessageEn = `Updated user '${oldUser.username}' (no changes)`;
+      logMessageAr = `تم تعديل المستخدم '${userFullName}' (لا توجد تغييرات)`;
+      logMessageEn = `Updated user '${userFullName}' (no changes)`;
     }
     // ✅ تسجيل اللوق بعد نجاح تعديل المستخدم
     try {
@@ -416,6 +441,7 @@ const updateUser = async (req, res) => {
     res.status(500).json({ message: 'خطأ في تعديل المستخدم' });
   }
 };
+
 // 5) حذف مستخدم
 const deleteUser = async (req, res) => {
   const auth = req.headers.authorization;
@@ -435,7 +461,7 @@ const deleteUser = async (req, res) => {
   try {
     // جلب تفاصيل المستخدم قبل الحذف للتسجيل
     const [[userDetails]] = await db.execute(
-      'SELECT username FROM users WHERE id = ?',
+      'SELECT first_name, second_name, third_name, last_name, job_name_id FROM users WHERE id = ?',
       [id]
     );
 
@@ -451,9 +477,10 @@ const deleteUser = async (req, res) => {
 
     // ✅ تسجيل اللوق بعد نجاح حذف المستخدم
     try {
+        const userFullName = buildFullNameWithJobName(userDetails.job_name_id, userDetails.first_name, userDetails.second_name, userDetails.third_name, userDetails.last_name);
         const logDescription = {
-            ar: `تم حذف مستخدم: ${userDetails.username}`,
-            en: `Deleted user: ${userDetails.username}`
+            ar: `تم حذف مستخدم: ${userFullName}`,
+            en: `Deleted user: ${userFullName}`
         };
         
         await logAction(adminUserId, 'delete_user', JSON.stringify(logDescription), 'user', id);
@@ -502,7 +529,7 @@ const changeUserRole = async (req, res) => {
   try {
     // Fetch user details for logging
     const [[userDetails]] = await db.execute(
-      'SELECT username, role as old_role FROM users WHERE id = ?',
+      'SELECT first_name, second_name, third_name, last_name, job_name_id, role as old_role FROM users WHERE id = ?',
       [id]
     );
 
@@ -520,9 +547,10 @@ const changeUserRole = async (req, res) => {
     }
 
     // Add to logs
+    const userFullName = buildFullNameWithJobName(userDetails.job_name_id, userDetails.first_name, userDetails.second_name, userDetails.third_name, userDetails.last_name);
     const logDescription = {
-        ar: `تم تغيير دور المستخدم: ${userDetails.username} إلى: ${role}`,
-        en: `Changed user role: ${userDetails.username} to: ${role}`
+        ar: `تم تغيير دور المستخدم: ${userFullName} إلى: ${role}`,
+        en: `Changed user role: ${userFullName} to: ${role}`
     };
     
     await logAction(adminUserId, 'change_role', JSON.stringify(logDescription), 'user', id);
@@ -562,7 +590,7 @@ const adminResetPassword = async (req, res) => {
   try {
     // Fetch user details for logging
     const [[userDetails]] = await db.execute(
-      'SELECT username FROM users WHERE id = ?',
+      'SELECT first_name, second_name, third_name, last_name, job_name_id FROM users WHERE id = ?',
       [id]
     );
 
@@ -582,9 +610,10 @@ const adminResetPassword = async (req, res) => {
 
     // ✅ تسجيل اللوق بعد نجاح إعادة تعيين كلمة المرور
     try {
+      const userFullName = buildFullNameWithJobName(userDetails.job_name_id, userDetails.first_name, userDetails.second_name, userDetails.third_name, userDetails.last_name);
       const logDescription = {
-        ar: `تم إعادة تعيين كلمة المرور للمستخدم: ${userDetails.username}`,
-        en: `Reset password for user: ${userDetails.username}`
+        ar: `تم إعادة تعيين كلمة المرور للمستخدم: ${userFullName}`,
+        en: `Reset password for user: ${userFullName}`
       };
       
       await logAction(adminUserId, 'reset_user_password', JSON.stringify(logDescription), 'user', id);
@@ -628,7 +657,7 @@ const getLogs = async (req, res) => {
       params.push(action);
     }
     if (user) {
-      conditions.push('u.username = ?');
+      conditions.push(`${getFullNameWithJobNameSQLWithAlias('u', 'jn')} = ?`);
       params.push(user);
     }
     if (search) {
@@ -641,7 +670,7 @@ const getLogs = async (req, res) => {
     const sql = `
       SELECT
         al.id,
-        u.username AS user,
+        ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} AS user,
         al.action,
         al.description,
         al.reference_type,
@@ -649,6 +678,7 @@ const getLogs = async (req, res) => {
         al.created_at
       FROM activity_logs al
       LEFT JOIN users u ON u.id = al.user_id
+      LEFT JOIN job_names jn ON u.job_name_id = jn.id
       ${whereClause}
       ORDER BY al.created_at DESC
       LIMIT 500
@@ -769,7 +799,7 @@ const getNotifications = async (req, res) => {
         SELECT 
           n.id,
           n.user_id,
-          u.username AS user_name,
+          ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} AS user_name,
           n.title,
           n.message,
           n.is_read_by_admin AS is_read,
@@ -779,13 +809,14 @@ const getNotifications = async (req, res) => {
           n.type
         FROM notifications n
         LEFT JOIN users u ON u.id = n.user_id
+        LEFT JOIN job_names jn ON u.job_name_id = jn.id
         ORDER BY n.created_at DESC
       `
       : `
         SELECT 
           n.id,
           n.user_id,
-          u.username AS user_name,
+          ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} AS user_name,
           n.title,
           n.message,
           n.is_read_by_user AS is_read,
@@ -795,6 +826,7 @@ const getNotifications = async (req, res) => {
           n.type
         FROM notifications n
         LEFT JOIN users u ON u.id = n.user_id
+        LEFT JOIN job_names jn ON u.job_name_id = jn.id
         WHERE n.user_id = ?
         ORDER BY n.created_at DESC
       `;
@@ -1031,7 +1063,10 @@ const updateUserStatus = async (req, res) => {
 const getHospitalManager = async (req, res) => {
   try {
     const [rows] = await db.execute(
-      `SELECT id, username AS name, email, role FROM users WHERE role = 'hospital_manager' LIMIT 1`
+      `SELECT u.id, ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} AS name, u.email, u.role 
+       FROM users u
+       LEFT JOIN job_names jn ON u.job_name_id = jn.id
+       WHERE u.role = 'hospital_manager' LIMIT 1`
     );
     if (!rows.length) {
       return res.status(404).json({ status: 'error', message: 'مدير المستشفى غير موجود' });
@@ -1289,7 +1324,7 @@ const exportLogsToExcel = async (req, res) => {
     const [logs] = await db.execute(`
       SELECT 
         l.id,
-        u.username as user_name,
+        ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} as user_name,
         l.description,
         l.action,
         l.reference_type,
@@ -1297,6 +1332,7 @@ const exportLogsToExcel = async (req, res) => {
         l.created_at
       FROM activity_logs l
       LEFT JOIN users u ON l.user_id = u.id
+      LEFT JOIN job_names jn ON u.job_name_id = jn.id
       ORDER BY l.created_at DESC
     `);
 

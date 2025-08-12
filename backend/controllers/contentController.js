@@ -1593,7 +1593,8 @@ const getRejectedContents = async (req, res) => {
                 d.name as source_name,
                 u.username as created_by_username,
                 al.comments as reject_reason,
-                al.created_at as rejected_at
+                al.created_at as rejected_at,
+                al.approver_id as rejected_by_user_id
             FROM contents c
             LEFT JOIN folders f ON c.folder_id = f.id
             LEFT JOIN departments d ON f.department_id = d.id
@@ -1604,10 +1605,10 @@ const getRejectedContents = async (req, res) => {
 
         let params = [];
 
-        // إذا لم يكن المستخدم admin، أضف شرط الملكية
+        // إذا لم يكن المستخدم admin، أضف شرط الملكية أو الرفض
         if (decodedToken.role !== 'admin') {
-            query += ' AND c.created_by = ?';
-            params.push(decodedToken.id);
+            query += ' AND (c.created_by = ? OR al.approver_id = ?)';
+            params.push(decodedToken.id, decodedToken.id);
         }
 
         query += ' ORDER BY al.created_at DESC';

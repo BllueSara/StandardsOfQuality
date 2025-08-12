@@ -116,7 +116,6 @@ main {
     font-weight: normal;
 }
 
-
 .profile-actions {
     margin-top: 30px;
     display: flex;
@@ -158,18 +157,7 @@ main {
 .btn-secondary:hover {
     background-color: #d0d0d0;
 }
-#profile-department,
-#profile-job-title {
-    display: inline !important;
-    background-color: transparent !important;
-    color: inherit !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    height: auto !important;
-    font-size: inherit !important;
-    font-weight: inherit !important;
-}
+
 /* Basic responsiveness */
 @media (max-width: 600px) {
     main {
@@ -178,13 +166,38 @@ main {
 
     .profile-container {
         padding: 25px;
+        margin-top: 80px;
     }
 
     .profile-container h2 {
         font-size: 1.8em;
     }
 
+    .profile-info {
+        padding: 20px;
+    }
+
     .profile-info p {
+        font-size: 1em;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .profile-info strong {
+        margin-left: 0;
+        margin-bottom: 5px;
+        min-width: auto;
+    }
+
+    .profile-info span {
+        text-align: right;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    #edit-profile-button {
+        padding: 12px 20px;
         font-size: 1em;
     }
 }
@@ -218,8 +231,7 @@ body[dir="rtl"] .profile-info p,
 body[dir="rtl"] .profile-actions {
   direction: rtl !important;
   text-align: right !important;
-} 
-/* Toast Notification Styles - إضافة تعريفات التوست */
+} /* Toast Notification Styles - إضافة تعريفات التوست */
 .toast-container {
     position: fixed !important;
     top: 20px !important;
@@ -341,4 +353,220 @@ body[lang="en"] .toast-container,
 [dir="ltr"] .toast-container {
     left: auto !important;
     right: 20px !important;
+}
+#profile-department,
+#profile-job-title {
+    display: inline !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+}
+
+/* تحسينات للغة الإنجليزية */
+body[dir="ltr"] .profile-container,
+body[dir="ltr"] .profile-info p,
+body[dir="ltr"] .profile-actions {
+    direction: ltr !important;
+    text-align: left !important;
+}
+
+body[dir="ltr"] .profile-info p {
+    flex-direction: row-reverse;
+}
+
+body[dir="ltr"] .profile-info strong {
+    margin-left: 0;
+    margin-right: 15px;
+}
+
+body[dir="ltr"] .profile-info span {
+    text-align: right;
+}
+
+/* Custom Select with Add Button Inside */
+.custom-select-container {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select {
+    position: relative;
+    width: 100%;
+    user-select: none;
+}
+
+.custom-select__trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.custom-select__trigger:hover {
+    border-color: #1D4ED8;
+}
+
+.custom-select.open .custom-select__trigger {
+    border-color: #1D4ED8;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.arrow {
+    position: relative;
+    height: 15px;
+    width: 15px;
+}
+
+.arrow::before,
+.arrow::after {
+    content: "";
+    position: absolute;
+    bottom: 0px;
+    width: 0.15rem;
+    height: 100%;
+    background-color: #333;
+    transition: all 0.5s;
+}
+
+.arrow::before {
+    left: -5px;
+    transform: rotate(45deg);
+}
+
+.arrow::after {
+    left: 5px;
+    transform: rotate(-45deg);
+}
+
+.custom-select.open .arrow::before {
+    transform: rotate(-45deg);
+}
+
+.custom-select.open .arrow::after {
+    transform: rotate(45deg);
+}
+
+.custom-options {
+    position: absolute;
+    display: block;
+    top: 100%;
+    left: 0;
+    right: 0;
+    border: 1px solid #ddd;
+    border-top: 0;
+    background: #fff;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.4s;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.custom-select.open .custom-options {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.custom-option {
+    position: relative;
+    display: block;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.4s;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.custom-option:last-child {
+    border-bottom: none;
+}
+
+.custom-option:hover {
+    background-color: #f8f9fa;
+}
+
+.custom-option.selected {
+    background-color: #e3f2fd;
+    color: #1D4ED8;
+}
+
+.add-new-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.4s;
+    border-top: 2px solid #e0e0e0;
+    background-color: #f8f9fa;
+    color: #28a745;
+    font-weight: 500;
+}
+
+.add-new-option:hover {
+    background-color: #e8f5e8;
+}
+
+.add-new-option i {
+    font-size: 12px;
+}
+
+.add-new-option span {
+    font-size: 14px;
+}
+
+/* Old select-with-add styles (keeping for backward compatibility) */
+.select-with-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.select-with-add select {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    background-color: #fff;
+}
+
+.btn-add {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+}
+
+.btn-add:hover {
+    background-color: #218838;
+}
+
+.btn-add i {
+    font-size: 12px;
 }

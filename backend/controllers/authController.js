@@ -6,7 +6,7 @@ const nodemailer = require('nodemailer');
 
 const mysql = require('mysql2/promise');
 const { logAction } = require('../models/logger');
-
+const { buildFullName } = require('../models/userUtils');
 
 
 const db = mysql.createPool({
@@ -31,14 +31,41 @@ const transporter = nodemailer.createTransport({
 // 1) تسجيل مستخدم جديد
 const register = async (req, res) => {
   try {
-    const { first_name, second_name, third_name, last_name, username, email, password, department_id, role, employee_number, job_title_id } = req.body;
+    const { first_name, second_name, third_name, last_name, username, email, password, department_id, role, employee_number, job_title_id, job_name_id, national_id } = req.body;
 
     // 1) الحقول الأساسية
-    if (!username || !first_name || !last_name || !email || !password ) {
+    if (!username || !email || !password ) {
       return res.status(400).json({
         status: 'error',
-        message: 'اسم المستخدم والاسم الأول واسم العائلة والبريد الإلكتروني وكلمة المرور مطلوبة'
+        message: 'اسم المستخدم والبريد الإلكتروني وكلمة المرور مطلوبة'
       });
+    }
+
+    // تحقق من الأسماء المطلوبة للمستخدمين غير admin
+    if (username.toLowerCase() !== 'admin') {
+      if (!first_name || !last_name) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'الاسم الأول واسم العائلة مطلوبان'
+        });
+      }
+
+      // تحقق من رقم الهوية الوطنية أو الإقامة للمستخدمين غير admin
+      if (!national_id) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'رقم الهوية الوطنية أو الإقامة مطلوب'
+        });
+      }
+
+      // تحقق من صحة رقم الهوية الوطنية أو الإقامة
+      const nationalIdRegex = /^[1-9]\d{9}$/;
+      if (!nationalIdRegex.test(national_id)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'رقم الهوية الوطنية أو الإقامة غير صحيح. يجب أن يكون 10 أرقام ولا يبدأ بصفر'
+        });
+      }
     }
 
     // 2) تحقق من صحة البريد
@@ -58,16 +85,27 @@ const register = async (req, res) => {
       });
     }
 
-    // 4) تحقق من عدم تكرار اسم مستخدم أو بريد أو رقم وظيفي
-    const [existing] = await db.execute(
-      `SELECT id FROM users 
-       WHERE username = ? OR email = ? OR employee_number = ?`,
-      [username, email, employee_number]
-    );
+    // 4) تحقق من عدم تكرار اسم مستخدم أو بريد
+    let existingQuery = `SELECT id FROM users WHERE username = ? OR email = ?`;
+    let existingParams = [username, email];
+    
+    // إضافة التحقق من الرقم الوظيفي للمستخدمين غير admin
+    if (username.toLowerCase() !== 'admin' && employee_number) {
+      existingQuery += ` OR employee_number = ?`;
+      existingParams.push(employee_number);
+    }
+
+    // إضافة التحقق من رقم الهوية الوطنية للمستخدمين غير admin
+    if (username.toLowerCase() !== 'admin' && national_id) {
+      existingQuery += ` OR national_id = ?`;
+      existingParams.push(national_id);
+    }
+    
+    const [existing] = await db.execute(existingQuery, existingParams);
     if (existing.length > 0) {
       return res.status(409).json({
         status: 'error',
-        message: 'اسم المستخدم أو البريد الإلكتروني أو الرقم الوظيفي مستخدم مسبقاً'
+        message: 'اسم المستخدم أو البريد الإلكتروني أو الرقم الوظيفي أو رقم الهوية/الإقامة مستخدم مسبقاً'
       });
     }
 
@@ -83,8 +121,11 @@ const register = async (req, res) => {
     }
 
     // 6) بناء الاسم الكامل من الأسماء
-    const names = [first_name, second_name, third_name, last_name].filter(name => name);
-    const fullName = names.join(' ');
+    let fullName = 'Admin';
+    if (username.toLowerCase() !== 'admin') {
+      const names = [first_name, second_name, third_name, last_name].filter(name => name);
+      fullName = names.join(' ');
+    }
 
     // 7) تحقق من وجود المسمى الوظيفي للمستخدمين غير admin
     if (username.toLowerCase() !== 'admin' && !job_title_id) {
@@ -94,36 +135,72 @@ const register = async (req, res) => {
       });
     }
 
+    // 8) تحقق من وجود المسمى للمستخدمين غير admin
+    if (username.toLowerCase() !== 'admin' && !job_name_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'المسمى مطلوب'
+      });
+    }
+
     // 7) تشفير كلمة المرور
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 8) دور المستخدم
-    const userRole = role || 'user';
+    let userRole = role || 'user';
+    if (username.toLowerCase() === 'admin') {
+      userRole = 'admin';
+    }
 
         // 9) إدخال المستخدم
     const [result] = await db.execute(
       `INSERT INTO users 
-         (username, email, employee_number, job_title_id, password, department_id, role, first_name, second_name, third_name, last_name, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [username, email, employee_number, job_title_id, hashedPassword, department_id || null, userRole, first_name, second_name || null, third_name || null, last_name]
+         (username, email, employee_number, job_title_id, job_name_id, password, department_id, role, first_name, second_name, third_name, last_name, national_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [
+        username, 
+        email, 
+        employee_number || null, 
+        job_title_id || null, 
+        job_name_id || null,
+        hashedPassword, 
+        department_id || null, 
+        userRole, 
+        first_name || null, 
+        second_name || null, 
+        third_name || null, 
+        last_name || null,
+        national_id || null
+      ]
     );
     const userId = result.insertId;
 
     // 10) إنشاء JWT
     const token = jwt.sign(
-      { id: userId, username, email, employee_number, job_title_id, department_id, role: userRole },
+      { 
+        id: userId, 
+        username, 
+        email, 
+        employee_number: employee_number || null, 
+        job_title_id: job_title_id || null, 
+        job_name_id: job_name_id || null,
+        department_id: department_id || null, 
+        national_id: national_id || null,
+        role: userRole 
+      },
       process.env.JWT_SECRET
     );
 
      const logDescription = {
-            ar: 'تم تسجيل مستخدم جديد: ' + fullName,
-            en: 'Registered new user: ' + fullName
+            ar: username.toLowerCase() === 'admin' ? 'تم تسجيل مدير جديد' : 'تم تسجيل مستخدم جديد: ' + fullName,
+            en: username.toLowerCase() === 'admin' ? 'Registered new admin' : 'Registered new user: ' + fullName
         };
         
     await logAction(
       userId,
       'register_user',
-JSON.stringify(logDescription),      'user',
+      JSON.stringify(logDescription),
+      'user',
       userId
     );
     
@@ -131,9 +208,22 @@ JSON.stringify(logDescription),      'user',
     // 11) ردّ العميل
     res.status(201).json({
       status: 'success',
-      message: 'تم إنشاء الحساب وتسجيل الدخول تلقائياً',
+      message: username.toLowerCase() === 'admin' ? 'تم إنشاء حساب المدير بنجاح!' : 'تم إنشاء الحساب وتسجيل الدخول تلقائياً',
       token,
-              user: { id: userId, username, email, employee_number, job_title_id, department_id, role: userRole, first_name, second_name, third_name, last_name }
+      user: { 
+        id: userId, 
+        username, 
+        email, 
+        employee_number: employee_number || null, 
+        job_title_id: job_title_id || null, 
+        department_id: department_id || null, 
+        national_id: national_id || null,
+        role: userRole, 
+        first_name: first_name || null, 
+        second_name: second_name || null, 
+        third_name: third_name || null, 
+        last_name: last_name || null 
+      }
     });
 
   } catch (error) {
@@ -197,17 +287,26 @@ const [departmentRows] = await db.query(
 );
 
 const departmentName = departmentRows[0]?.name || '';
+    // بناء الاسم الكامل
+    const fullName = buildFullName(
+      user.first_name,
+      user.second_name,
+      user.third_name,
+      user.last_name
+    );
+    
     // إنشاء التوكن
     const token = jwt.sign(
       {
         id: user.id,
         username: user.username,
+        full_name: fullName || user.username,
         email: user.email,
         employee_number: user.employee_number,
         job_title_id: user.job_title_id,
         job_title: user.job_title,
         department_id: user.department_id,
-        department_name: departmentName, // ✅ أضف اسم القسم هنا
+        department_name: departmentName,
         role: user.role
       },
       process.env.JWT_SECRET
@@ -251,8 +350,6 @@ const departmentName = departmentRows[0]?.name || '';
     res.status(500).json({ message: 'خطأ في تسجيل الدخول' });
   }
 };
-
-
 
 // 3) نسيان كلمة المرور
 const forgotPassword = async (req, res) => {

@@ -14,7 +14,8 @@
   />
 
     <link rel="stylesheet" href="../css/shared.css">
-    <link rel="stylesheet" href="../css/permissions.css">
+        <link rel="stylesheet" href="../css/permissions.css">
+
     <link rel="stylesheet" href="../css/profile.css">
     <style>
         /* إخفاء المحتوى حتى يتم تحميل اللغة */
@@ -31,8 +32,8 @@
     </style>
     <script src="../js/profile.js" defer></script>
 </head>
-<body class="content-hidden">
-    <header>
+<body>
+    <header class="content-hidden">
         <div class="container">
             <div class="system-title">
                 <img src="../images/system-title.png" alt="نظام إدارة الجودة والسلامة">
@@ -42,7 +43,7 @@
             </div>
         </div>
     </header>
-  <div class="header-actions">
+  <div class="header-actions content-hidden">
     <button class="back-btn" onclick="history.back()">
      <i class="fas fa-arrow-right" id="backIcon"></i>        <span data-translate="back">رجوع</span>
   </button>
@@ -51,15 +52,18 @@
     <span data-translate="home">الرئيسية</span>
   </button>
 </div>
-    <main>
+    <main class="content-hidden">
         <div class="profile-container">
             <h2 data-translate="profile-title">ملفي الشخصي</h2>
             <div class="profile-info">
+                <p><strong data-translate="full-name-label">الاسم الكامل:</strong> <span id="profile-full-name"></span></p>
                 <p><strong data-translate="username-label">اسم المستخدم:</strong> <span id="profile-username"></span></p>
                 <p><strong data-translate="email-label">البريد الإلكتروني:</strong> <span id="profile-email"></span></p>
                 <p><strong data-translate="employee-number-label">الرقم الوظيفي:</strong> <span id="profile-employee-number"></span></p>
+                <p><strong data-translate="national-id">رقم الهوية الوطنية / الإقامة:</strong> <span id="profile-national-id"></span></p>
                 <p><strong data-translate="department-label">القسم:</strong> <span id="profile-department"></span></p>
-                <p><strong data-translate="job-title-label">المسمى الوظيفي:</strong> <span id="profile-job-title"></span></p>
+                <p><strong data-translate="job-name-label">المسمى:</strong> <span id="profile-job-name"></span></p>
+                <p><strong data-translate="job-title-label">المنصب الإداري:</strong> <span id="profile-job-title"></span></p>
 
             </div>
             <div class="profile-actions">
@@ -69,21 +73,21 @@
         </div>
     </main>
             <script src="/frontend/js/language.js"></script>
-                <script src="/frontend/js/check-status.js"></script>
+            <script src="/frontend/js/check-status.js"></script>
+            <script>
+                document.addEventListener("DOMContentLoaded", () => {
+                    // إظهار المحتوى بعد تحميل اللغة
+                    setTimeout(() => {
+                        const elements = document.querySelectorAll('.content-hidden');
+                        elements.forEach(element => {
+                            element.classList.remove('content-hidden');
+                            element.classList.add('content-visible');
+                        });
+                    }, 100);
+                });
+            </script>
+          <div id="toast-container" class="toast-container"></div>
 
-  
-  </body>
 
-  <script>
-      document.addEventListener("DOMContentLoaded", () => {
-          // إظهار المحتوى بعد تحميل اللغة
-          setTimeout(() => {
-              const elements = document.querySelectorAll('.content-hidden');
-              elements.forEach(element => {
-                  element.classList.remove('content-hidden');
-                  element.classList.add('content-visible');
-              });
-          }, 100);
-      });
-  </script>
-  </html> 
+</body>
+</html> 

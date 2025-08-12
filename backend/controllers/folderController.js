@@ -13,6 +13,7 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 const { logAction } = require('../models/logger');
+const { getFullNameSQLWithAliasAndFallback } = require('../models/userUtils');
 
 // دالة مساعدة لاستخراج اسم القسم باللغة المناسبة
 function getDepartmentNameByLanguage(departmentNameData, userLanguage = 'ar') {
@@ -44,54 +45,7 @@ function getDepartmentNameByLanguage(departmentNameData, userLanguage = 'ar') {
         return departmentNameData || 'غير معروف';
     }
 }
-// دالة للتحقق من أن النص عربي
-function isArabicText(text) {
-    if (!text || typeof text !== 'string') return false;
-    
-    // نمط للكشف عن الحروف العربية
-    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-    
-    // التحقق من وجود حروف عربية
-    const hasArabic = arabicPattern.test(text);
-    
-    // التحقق من أن النص يحتوي على حروف عربية أكثر من الحروف الإنجليزية
-    const arabicCount = (text.match(arabicPattern) || []).length;
-    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
-    
-    // إذا كان النص يحتوي على حروف عربية أكثر من الإنجليزية، فهو عربي
-    return hasArabic && arabicCount > englishCount;
-}
 
-// دالة للتحقق من أن النص إنجليزي
-function isEnglishText(text) {
-    if (!text || typeof text !== 'string') return false;
-    
-    // نمط للكشف عن الحروف الإنجليزية
-    const englishPattern = /[a-zA-Z]/;
-    
-    // التحقق من وجود حروف إنجليزية
-    const hasEnglish = englishPattern.test(text);
-    
-    // التحقق من أن النص يحتوي على حروف إنجليزية أكثر من الحروف العربية
-    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
-    const arabicCount = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/) || []).length;
-    
-    // إذا كان النص يحتوي على حروف إنجليزية أكثر من العربية، فهو إنجليزي
-    return hasEnglish && englishCount > arabicCount;
-}
-
-// دالة للتحقق من صحة النص حسب اللغة المطلوبة
-function validateTextLanguage(text, requiredLanguage) {
-    if (!text || typeof text !== 'string') return false;
-    
-    if (requiredLanguage === 'ar') {
-        return isArabicText(text);
-    } else if (requiredLanguage === 'en') {
-        return isEnglishText(text);
-    }
-    
-    return true; // إذا لم تكن اللغة محددة، نسمح بأي نص
-}
 // دالة مساعدة لاستخراج اسم المجلد باللغة المناسبة
 function getFolderNameByLanguage(folderNameData, userLanguage = 'ar') {
   try {
@@ -167,7 +121,7 @@ const getFolders = async (req, res) => {
 
     // جلب المجلدات
     const [folders] = await conn.execute(
-      `SELECT f.id, f.name, f.created_at, u.username AS created_by
+              `SELECT f.id, f.name, f.type, f.created_at, ${getFullNameSQLWithAliasAndFallback('u')} AS created_by
        FROM folders f
        LEFT JOIN users u ON u.id = f.created_by
        WHERE f.department_id = ?
@@ -202,14 +156,20 @@ const createFolder = async (req, res) => {
 
     // اقرأ departmentId من params
     const departmentId = req.params.departmentId;
-    const { name }     = req.body;
+    const { name, type = 'public' } = req.body;
     
     console.log('DEBUG: folder name type:', typeof name);
     console.log('DEBUG: folder name value:', name);
     console.log('DEBUG: folder name JSON.stringify:', JSON.stringify(name));
+    console.log('DEBUG: folder type:', type);
     
     if (!departmentId || !name) 
       return res.status(400).json({ message: 'معرف القسم واسم المجلد مطلوبان.' });
+
+    // التحقق من صحة نوع المجلد
+    if (!['public', 'private', 'shared'].includes(type)) {
+      return res.status(400).json({ message: 'نوع المجلد غير صحيح. يجب أن يكون: public, private, أو shared.' });
+    }
 
     const conn = await pool.getConnection();
 
@@ -241,12 +201,12 @@ const createFolder = async (req, res) => {
       return res.status(409).json({ message: 'المجلد موجود بالفعل.' });
     }
 
-    // إضافة المجلد
+    // إضافة المجلد مع النوع
     const [result] = await conn.execute(
       `INSERT INTO folders 
-         (name, department_id, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [name, departmentId, decoded.id]
+         (name, department_id, created_by, type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [name, departmentId, decoded.id, type]
     );
 
     conn.release();
@@ -262,8 +222,8 @@ const createFolder = async (req, res) => {
       
       // إنشاء النص ثنائي اللغة
       const logDescription = {
-        ar: `تم إنشاء مجلد باسم: ${getFolderNameByLanguage(name, 'ar')} في قسم: ${getDepartmentNameByLanguage(dept[0].name, 'ar')}`,
-        en: `Created folder: ${getFolderNameByLanguage(name, 'en')} in department: ${getDepartmentNameByLanguage(dept[0].name, 'en')}`
+        ar: `تم إنشاء مجلد باسم: ${getFolderNameByLanguage(name, 'ar')} في قسم: ${getDepartmentNameByLanguage(dept[0].name, 'ar')} (النوع: ${type === 'public' ? 'عام' : type === 'private' ? 'خاص' : 'مشترك'})`,
+        en: `Created folder: ${getFolderNameByLanguage(name, 'en')} in department: ${getDepartmentNameByLanguage(dept[0].name, 'en')} (Type: ${type})`
       };
       
       console.log('DEBUG: Final log description:', logDescription);
@@ -299,10 +259,15 @@ const updateFolder = async (req, res) => {
     }
 
     const folderId = req.params.folderId;
-    const { name } = req.body;
+    const { name, type } = req.body;
 
     if (!folderId || !name)
       return res.status(400).json({ message: 'معرف المجلد والاسم مطلوبان.' });
+
+    // التحقق من صحة نوع المجلد إذا تم توفيره
+    if (type && !['public', 'private', 'shared'].includes(type)) {
+      return res.status(400).json({ message: 'نوع المجلد غير صحيح. يجب أن يكون: public, private, أو shared.' });
+    }
 
     const conn = await pool.getConnection();
 
@@ -317,17 +282,22 @@ const updateFolder = async (req, res) => {
     }
 
     const oldName = rows[0].name;
+    const oldType = rows[0].type || 'public';
     const departmentId = rows[0].department_id;
 
     // جلب اسم القسم باللغة المناسبة
     const userLanguage = getUserLanguageFromToken(h.split(' ')[1]);
     const departmentName = getDepartmentNameByLanguage(rows[0].department_name, userLanguage);
 
+    // تحديث المجلد مع النوع إذا تم توفيره
+    const updateType = type !== undefined;
+    const finalType = type || oldType;
+    
     await conn.execute(
       `UPDATE folders 
-       SET name = ?, updated_at = CURRENT_TIMESTAMP 
+       SET name = ?, ${updateType ? 'type = ?,' : ''} updated_at = CURRENT_TIMESTAMP 
        WHERE id = ?`,
-      [name, folderId]
+      updateType ? [name, finalType, folderId] : [name, folderId]
     );
 
     conn.release();
@@ -339,8 +309,8 @@ const updateFolder = async (req, res) => {
       
       // إنشاء النص ثنائي اللغة
       const logDescription = {
-        ar: `تم تعديل مجلد من: ${getFolderNameByLanguage(oldName, 'ar')} إلى: ${getFolderNameByLanguage(name, 'ar')} في قسم: ${getDepartmentNameByLanguage(rows[0].department_name, 'ar')}`,
-        en: `Updated folder from: ${getFolderNameByLanguage(oldName, 'en')} to: ${getFolderNameByLanguage(name, 'en')} in department: ${getDepartmentNameByLanguage(rows[0].department_name, 'en')}`
+        ar: `تم تعديل مجلد من: ${getFolderNameByLanguage(oldName, 'ar')} إلى: ${getFolderNameByLanguage(name, 'ar')} في قسم: ${getDepartmentNameByLanguage(rows[0].department_name, 'ar')}${updateType ? ` (النوع: ${finalType === 'public' ? 'عام' : finalType === 'private' ? 'خاص' : 'مشترك'})` : ''}`,
+        en: `Updated folder from: ${getFolderNameByLanguage(oldName, 'en')} to: ${getFolderNameByLanguage(name, 'en')} in department: ${getDepartmentNameByLanguage(rows[0].department_name, 'en')}${updateType ? ` (Type: ${finalType})` : ''}`
       };
       
       await logAction(decoded.id, 'update_folder', JSON.stringify(logDescription), 'folder', folderId);
@@ -365,8 +335,8 @@ const getFolderById = async (req, res) => {
 
     const [rows] = await conn.execute(
       `SELECT 
-         f.id, f.name AS title, f.department_id, f.created_at, f.updated_at,
-         u.username AS created_by_username,
+         f.id, f.name AS title, f.department_id, f.type, f.created_at, f.updated_at,
+                   ${getFullNameSQLWithAliasAndFallback('u')} AS created_by_username,
          d.name AS department_name
        FROM folders f
        LEFT JOIN users u ON f.created_by = u.id
@@ -462,7 +432,54 @@ const getFolderNames = async (req, res) => {
     return res.status(500).json({ message: 'فشل جلب أسماء المجلدات.' });
   }
 };
-const addFolderName = async (req, res) => {
+// دالة للتحقق من أن النص عربي
+function isArabicText(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    // نمط للكشف عن الحروف العربية
+    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    
+    // التحقق من وجود حروف عربية
+    const hasArabic = arabicPattern.test(text);
+    
+    // التحقق من أن النص يحتوي على حروف عربية أكثر من الحروف الإنجليزية
+    const arabicCount = (text.match(arabicPattern) || []).length;
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    
+    // إذا كان النص يحتوي على حروف عربية أكثر من الإنجليزية، فهو عربي
+    return hasArabic && arabicCount > englishCount;
+}
+
+// دالة للتحقق من أن النص إنجليزي
+function isEnglishText(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    // نمط للكشف عن الحروف الإنجليزية
+    const englishPattern = /[a-zA-Z]/;
+    
+    // التحقق من وجود حروف إنجليزية
+    const hasEnglish = englishPattern.test(text);
+    
+    // التحقق من أن النص يحتوي على حروف إنجليزية أكثر من الحروف العربية
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    const arabicCount = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/) || []).length;
+    
+    // إذا كان النص يحتوي على حروف إنجليزية أكثر من العربية، فهو إنجليزي
+    return hasEnglish && englishCount > arabicCount;
+}
+
+// دالة للتحقق من صحة النص حسب اللغة المطلوبة
+function validateTextLanguage(text, requiredLanguage) {
+    if (!text || typeof text !== 'string') return false;
+    
+    if (requiredLanguage === 'ar') {
+        return isArabicText(text);
+    } else if (requiredLanguage === 'en') {
+        return isEnglishText(text);
+    }
+    
+    return true; // إذا لم تكن اللغة محددة، نسمح بأي نص
+}const addFolderName = async (req, res) => {
   const { name } = req.body;
 
   if (!name) {
@@ -722,6 +739,65 @@ const deleteFolderName = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/folders/:folderId/shared-users
+ * Get users who have access to a shared folder based on approval logs
+ */
+const getSharedUsersForFolder = async (req, res) => {
+  try {
+    // مصادقة
+    const h = req.headers.authorization;
+    if (!h?.startsWith('Bearer ')) 
+      return res.status(401).json({ message: 'غير مصرح.' });
+    let decoded;
+    try { decoded = jwt.verify(h.split(' ')[1], process.env.JWT_SECRET); }
+    catch { return res.status(401).json({ message: 'توكن غير صالح.' }); }
+
+    const folderId = req.params.folderId;
+    if (!folderId) 
+      return res.status(400).json({ message: 'معرف المجلد مطلوب.' });
+
+    const conn = await pool.getConnection();
+
+    // تحقق من وجود المجلد وأنه من نوع shared
+    const [folder] = await conn.execute(
+      'SELECT id, type FROM folders WHERE id = ?',
+      [folderId]
+    );
+    
+    if (!folder.length) {
+      conn.release();
+      return res.status(404).json({ message: 'المجلد غير موجود.' });
+    }
+
+    if (folder[0].type !== 'shared') {
+      conn.release();
+      return res.status(400).json({ message: 'هذا المجلد ليس من نوع مشترك.' });
+    }
+
+    // جلب المستخدمين الذين تم إرسال ملفات لهم للاعتماد في هذا المجلد
+    const [sharedUsers] = await conn.execute(
+      `SELECT DISTINCT u.id, u.username, u.email, u.first_name, u.second_name, u.third_name, u.last_name
+       FROM users u
+       JOIN approval_logs al ON u.id = al.approver_id
+       JOIN contents c ON al.content_id = c.id
+       WHERE c.folder_id = ?
+       ORDER BY u.username`,
+      [folderId]
+    );
+
+    conn.release();
+
+    return res.json({
+      message: 'تم جلب المستخدمين المشتركين بنجاح',
+      data: sharedUsers
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'خطأ في الخادم.' });
+  }
+};
+
 
 module.exports = {
   getFolders,
@@ -732,6 +808,7 @@ module.exports = {
   getFolderNames,
   addFolderName,
   updateFolderName,
-  deleteFolderName
+  deleteFolderName,
+  getSharedUsersForFolder
 
 };

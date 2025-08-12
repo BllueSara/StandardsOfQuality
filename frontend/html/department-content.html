@@ -25,11 +25,10 @@
             visibility: visible;
         }
     </style>
-  
 </head>
 
-<body class="content-hidden">
-    <header>
+<body>
+    <header class="content-hidden">
         <div class="container">
             <div class="hospital-logo">
                 <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
@@ -40,13 +39,13 @@
            
         </div>
     </header>
-        <div class="header-actions">
+        <div class="header-actions content-hidden">
   <button class="home-btn" onclick="window.location.href='index.html'">
     <i class="fas fa-home"></i>
     <span data-translate="home">الرئيسية</span>
   </button>
 </div>
-    <main>
+    <main class="content-hidden">
         <div class="container">
             <h1 data-translate="department-content-title"></h1>
 
@@ -92,7 +91,7 @@
                          <input type="text" placeholder="ابحث عن محتوى" data-placeholder="search-content">
                          <img src="../images/serach.svg" alt="بحث" class="search-icon">
                      </div>
-                     <!-- Removed static add content button; now handled by JS -->
+                      <button class="btn-primary" id="addContentBtn" data-translate="add-content">إضافة محتوى +</button>
                  </div>
                  <!-- Container for File List -->
                  <div class="files-list">
@@ -130,6 +129,28 @@
           </div>
         </div>
       </div>
+
+      <!-- Folder Type Selection -->
+      <div class="form-group">
+        <label data-translate="folder-type">نوع المجلد</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="folderType" value="public" checked>
+            <span class="radio-text" data-translate="folder-type-public">عام</span>
+            <span class="radio-description" data-translate="folder-type-public-desc">يظهر للجميع</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="folderType" value="private">
+            <span class="radio-text" data-translate="folder-type-private">خاص</span>
+            <span class="radio-description" data-translate="folder-type-private-desc">فقط لأعضاء القسم</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="folderType" value="shared">
+            <span class="radio-text" data-translate="folder-type-shared">مشترك</span>
+            <span class="radio-description" data-translate="folder-type-shared-desc">للأشخاص المرسل لهم ملفات للاعتماد</span>
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-buttons">
       <button class="btn-primary" id="createFolderBtn" data-translate="create">إنشاء</button>
@@ -138,7 +159,6 @@
   </div>
 </div>
 
-          <div id="toast-container" class="toast-container"></div>
 
 
 
@@ -155,28 +175,15 @@
       <div class="modal-body">
         <input type="hidden" id="addContentFolderId" />
 
-        <!-- ✅ اسم المحتوى Dropdown -->
+        <!-- ✅ تاريخ البداية -->
         <div class="form-group">
-          <label data-translate="content-name">اسم المحتوى</label>
-          <div class="custom-dropdown" id="contentNameDropdown">
-            <button type="button" id="contentNameToggle" class="dropdown-toggle">
-              <span data-translate="choose-name">اختر اسماً…</span> <span class="arrow">▾</span>
-            </button>
-            <div id="contentNameMenu" class="dropdown-menu hidden">
-              <input
-                type="text"
-                id="contentNameSearch"
-                class="dropdown-search"
-                data-placeholder="search-content-name"
-                placeholder="ابحث عن اسم…"
-              />
-              <div id="addNewContentNameLink" class="add-folder-new" data-translate="add-content-name">
-                + إضافة اسم جديد
-              </div>
-              <div id="contentNamesContainer" class="dropdown-list"></div>
-            </div>
-          </div>
-          <input type="hidden" id="selectedContentNameId" />
+          <label for="contentStartDate" data-translate="start-date">تاريخ البداية</label>
+          <input type="date" id="contentStartDate" />
+        </div>
+        <!-- ✅ تاريخ النهاية -->
+        <div class="form-group">
+          <label for="contentEndDate" data-translate="end-date">تاريخ النهاية</label>
+          <input type="date" id="contentEndDate" />
         </div>
 
         <!-- ✅ اختيار الملف -->
@@ -205,10 +212,22 @@
 
     <!-- Modals for Edit Folder and Add Content will be added later -->
 
-    <div id="toast-container"></div>
+          <div id="toast-container" class="toast-container"></div>
     <script src="../js/language.js"></script>
     <script src="../js/department-content.js"></script>
     <script src="/frontend/js/check-status.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // إظهار المحتوى بعد تحميل اللغة
+            setTimeout(() => {
+                const elements = document.querySelectorAll('.content-hidden');
+                elements.forEach(element => {
+                    element.classList.remove('content-hidden');
+                    element.classList.add('content-visible');
+                });
+            }, 100);
+        });
+    </script>
 
 </body>
 
@@ -242,6 +261,28 @@
           </div>
         </div>
       </div>
+
+      <!-- Folder Type Selection -->
+      <div class="form-group">
+        <label data-translate="folder-type">نوع المجلد</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="editFolderType" value="public">
+            <span class="radio-text" data-translate="folder-type-public">عام</span>
+            <span class="radio-description" data-translate="folder-type-public-desc">يظهر للجميع</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="editFolderType" value="private">
+            <span class="radio-text" data-translate="folder-type-private">خاص</span>
+            <span class="radio-description" data-translate="folder-type-private-desc">فقط لأعضاء القسم</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="editFolderType" value="shared">
+            <span class="radio-text" data-translate="folder-type-shared">مشترك</span>
+            <span class="radio-description" data-translate="folder-type-shared-desc">للأشخاص المرسل لهم ملفات للاعتماد</span>
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-buttons">
       <button class="btn-primary" id="updateFolderBtn" data-translate="update"></button>
@@ -265,24 +306,15 @@
       <input type="hidden" id="editContentId" />
       <input type="hidden" id="editSelectedContentNameId" />
 
-      <!-- ✅ اسم المحتوى Dropdown -->
+      <!-- ✅ تاريخ البداية (تعديل) -->
       <div class="form-group">
-        <label data-translate="content-name"><span class="required">*</span></label>
-        <div class="custom-dropdown" id="editContentNameDropdown">
-          <button type="button" id="editContentNameToggle" class="dropdown-toggle" data-translate="choose-from-list">
-            <span data-translate="choose-from-list"></span> <span class="arrow">▾</span>
-          </button>
-          <div id="editContentNameMenu" class="dropdown-menu hidden">
-            <input
-              type="text"
-              id="editContentNameSearch"
-              class="dropdown-search"
-              data-placeholder="search-content-name"
-            />
-            <div id="editAddNewContentNameLink" class="add-folder-new" data-translate="add-content-name"></div>
-            <div id="editContentNamesContainer" class="dropdown-list"></div>
-          </div>
-        </div>
+        <label for="editContentStartDate" data-translate="start-date">تاريخ البداية</label>
+        <input type="date" id="editContentStartDate" />
+      </div>
+      <!-- ✅ تاريخ النهاية (تعديل) -->
+      <div class="form-group">
+        <label for="editContentEndDate" data-translate="end-date">تاريخ النهاية</label>
+        <input type="date" id="editContentEndDate" />
       </div>
 
       <!-- ✅ اختيار الملف -->
@@ -477,16 +509,4 @@
     </div>
 </div>
 
-  <script>
-      document.addEventListener("DOMContentLoaded", () => {
-          // إظهار المحتوى بعد تحميل اللغة
-          setTimeout(() => {
-              const elements = document.querySelectorAll('.content-hidden');
-              elements.forEach(element => {
-                  element.classList.remove('content-hidden');
-                  element.classList.add('content-visible');
-              });
-          }, 100);
-      });
-  </script>
 </html> 

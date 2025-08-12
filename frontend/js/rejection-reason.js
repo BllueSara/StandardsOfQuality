@@ -93,7 +93,7 @@ function renderFileInfo(fileInfo) {
   }
 }
 
-function renderChat(reason, replies, currentUser) {
+function renderChat(reason, replies) {
   const chatMessages = document.getElementById('chat-messages');
   chatMessages.innerHTML = '';
   // أول رسالة: سبب الرفض
@@ -107,11 +107,17 @@ function renderChat(reason, replies, currentUser) {
   }
   // الردود
   replies.forEach(reply => {
-    const isMe = reply.username && reply.username.toLowerCase() === (currentUser || '').toLowerCase();
+    const isMe = Number(reply.user_id) === Number(window.currentUserId);
+    console.log('Reply debug:', { 
+      replyUserId: reply.user_id, 
+      currentUserId: window.currentUserId, 
+      fullName: reply.full_name, 
+      isMe: isMe 
+    });
     chatMessages.innerHTML += `
       <div class="msg ${isMe ? 'msg-user' : 'msg-system'}">
         <div class="msg-text">${reply.reply_text}</div>
-        <div class="msg-meta">${reply.username} <span>${formatTime(reply.created_at)}</span></div>
+        <div class="msg-meta">${reply.full_name} <span>${formatTime(reply.created_at)}</span></div>
       </div>
     `;
   });
@@ -164,7 +170,7 @@ async function refreshData() {
     ]);
     // عرض المعلومات
     renderFileInfo(fileInfo);
-    renderChat(reasonObj, replies, window.currentUsername);
+    renderChat(reasonObj, replies);
   } catch (error) {
     console.error(getTranslation('error-loading-data'), error);
     const chatMessages = document.querySelector('#chat-messages');
@@ -196,6 +202,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentUserId = payload.id;
   window.currentUserId = currentUserId;
   window.currentUsername = payload.username; // حفظ اسم المستخدم الحالي للمقارنة
+  console.log('Current user debug:', { 
+    currentUserId: window.currentUserId, 
+    currentUsername: window.currentUsername,
+    payload: payload 
+  });
   // تحميل البيانات
   await refreshData();
   // إرسال رد جديد

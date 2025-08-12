@@ -2,31 +2,57 @@
 
 // Toast notification function
 function showToast(message, type = 'info', duration = 3000) {
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        document.body.appendChild(toastContainer);
-    }
+  let toastContainer = document.getElementById('toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    toastContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    `;
+    document.body.appendChild(toastContainer);
+  }
 
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  toast.style.cssText = `
+    background-color: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  `;
 
-    toastContainer.appendChild(toast);
+  toastContainer.appendChild(toast);
 
-    // Force reflow to ensure animation plays from start
-    toast.offsetWidth;
+  // Force reflow
+  toast.offsetWidth;
 
-    // Set a timeout to remove the toast
+  // Show the toast
+  setTimeout(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  }, 10);
+
+  // Set a timeout to remove the toast
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
     setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-20px)';
-        // Remove element after animation completes
-        setTimeout(() => {
-            toast.remove();
-        }, 500); // Should match CSS animation duration
-    }, duration);
+      if (toast.parentNode) {
+        toast.remove();
+      }
+    }, 500);
+  }, duration);
 }
 
 const apiBase      = 'http://localhost:3006/api';
@@ -34,7 +60,6 @@ let authToken      = localStorage.getItem('token') || null;
 let selectedUserId = null;
 let myPermsSet     = new Set(); // صلاحيات المستخدم الحالي
 let editUserRole = null;
-let canGrantAll    = false; // للتحقق من صلاحية منح جميع الصلاحيات
 
 // عناصر الـ DOM
 const userList      = document.getElementById('user-list');
@@ -44,7 +69,7 @@ const profileStatus = document.getElementById('profile-status');
 const profileDept   = document.getElementById('profile-department');
 const profileRoleEl = document.getElementById('profile-role');
 const profileJobTitle = document.getElementById('profile-job-title');
-
+const profileJobName = document.getElementById('profile-job-name');
 const permissionsSection = document.querySelector('.permission-section');
 const btnDeleteUser = document.getElementById('btn-delete-user');
 const btnResetPwd   = document.getElementById('btn-reset-password');
@@ -52,16 +77,24 @@ const btnChangeRole = document.getElementById('btn-change-role');
 const btnAddUser    = document.getElementById('add-user-btn');
 const btnClearCache = document.getElementById('btn-clear-cache');
 
-// إضافة زر إلغاء جميع التفويضات
+// إضافة زر إلغاء التفويضات
 const btnRevokeDelegations = document.createElement('button');
 btnRevokeDelegations.id = 'btn-revoke-delegations';
 btnRevokeDelegations.textContent = getTranslation('revoke-delegations') || 'إلغاء التفويضات';
 btnRevokeDelegations.style = 'margin: 0 8px; background: #e53e3e; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 1rem; cursor: pointer;';
 btnRevokeDelegations.onclick = openRevokeDelegationsPopup;
+// إضافة الزر بجانب زر إضافة مستخدم
 if (btnAddUser && btnAddUser.parentNode) {
   btnAddUser.parentNode.insertBefore(btnRevokeDelegations, btnAddUser.nextSibling);
 }
-btnRevokeDelegations.style.display = 'none'; // أظهره فقط إذا كان لديك الصلاحية المناسبة
+// إظهار الزر فقط إذا كان للمستخدم صلاحية (admin أو من لديه صلاحية revoke_delegations)
+btnRevokeDelegations.style.display = 'none';
+
+// إضافة زر عرض اقرارات التفويض
+const btnViewDelegationConfirmations = document.getElementById('btn-view-delegation-confirmations');
+if (btnViewDelegationConfirmations) {
+  btnViewDelegationConfirmations.onclick = openDelegationConfirmationsModal;
+}
 
 // زر مسح الكاش ميموري - للادمن فقط
 if (btnClearCache) {
@@ -72,7 +105,7 @@ if (btnClearCache) {
     const myRole = payload.role;
     
     if (myRole !== 'admin') {
-      showToast('هذا الزر متاح للادمن فقط', 'error');
+      showToast('هذا الزر متاح للادمن فقط', 'warning');
       return;
     }
     
@@ -122,30 +155,6 @@ if (btnClearCache) {
     }
   };
 }
-
-// popup تعديل الدور
-const rolePopup     = document.getElementById('role-popup');
-const roleSelect    = document.getElementById('role-select');
-const btnSaveRole   = document.getElementById('btn-save-role');
-const btnCancelRole = document.getElementById('btn-cancel-role');
-const departmentSelect = document.getElementById('department');
-
-// زر تعديل معلومات المستخدم
-const btnEditUserInfo = document.getElementById('btn-edit-user-info');
-const editUserModal = document.getElementById('editUserModal');
-const editFirstName = document.getElementById('editFirstName');
-const editSecondName = document.getElementById('editSecondName');
-const editThirdName = document.getElementById('editThirdName');
-const editLastName = document.getElementById('editLastName');
-const editUsername = document.getElementById('editUsername');
-const editEmployeeNumber = document.getElementById('editEmployeeNumber');
-const editDepartment = document.getElementById('editDepartment');
-const editEmail = document.getElementById('editEmail');
-const btnCancelEditUser = document.getElementById('cancelEditUser');
-const btnSaveEditUser = document.getElementById('saveEditUser');
-const editJobTitle = document.getElementById('editJobTitle');
-
-// زر سحب الملفات
 const btnRevokeFiles = document.getElementById('btn-revoke-files');
 if (btnRevokeFiles) {
   // تحقق من الدور مباشرة من التوكن
@@ -222,9 +231,36 @@ if (btnRevokeFiles) {
     document.body.appendChild(overlay);
   };
 }
+// popup تعديل الدور
+const rolePopup     = document.getElementById('role-popup');
+const roleSelect    = document.getElementById('role-select');
+const btnSaveRole   = document.getElementById('btn-save-role');
+const btnCancelRole = document.getElementById('btn-cancel-role');
+const departmentSelect = document.getElementById('department');
 
-// في البداية أخفِ قسم الصلاحيات
-permissionsSection.style.display = 'none';
+// زر تعديل معلومات المستخدم
+const btnEditUserInfo = document.getElementById('btn-edit-user-info');
+const editUserModal = document.getElementById('editUserModal');
+const editFirstName = document.getElementById('editFirstName');
+const editSecondName = document.getElementById('editSecondName');
+const editThirdName = document.getElementById('editThirdName');
+const editLastName = document.getElementById('editLastName');
+const editUsername = document.getElementById('editUsername');
+const editEmployeeNumber = document.getElementById('editEmployeeNumber');
+const editNationalId = document.getElementById('editNationalId');
+const editJobTitle = document.getElementById('editJobTitle');
+const editDepartment = document.getElementById('editDepartment');
+const editEmail = document.getElementById('editEmail');
+const btnCancelEditUser = document.getElementById('cancelEditUser');
+const btnSaveEditUser = document.getElementById('saveEditUser');
+
+  // في البداية أخفِ قسم الصلاحيات
+  permissionsSection.style.display = 'none';
+  
+  // إخفاء زر سحب الملفات في البداية
+  if (btnRevokeFiles) {
+    btnRevokeFiles.style.display = 'none';
+  }
 
 // =====================
 // Helper: fetch with auth
@@ -251,9 +287,9 @@ async function fetchJSON(url, opts = {}) {
     const msg = body.message || body.error || `حدث خطأ (رمز ${res.status})`;
 
     if (res.status === 401) {
-      showToast('غير مسموح: يرجى تسجيل الدخول مجدداً');
+      showToast('غير مسموح: يرجى تسجيل الدخول مجدداً', 'error');
     } else {
-      showToast(msg);
+      showToast(msg, 'error');
     }
 
     throw new Error(msg);
@@ -262,7 +298,6 @@ async function fetchJSON(url, opts = {}) {
   // لو OK، رجع data أو الجسم كله
   return body.data ?? body;
 }
-
 // =====================
 // Load current user permissions
 // =====================
@@ -345,7 +380,6 @@ try {
 
 
 
-
 // =====================
 // 1) Load Users
 // =====================
@@ -367,6 +401,13 @@ async function loadUsers() {
     div.addEventListener('click', () => selectUser(u.id));
     userList.append(div);
   });
+  
+  // إخفاء زر سحب الملفات عند تحميل المستخدمين
+  if (btnRevokeFiles) {
+    btnRevokeFiles.style.display = 'none';
+  }
+  
+  // لا نحتاج لإخفاء زر مسح الكاش ميموري هنا - سيتم التحكم به في loadMyPermissions
 }
 
 // =====================
@@ -380,6 +421,14 @@ async function selectUser(id) {
   selectedUserId = id;
   document.querySelectorAll('.user-item')
     .forEach(el => el.classList.toggle('active', el.dataset.id == id));
+    
+  // إخفاء زر سحب الملفات مؤقتاً حتى يتم تحميل بيانات المستخدم
+  if (btnRevokeFiles) {
+    btnRevokeFiles.style.display = 'none';
+  }
+  
+  // إخفاء قسم الصلاحيات مؤقتاً
+  permissionsSection.style.display = 'none';
 
   // 3) جلب بيانات المستخدم وتحديث الواجهة
   const u = await fetchJSON(`${apiBase}/users/${id}`);
@@ -439,12 +488,12 @@ profileStatus.onclick = async () => {
 
     // 4) طرد نفسك لو عطّلت حسابك
     if (Number(id) === payload.id && newStatus === 'inactive') {
-      showToast(getTranslation('logout_due_to_deactivation'));
+      showToast(getTranslation('logout_due_to_deactivation'), 'warning');
       localStorage.removeItem('token');
       window.location.href = '/frontend/html/login.html';
     }
   } catch {
-    showToast(getTranslation('status_change_failed'));
+    showToast(getTranslation('status_change_failed'), 'error');
   }
 };
 
@@ -460,8 +509,8 @@ try {
   profileDept.textContent = '—';
 }
   profileRoleEl.textContent = u.role           || '—';
-    profileJobTitle.textContent = u.job_title    || '—';
-
+  profileJobName.textContent = u.job_name      || '—';
+  profileJobTitle.textContent = u.job_title    || '—';
 document.querySelector('.user-profile-header')?.classList.add('active');
 
   // دور المستخدم الحالي
@@ -478,6 +527,10 @@ document.querySelector('.user-profile-header')?.classList.add('active');
     btnDeleteUser.style.display = 'none';
     btnResetPwd.style.display   = 'none';
     btnChangeRole.style.display = 'none';
+    if (btnRevokeFiles) {
+      btnRevokeFiles.style.display = 'none';
+    }
+    // لا نضع return هنا لنسمح بتنفيذ showEditUserInfoButton
   }
 
   // أظهر قسم الصلاحيات للمستخدمين غير Admin
@@ -487,18 +540,33 @@ document.querySelector('.user-profile-header')?.classList.add('active');
   btnDeleteUser.style.display = (isAdmin || myPermsSet.has('delete_user')) ? '' : 'none';
   btnResetPwd.style.display   = (isAdmin || myPermsSet.has('change_password')) ? '' : 'none';
   btnChangeRole.style.display = (isAdmin || myPermsSet.has('change_role')) ? '' : 'none';
-
-  // جلب الأدوار للمستخدمين غير Admin
-  const roles = await fetchJSON(`${apiBase}/users/roles`);
-  if (isAdmin && !roles.includes('hospital_manager')) {
-    roles.push('hospital_manager');
+  
+  // إظهار زر سحب الملفات إذا كان admin أو لديه صلاحية revoke_files
+  if (btnRevokeFiles) {
+    btnRevokeFiles.style.display = (isAdmin || myPermsSet.has('revoke_delegations')) ? '' : 'none';
   }
-  roleSelect.innerHTML = roles.map(r => `
-    <option value="${r}" ${u.role===r?'selected':''}>
-      ${r === 'hospital_manager' ? 'مدير المستشفى' : r}
-    </option>
-  `).join('');
-  btnChangeRole.onclick = () => rolePopup.classList.add('show');
+  
+  // جلب الأدوار للمستخدمين غير Admin
+  if (roleSelect) {
+    const roles = await fetchJSON(`${apiBase}/users/roles`);
+    if (isAdmin && !roles.includes('hospital_manager')) {
+      roles.push('hospital_manager');
+    }
+    roleSelect.innerHTML = roles.map(r => `
+      <option value="${r}" ${u.role===r?'selected':''}>
+        ${r === 'hospital_manager' ? 'مدير المستشفى' : r}
+      </option>
+    `).join('');
+  }
+  
+  if (btnChangeRole) {
+    btnChangeRole.onclick = () => {
+      const rolePopup = document.getElementById('role-popup');
+      if (rolePopup) {
+        rolePopup.classList.add('show');
+      }
+    };
+  }
 
   // صلاحيات المستخدم المستهدف
   const targetPerms = await fetchJSON(`${apiBase}/users/${id}/permissions`);
@@ -600,30 +668,45 @@ document.querySelector('.user-profile-header')?.classList.add('active');
     }
   });
 
+
   // إظهار الزر حسب الصلاحية عند اختيار المستخدم
   showEditUserInfoButton(u);
+
+  // إظهار زر إلغاء التفويضات فقط إذا كان admin أو لديه صلاحية grant_permissions
+  btnRevokeDelegations.style.display = (isAdmin || myPermsSet.has('grant_permissions')) ? '' : 'none';
+  
+  // إظهار زر سحب الملفات إذا كان admin أو لديه صلاحية revoke_files
+  if (btnRevokeFiles) {
+    if (isAdmin || myPermsSet.has('revoke_delegations')) {
+      btnRevokeFiles.style.display = '';
+    } else {
+      btnRevokeFiles.style.display = 'none';
+    }
+  }
+  
+  // لا نحتاج للتحكم في زر مسح الكاش ميموري هنا - سيتم التحكم به في loadMyPermissions
 }
 
 
 // handlers role popup
 btnCancelRole.addEventListener('click', () => rolePopup.classList.remove('show'));
 btnSaveRole.addEventListener('click', async () => {
-  if (!selectedUserId) return showToast('اختر مستخدماً أولاً');
+  if (!selectedUserId) return showToast('اختر مستخدماً أولاً', 'warning');
   const newRole = roleSelect.value;
   try {
     await fetchJSON(`${apiBase}/users/${selectedUserId}/role`, { method: 'PUT', body: JSON.stringify({ role: newRole }) });
     profileRoleEl.textContent = newRole;
     rolePopup.classList.remove('show');
-    showToast('تم تغيير الدور');
+    showToast('تم تغيير الدور', 'success');
   } catch {
-    showToast('فشل تغيير الدور');
+    showToast('فشل تغيير الدور', 'error');
   }
 });
 
 // Delete User
 btnDeleteUser.addEventListener('click', async () => {
   if (!selectedUserId) {
-    return showToast('اختر مستخدماً أولاً');
+    return showToast('اختر مستخدماً أولاً', 'warning');
   }
   if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
     return;
@@ -633,26 +716,26 @@ btnDeleteUser.addEventListener('click', async () => {
     const result = await fetchJSON(`${apiBase}/users/${selectedUserId}`, {
       method: 'DELETE'
     });
-    showToast(result.message || 'تم حذف المستخدم بنجاح');
+    showToast(result.message || 'تم حذف المستخدم بنجاح', 'success');
     loadUsers();
   } catch (err) {
     console.error('خطأ في حذف المستخدم:', err);
     // err.message هنا يحمل "خطأ في حذف المستخدم" أو الرسالة الخاصة من السيرفر
-    showToast(err.message);
+    showToast(err.message, 'error');
   }
 });
 
 
 // Reset Password
 btnResetPwd.addEventListener('click', async () => {
-  if (!selectedUserId) return showToast('اختر مستخدماً أولاً');
+  if (!selectedUserId) return showToast('اختر مستخدماً أولاً', 'warning');
   const newPassword = prompt('أدخل كلمة المرور الجديدة للمستخدم:');
   if (!newPassword) return;
   try {
     await fetchJSON(`${apiBase}/users/${selectedUserId}/reset-password`, { method: 'PUT', body: JSON.stringify({ newPassword }) });
-    showToast('تم تحديث كلمة المرور بنجاح');
+    showToast('تم تحديث كلمة المرور بنجاح', 'success');
   } catch (err) {
-    showToast('فشل إعادة التعيين: ' + err.message);
+    showToast('فشل إعادة التعيين: ' + err.message, 'error');
   }
 });
 
@@ -676,12 +759,11 @@ if (btnAdd) {
   btnAdd.addEventListener('click', () => {
     selectedUserId = null;
     document.getElementById('addUserModal').style.display = 'flex';
-document.querySelector('.modal-title').textContent = getTranslation('add-user');
-    ['userName','email','password'].forEach(id => {
+    document.querySelector('.modal-title').textContent = getTranslation('add-user');
+    ['userName','userSecondName','userThirdName','userLastName','email','password'].forEach(id => {
       document.getElementById(id).value = '';
-        fetchDepartments(); // ✅ هنا تستدعي الأقسام وتعبئها
-
     });
+    fetchDepartments(); // ✅ هنا تستدعي الأقسام وتعبئها
   });
 }
 const btnCancel = document.getElementById('cancelAddUser');
@@ -710,6 +792,13 @@ if (btnSaveUser) {
       return;
     }
     
+    // تحقق من المسمى الوظيفي إذا كان موجوداً
+    const jobName = document.getElementById('jobName');
+    if (jobName && !jobName.value.trim()) {
+      showToast('يرجى اختيار المسمى الوظيفي.', 'warning');
+      return;
+    }
+    
     // بناء الاسم الكامل
     const names = [firstName, secondName, thirdName, lastName].filter(name => name);
     const fullName = names.join(' ');
@@ -725,7 +814,8 @@ if (btnSaveUser) {
       password: document.getElementById('password').value,
       role: document.getElementById('role')?.value || 'user',
       employeeNumber: document.getElementById('employeeNumber').value,
-      job_title_id: document.getElementById('jobTitle').value
+      job_title_id: document.getElementById('jobTitle').value,
+      job_name_id: document.getElementById('jobName') ? document.getElementById('jobName').value : ''
     };
 
     console.log('🚀 departmentId:', data.departmentId);
@@ -747,14 +837,14 @@ if (btnSaveUser) {
 const btnExcel = document.getElementById('btn-export-excel');
 if (btnExcel) {
   btnExcel.addEventListener('click', () => {
-    if (!selectedUserId) return showToast('اختر مستخدماً أولاً');
+    if (!selectedUserId) return showToast('اختر مستخدماً أولاً', 'warning');
     window.location = `${apiBase}/users/${selectedUserId}/export/excel`;
   });
 }
 const btnPdf = document.getElementById('btn-export-pdf');
 if (btnPdf) {
   btnPdf.addEventListener('click', () => {
-    if (!selectedUserId) return showToast('اختر مستخدماً أولاً');
+    if (!selectedUserId) return showToast('اختر مستخدماً أولاً', 'warning');
     window.location = `${apiBase}/users/${selectedUserId}/export/pdf`;
   });
 }
@@ -765,9 +855,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadMyPermissions();
 
   loadUsers();
+  initializeSectionButtons();
+  
+  // إخفاء زر سحب الملفات في البداية
+  if (btnRevokeFiles) {
+    btnRevokeFiles.style.display = 'none';
+  }
+  
+  // لا نحتاج لإخفاء زر مسح الكاش ميموري هنا - سيتم التحكم به في loadMyPermissions
 });
-
-
 
 function updateDropdownButtonText() {
   console.log('🔄 Updating dropdown button text...');
@@ -883,19 +979,22 @@ if (btnEditUserInfo) {
       return;
     }
     
-    // تقسيم الاسم الكامل إلى أسماء منفصلة
-    const nameParts = (u.name || '').split(' ').filter(part => part.trim());
-    editFirstName.value = nameParts[0] || '';
-    editSecondName.value = nameParts[1] || '';
-    editThirdName.value = nameParts[2] || '';
-    editLastName.value = nameParts.slice(3).join(' ') || '';
+    // تعبئة الأسماء المنفصلة مباشرة من البيانات
+    editFirstName.value = u.first_name || '';
+    editSecondName.value = u.second_name || '';
+    editThirdName.value = u.third_name || '';
+    editLastName.value = u.last_name || '';
     editUsername.value = u.username || '';
     
     editEmployeeNumber.value = u.employee_number || '';
+    editNationalId.value = u.national_id || '';
     // جلب المسميات الوظيفية وتعبئة الدروب داون
     await fetchJobTitlesForEditModal(u.job_title_id, u.job_title);
     editEmail.value = u.email || '';
     editUserRole = u.role || null;
+    
+    // جلب المسميات الوظيفية وتعبئة الدروب داون
+    await fetchJobNamesForEditModal(u.job_name_id, u.job_name);
     
     // جلب الأقسام وتعبئة الدروب داون
     await fetchDepartmentsForEditModal(u.departmentId, u.departmentName);
@@ -908,6 +1007,35 @@ if (btnEditUserInfo) {
       }
     });
     
+    // Handle "Add New Job Name" selection in edit modal
+    if (editJobName) {
+      editJobName.addEventListener('change', function() {
+        if (this.value === '__ADD_NEW_JOB_NAME__') {
+          this.value = '';
+          document.getElementById('addJobNameModal').style.display = 'flex';
+        }
+      });
+    }
+    
+    // إضافة التحقق من صحة رقم الهوية أثناء الكتابة
+    editNationalId.addEventListener('input', function() {
+      const value = this.value;
+      // السماح فقط بالأرقام
+      this.value = value.replace(/[^0-9]/g, '');
+      
+      // التحقق من الطول
+      if (value.length > 10) {
+        this.value = value.slice(0, 10);
+      }
+    });
+
+    editNationalId.addEventListener('blur', function() {
+      const value = this.value.trim();
+      if (value && !/^[1-9]\d{9}$/.test(value)) {
+        showToast('رقم الهوية الوطنية أو الإقامة غير صحيح. يجب أن يكون 10 أرقام ولا يبدأ بصفر.', 'warning');
+      }
+    });
+
     editUserModal.style.display = 'flex';
   });
 }
@@ -943,7 +1071,7 @@ async function fetchJobTitlesForEditModal(selectedId, selectedTitle) {
     }
     
     const lang = localStorage.getItem('language') || 'ar';
-    const selectText = lang === 'ar' ? 'اختر المسمى الوظيفي' : 'Select Job Title';
+            const selectText = lang === 'ar' ? 'اختر المنصب الإداري' : 'Select Administrative Position';
     editJobTitle.innerHTML = `<option value="">${selectText}</option>`;
     
     jobTitles.forEach(jobTitle => {
@@ -966,22 +1094,42 @@ async function fetchJobTitlesForEditModal(selectedId, selectedTitle) {
     showToast('فشل في جلب المسميات الوظيفية: ' + error.message, 'error');
   }
 }
+
 // دالة لجلب الأقسام وتعبئة الدروب داون مع اختيار القسم الحالي
 async function fetchDepartmentsForEditModal(selectedId, selectedName) {
   try {
     const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('لا يوجد توكن مصادقة');
+    }
+
     const response = await fetch(`${apiBase}/departments/all`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🚨 Department API error (edit modal):', response.status, errorText);
+      throw new Error(`فشل في جلب الأقسام (${response.status})`);
+    }
+
     const result = await response.json();
-    const data = result.data || result;
-    if (!Array.isArray(data)) throw new Error('الرد ليس مصفوفة أقسام');
+    
+    // Handle both array and object with data property
+    const departments = Array.isArray(result) ? result : (result.data || []);
+    
+    if (!Array.isArray(departments)) {
+      console.error('🚨 Invalid departments response format (edit modal):', result);
+      throw new Error('الرد ليس مصفوفة أقسام');
+    }
+    
     const lang = localStorage.getItem('language') || 'ar';
     const selectText = lang === 'ar' ? 'اختر القسم' : 'Select Department';
     editDepartment.innerHTML = `<option value="">${selectText}</option>`;
-    data.forEach(dept => {
+    
+    departments.forEach(dept => {
       const option = document.createElement('option');
       option.value = dept.id;
       let name = dept.name;
@@ -998,8 +1146,71 @@ async function fetchDepartmentsForEditModal(selectedId, selectedName) {
       if (dept.id == selectedId) option.selected = true;
       editDepartment.appendChild(option);
     });
+
+    console.log('✅ Successfully loaded', departments.length, 'departments for edit modal');
   } catch (error) {
-    showToast('خطأ في جلب الأقسام.');
+    console.error('🚨 fetchDepartmentsForEditModal error:', error);
+    showToast('خطأ في جلب الأقسام: ' + error.message, 'error');
+  }
+}
+
+// دالة لجلب المسميات الوظيفية وتعبئة الدروب داون مع اختيار المسمى الحالي
+async function fetchJobNamesForEditModal(selectedId, selectedName) {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('لا يوجد توكن مصادقة');
+    }
+
+    const response = await fetch(`${apiBase}/job-names`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🚨 Job Names API error (edit modal):', response.status, errorText);
+      throw new Error(`فشل في جلب المسميات (${response.status})`);
+    }
+
+    const result = await response.json();
+    
+    // Handle both array and object with data property
+    const jobNames = Array.isArray(result) ? result : (result.data || []);
+    
+    if (!Array.isArray(jobNames)) {
+      console.error('🚨 Invalid job names response format (edit modal):', result);
+      throw new Error('الرد ليس مصفوفة مسميات');
+    }
+    
+    const editJobName = document.getElementById('editJobName');
+    if (editJobName) {
+      const lang = localStorage.getItem('language') || 'ar';
+      const selectText = lang === 'ar' ? 'اختر المسمى الوظيفي' : 'Select Job Name';
+      editJobName.innerHTML = `<option value="">${selectText}</option>`;
+      
+      jobNames.forEach(jobName => {
+        const option = document.createElement('option');
+        option.value = jobName.id;
+        option.textContent = jobName.name;
+        if (selectedId && Number(jobName.id) === Number(selectedId)) {
+          option.selected = true;
+        }
+        editJobName.appendChild(option);
+      });
+      
+      // Add "Add New Job Name" option
+      const addNewOption = document.createElement('option');
+      addNewOption.value = '__ADD_NEW_JOB_NAME__';
+      addNewOption.textContent = getTranslation('add-new-job-name') || 'إضافة مسمى جديد';
+      editJobName.appendChild(addNewOption);
+    }
+
+    console.log('✅ Successfully loaded', jobNames.length, 'job names for edit modal');
+  } catch (error) {
+    console.error('🚨 fetchJobNamesForEditModal error:', error);
+    showToast('خطأ في جلب المسميات: ' + error.message, 'error');
   }
 }
 
@@ -1034,13 +1245,20 @@ if (btnSaveEditUser) {
         return;
       }
     } else {
-      // للمستخدمين الآخرين: جميع الحقول مطلوبة
-      if (!firstName || !lastName || !username || !editEmployeeNumber.value.trim() || !editJobTitle.value.trim() || !editDepartment.value || !editEmail.value.trim()) {
-        showToast('الاسم الأول واسم العائلة واسم المستخدم وجميع الحقول الأخرى مطلوبة.', 'warning');
-        return;
-      }
+          // للمستخدمين الآخرين: جميع الحقول مطلوبة
+    if (!firstName || !lastName || !username || !editEmployeeNumber.value.trim() || !editJobTitle.value.trim() || !editJobName.value.trim() || !editDepartment.value || !editEmail.value.trim()) {
+      showToast('الاسم الأول واسم العائلة واسم المستخدم وجميع الحقول الأخرى مطلوبة.', 'warning');
+      return;
+    }
     }
     
+    // التحقق من صحة رقم الهوية إذا تم إدخاله
+    const nationalId = editNationalId.value.trim();
+    if (nationalId && !/^[1-9]\d{9}$/.test(nationalId)) {
+      showToast('رقم الهوية الوطنية أو الإقامة غير صحيح. يجب أن يكون 10 أرقام ولا يبدأ بصفر.', 'warning');
+      return;
+    }
+
     // بناء الاسم الكامل
     const names = [firstName, secondName, thirdName, lastName].filter(name => name);
     const fullName = names.join(' ');
@@ -1052,7 +1270,9 @@ if (btnSaveEditUser) {
       third_name: thirdName,
       last_name: lastName,
       employee_number: editEmployeeNumber.value,
+      national_id: editNationalId.value,
       job_title_id: editJobTitle.value,
+      job_name_id: editJobName ? editJobName.value : '',
       departmentId: editDepartment.value,
       email: editEmail.value,
       role: editUserRole
@@ -1069,6 +1289,796 @@ if (btnSaveEditUser) {
       showToast('فشل تحديث معلومات المستخدم: ' + err.message, 'error');
     }
   });
+}
+
+// دالة إلغاء التفويض بالكامل (تربط على window)
+window.__revokeAllToUser = async function(delegatorId, delegateeId, isCommittee, btn) {
+  if (!confirm(getTranslation('confirm-revoke-all') || 'هل أنت متأكد من إلغاء جميع التفويضات لهذا الشخص؟')) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    let url;
+    if (isCommittee === 2) {
+      // محاضر
+      url = `${apiBase}/protocols/delegations/by-user/${delegatorId}?to=${delegateeId}`;
+    } else if (isCommittee === 1) {
+      // لجان
+      url = `${apiBase}/committee-approvals/delegations/by-user/${delegatorId}?to=${delegateeId}`;
+    } else {
+      // ملفات
+      url = `${apiBase}/approvals/delegations/by-user/${delegatorId}?to=${delegateeId}`;
+    }
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const json = await res.json();
+    if (json.status === 'success') {
+      btn.parentNode.style.opacity = '0.5';
+      btn.textContent = getTranslation('revoked') || 'تم الإلغاء';
+      btn.disabled = true;
+      setTimeout(() => {
+        const stillActive = overlay.querySelectorAll('button:not([disabled])').length;
+        if (!stillActive) {
+          document.body.removeChild(overlay);
+          loadUsers();
+        }
+      }, 700);
+    } else {
+      btn.disabled = false;
+      btn.textContent = getTranslation('revoke-delegations');
+      showToast(json.message || getTranslation('error-occurred'), 'error');
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = getTranslation('revoke-delegations');
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+};
+
+// Manage Users Functions
+function initializeManageUsers() {
+  const btnManageUsers = document.getElementById('btn-manage-users');
+  if (btnManageUsers) {
+    btnManageUsers.addEventListener('click', () => {
+      window.location.href = 'manage-users.html';
+    });
+  }
+}
+
+// Job Titles Management Functions
+let currentEditingJobTitleId = null;
+
+// Initialize job titles management
+function initializeJobTitlesManagement() {
+  const btnManageJobTitles = document.getElementById('btn-manage-job-titles');
+  const btnAddJobTitle = document.getElementById('btn-add-job-title');
+  const cancelJobTitles = document.getElementById('cancelJobTitles');
+  const saveJobTitle = document.getElementById('saveJobTitle');
+  const cancelAddEditJobTitle = document.getElementById('cancelAddEditJobTitle');
+  const jobTitleName = document.getElementById('jobTitleName');
+  const addEditJobTitleTitle = document.getElementById('addEditJobTitleTitle');
+
+  // Open job titles management modal
+  btnManageJobTitles.addEventListener('click', openJobTitlesModal);
+
+  // Close job titles management modal
+  cancelJobTitles.addEventListener('click', () => {
+    document.getElementById('jobTitlesModal').style.display = 'none';
+  });
+
+  // Add new job title button
+  btnAddJobTitle.addEventListener('click', () => {
+    currentEditingJobTitleId = null;
+    jobTitleName.value = '';
+    addEditJobTitleTitle.textContent = getTranslation('add-job-title');
+    document.getElementById('addEditJobTitleModal').style.display = 'flex';
+  });
+
+  // Save job title
+  saveJobTitle.addEventListener('click', saveJobTitleHandler);
+
+  // Cancel add/edit job title
+  cancelAddEditJobTitle.addEventListener('click', () => {
+    document.getElementById('addEditJobTitleModal').style.display = 'none';
+  });
+
+  // Close modal when clicking outside
+  window.addEventListener('click', (event) => {
+    const jobTitlesModal = document.getElementById('jobTitlesModal');
+    const addEditJobTitleModal = document.getElementById('addEditJobTitleModal');
+    if (event.target === jobTitlesModal) {
+      jobTitlesModal.style.display = 'none';
+    }
+    if (event.target === addEditJobTitleModal) {
+      addEditJobTitleModal.style.display = 'none';
+    }
+  });
+}
+
+// Job Names Management Functions
+let currentEditingJobNameId = null;
+
+// Initialize job names management
+function initializeJobNamesManagement() {
+  const btnManageJobNames = document.getElementById('btn-manage-job-names');
+  const btnAddJobName = document.getElementById('btn-add-job-name');
+  const cancelJobNames = document.getElementById('cancelJobNames');
+  const saveJobName = document.getElementById('saveJobName');
+  const cancelAddEditJobName = document.getElementById('cancelAddEditJobName');
+  const jobNameName = document.getElementById('jobNameName');
+  const addEditJobNameTitle = document.getElementById('addEditJobNameTitle');
+
+  // Open job names management modal
+  if (btnManageJobNames) {
+    btnManageJobNames.addEventListener('click', openJobNamesModal);
+  }
+
+  // Close job names management modal
+  if (cancelJobNames) {
+    cancelJobNames.addEventListener('click', () => {
+      document.getElementById('jobNamesModal').style.display = 'none';
+    });
+  }
+
+  // Add new job name button
+  if (btnAddJobName) {
+    btnAddJobName.addEventListener('click', () => {
+      currentEditingJobNameId = null;
+      jobNameName.value = '';
+      addEditJobNameTitle.textContent = getTranslation('add-job-name');
+      document.getElementById('addEditJobNameModal').style.display = 'flex';
+    });
+  }
+
+  // Save job name
+  if (saveJobName) {
+    saveJobName.addEventListener('click', saveJobNameHandler);
+  }
+
+  // Cancel add/edit job name
+  if (cancelAddEditJobName) {
+    cancelAddEditJobName.addEventListener('click', () => {
+      document.getElementById('addEditJobNameModal').style.display = 'none';
+    });
+  }
+
+  // Close modal when clicking outside
+  window.addEventListener('click', (event) => {
+    const jobNamesModal = document.getElementById('jobNamesModal');
+    const addEditJobNameModal = document.getElementById('addEditJobNameModal');
+    if (event.target === jobNamesModal) {
+      jobNamesModal.style.display = 'none';
+    }
+    if (event.target === addEditJobNameModal) {
+      addEditJobNameModal.style.display = 'none';
+    }
+  });
+}
+
+// Open job titles management modal
+async function openJobTitlesModal() {
+  document.getElementById('jobTitlesModal').style.display = 'flex';
+  await loadJobTitles();
+}
+
+// Open job names management modal
+async function openJobNamesModal() {
+  document.getElementById('jobNamesModal').style.display = 'flex';
+  await loadJobNames();
+}
+
+// Load job titles
+async function loadJobTitles() {
+  try {
+    const response = await fetch(`${apiBase}/job-titles`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      renderJobTitlesList(data.data);
+    } else {
+      showToast(data.message || getTranslation('error-occurred'), 'error');
+    }
+  } catch (error) {
+    console.error('Error loading job titles:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Load job names
+async function loadJobNames() {
+  try {
+    const response = await fetch(`${apiBase}/job-names`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      renderJobNamesList(data.data);
+    } else {
+      showToast(data.message || getTranslation('error-occurred'), 'error');
+    }
+  } catch (error) {
+    console.error('Error loading job names:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Render job titles list
+function renderJobTitlesList(jobTitles) {
+  const jobTitlesList = document.getElementById('jobTitlesList');
+  
+  if (jobTitles.length === 0) {
+    jobTitlesList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">لا توجد مسميات وظيفية</div>';
+    return;
+  }
+
+  jobTitlesList.innerHTML = jobTitles.map(jobTitle => `
+    <div class="job-title-item">
+      <div class="job-title-name">${jobTitle.title}</div>
+      <div class="job-title-actions">
+        <button class="btn-edit" onclick="editJobTitleHandler(${jobTitle.id}, '${jobTitle.title}')">
+          <i class="fas fa-edit"></i> ${getTranslation('edit') || 'تعديل'}
+        </button>
+        <button class="btn-delete" onclick="deleteJobTitle(${jobTitle.id})">
+          <i class="fas fa-trash"></i> ${getTranslation('delete') || 'حذف'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Render job names list
+function renderJobNamesList(jobNames) {
+  const jobNamesList = document.getElementById('jobNamesList');
+  
+  if (jobNames.length === 0) {
+    jobNamesList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">لا توجد مسميات</div>';
+    return;
+  }
+
+  jobNamesList.innerHTML = jobNames.map(jobName => `
+    <div class="job-name-item">
+      <div class="job-name-name">${jobName.name}</div>
+      <div class="job-name-actions">
+        <button class="btn-edit" onclick="editJobNameHandler(${jobName.id}, '${jobName.name}')">
+          <i class="fas fa-edit"></i> ${getTranslation('edit') || 'تعديل'}
+        </button>
+        <button class="btn-delete" onclick="deleteJobName(${jobName.id})">
+          <i class="fas fa-trash"></i> ${getTranslation('delete') || 'حذف'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Edit job title
+function editJobTitleHandler(id, title) {
+  currentEditingJobTitleId = id;
+  document.getElementById('jobTitleName').value = title;
+  document.getElementById('addEditJobTitleTitle').textContent = getTranslation('edit-job-title');
+  document.getElementById('addEditJobTitleModal').style.display = 'flex';
+}
+
+// Edit job name
+function editJobNameHandler(id, name) {
+  currentEditingJobNameId = id;
+  document.getElementById('jobNameName').value = name;
+  document.getElementById('addEditJobNameTitle').textContent = getTranslation('edit-job-name') || 'تعديل المسمى الوظيفي';
+  document.getElementById('addEditJobNameModal').style.display = 'flex';
+}
+
+// Delete job title
+async function deleteJobTitle(id) {
+  if (!confirm(getTranslation('confirm-delete-job-title'))) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/job-titles/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      showToast(getTranslation('job-title-deleted'), 'success');
+      await loadJobTitles();
+    } else {
+      showToast(data.message || getTranslation('cannot-delete-job-title'), 'error');
+    }
+  } catch (error) {
+    console.error('Error deleting job title:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Delete job name
+async function deleteJobName(id) {
+  if (!confirm(getTranslation('confirm-delete-job-name') || 'هل تريد حذف هذا المسمى؟')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/job-names/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      showToast(getTranslation('job-name-deleted') || 'تم حذف المسمى بنجاح', 'success');
+      await loadJobNames();
+    } else {
+      showToast(data.message || getTranslation('cannot-delete-job-name') || 'لا يمكن حذف المسمى', 'error');
+    }
+  } catch (error) {
+    console.error('Error deleting job name:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Save job title handler
+async function saveJobTitleHandler() {
+  const jobTitleName = document.getElementById('jobTitleName').value.trim();
+  
+  if (!jobTitleName) {
+    showToast(getTranslation('enter-job-title'), 'warning');
+    return;
+  }
+
+  try {
+    const url = currentEditingJobTitleId 
+      ? `${apiBase}/job-titles/${currentEditingJobTitleId}`
+      : `${apiBase}/job-titles`;
+    
+    const method = currentEditingJobTitleId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ title: jobTitleName })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showToast(
+        currentEditingJobTitleId 
+          ? getTranslation('job-title-updated')
+          : getTranslation('job-title-added'), 
+        'success'
+      );
+      document.getElementById('addEditJobTitleModal').style.display = 'none';
+      await loadJobTitles();
+    } else {
+      showToast(data.message || getTranslation('error-occurred'), 'error');
+    }
+  } catch (error) {
+    console.error('Error saving job title:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Save job name handler
+async function saveJobNameHandler() {
+  const jobNameName = document.getElementById('jobNameName').value.trim();
+  
+  if (!jobNameName) {
+    showToast(getTranslation('enter-job-name') || 'الرجاء إدخال المسمى', 'warning');
+    return;
+  }
+
+  try {
+    const url = currentEditingJobNameId 
+      ? `${apiBase}/job-names/${currentEditingJobNameId}`
+      : `${apiBase}/job-names`;
+    
+    const method = currentEditingJobNameId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: jobNameName })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showToast(
+        currentEditingJobNameId 
+          ? getTranslation('job-name-updated') || 'تم تحديث المسمى بنجاح'
+          : getTranslation('job-name-added') || 'تم إضافة المسمى بنجاح', 
+        'success'
+      );
+      document.getElementById('addEditJobNameModal').style.display = 'none';
+      await loadJobNames();
+    } else {
+      showToast(data.message || getTranslation('error-occurred'), 'error');
+    }
+  } catch (error) {
+    console.error('Error saving job name:', error);
+    showToast(getTranslation('error-occurred'), 'error');
+  }
+}
+
+// Load job titles for dropdown
+async function loadJobTitlesForDropdown(selectElement, selectedValue = '') {
+  try {
+    const response = await fetch(`${apiBase}/job-titles`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      // Clear existing options except the first one
+              selectElement.innerHTML = '<option value="" data-translate="select-job-title">اختر المنصب الإداري</option>';
+      
+      // Add job titles
+      data.data.forEach(jobTitle => {
+        const option = document.createElement('option');
+        option.value = jobTitle.id;
+        option.textContent = jobTitle.title;
+        if (jobTitle.id.toString() === selectedValue.toString()) {
+          option.selected = true;
+        }
+        selectElement.appendChild(option);
+      });
+      
+      // Add "Add New Job Title" option
+      const addNewOption = document.createElement('option');
+      addNewOption.value = '__ADD_NEW_JOB_TITLE__';
+      addNewOption.textContent = getTranslation('add-new-job-title');
+      selectElement.appendChild(addNewOption);
+    }
+  } catch (error) {
+    console.error('Error loading job titles for dropdown:', error);
+  }
+}
+
+// Load job names for dropdown
+async function loadJobNamesForDropdown(selectElement, selectedValue = '') {
+  try {
+    const response = await fetch(`${apiBase}/job-names`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      // Clear existing options except the first one
+      selectElement.innerHTML = '<option value="" data-translate="select-job-name">اختر المسمى الوظيفي</option>';
+      
+      // Add job names
+      data.data.forEach(jobName => {
+        const option = document.createElement('option');
+        option.value = jobName.id;
+        option.textContent = jobName.name;
+        if (jobName.id.toString() === selectedValue.toString()) {
+          option.selected = true;
+        }
+        selectElement.appendChild(option);
+      });
+      
+      // Add "Add new" option
+      const addNewOption = document.createElement('option');
+      addNewOption.value = '__ADD_NEW_JOB_NAME__';
+      addNewOption.textContent = getTranslation('add-new-job-name') || 'إضافة مسمى جديد';
+      selectElement.appendChild(addNewOption);
+    }
+  } catch (error) {
+    console.error('Error loading job names for dropdown:', error);
+  }
+}
+
+// Initialize job titles for add user modal
+function initializeJobTitlesForAddUser() {
+  const jobTitleSelect = document.getElementById('jobTitle');
+  
+  // Load job titles when modal opens
+  btnAddUser.addEventListener('click', async () => {
+    await loadJobTitlesForDropdown(jobTitleSelect);
+  });
+  
+  // Handle "Add New Job Title" selection
+  jobTitleSelect.addEventListener('change', function() {
+    if (this.value === '__ADD_NEW_JOB_TITLE__') {
+      this.value = '';
+      document.getElementById('addJobTitleModal').style.display = 'flex';
+    }
+  });
+}
+
+// Initialize job names for add user modal
+function initializeJobNamesForAddUser() {
+  const jobNameSelect = document.getElementById('jobName');
+  
+  // Load job names when modal opens
+  btnAddUser.addEventListener('click', async () => {
+    await loadJobNamesForDropdown(jobNameSelect);
+  });
+  
+  // Handle "Add New Job Name" selection
+  jobNameSelect.addEventListener('change', function() {
+    if (this.value === '__ADD_NEW_JOB_NAME__') {
+      this.value = '';
+      document.getElementById('addJobNameModal').style.display = 'flex';
+    }
+  });
+}
+
+// Handle add new job title from add user modal
+function initializeAddJobTitleFromUserModal() {
+  const saveAddJobTitle = document.getElementById('saveAddJobTitle');
+  const cancelAddJobTitle = document.getElementById('cancelAddJobTitle');
+  const jobTitleNameForUser = document.getElementById('jobTitleNameForUser');
+  
+  saveAddJobTitle.addEventListener('click', async () => {
+    const title = jobTitleNameForUser.value.trim();
+    
+    if (!title) {
+      showToast(getTranslation('enter-job-title'), 'warning');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${apiBase}/job-titles`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast(getTranslation('job-title-added'), 'success');
+        document.getElementById('addJobTitleModal').style.display = 'none';
+        jobTitleNameForUser.value = '';
+        
+        // Refresh job titles dropdowns
+        await loadJobTitlesForDropdown(document.getElementById('jobTitle'));
+        await fetchJobTitlesForEditModal('', ''); // Refresh edit modal dropdown
+        
+        // Select the newly added job title in the active modal
+        const activeModal = document.getElementById('addUserModal').style.display === 'flex' ? 'addUserModal' : 'editUserModal';
+        if (activeModal === 'addUserModal') {
+          document.getElementById('jobTitle').value = data.data.id;
+        } else {
+          document.getElementById('editJobTitle').value = data.data.id;
+        }
+      } else {
+        showToast(data.message || getTranslation('error-occurred'), 'error');
+      }
+    } catch (error) {
+      console.error('Error adding job title:', error);
+      showToast(getTranslation('error-occurred'), 'error');
+    }
+  });
+  
+  cancelAddJobTitle.addEventListener('click', () => {
+    document.getElementById('addJobTitleModal').style.display = 'none';
+    jobTitleNameForUser.value = '';
+  });
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', (event) => {
+    const modal = document.getElementById('addJobTitleModal');
+    if (event.target === modal) {
+      modal.style.display = 'none';
+      jobTitleNameForUser.value = '';
+    }
+  });
+}
+
+// Handle add new job name from add user modal
+function initializeAddJobNameFromUserModal() {
+  const saveAddJobName = document.getElementById('saveAddJobName');
+  const cancelAddJobName = document.getElementById('cancelAddJobName');
+  const jobNameNameForUser = document.getElementById('jobNameNameForUser');
+  
+  if (saveAddJobName && cancelAddJobName && jobNameNameForUser) {
+    saveAddJobName.addEventListener('click', async () => {
+      const name = jobNameNameForUser.value.trim();
+      
+      if (!name) {
+        showToast(getTranslation('enter-job-name') || 'الرجاء إدخال المسمى', 'warning');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${apiBase}/job-names`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showToast(getTranslation('job-name-added') || 'تم إضافة المسمى بنجاح', 'success');
+          document.getElementById('addJobNameModal').style.display = 'none';
+          jobNameNameForUser.value = '';
+          
+          // Refresh job names dropdowns
+          await loadJobNamesForDropdown(document.getElementById('jobName'));
+          
+          // Also refresh the edit modal dropdown if it exists
+          const editJobName = document.getElementById('editJobName');
+          if (editJobName) {
+            await fetchJobNamesForEditModal('', '');
+          }
+          
+          // Select the newly added job name in the active modal
+          const activeModal = document.getElementById('addUserModal').style.display === 'flex' ? 'addUserModal' : 'editUserModal';
+          if (activeModal === 'addUserModal') {
+            document.getElementById('jobName').value = data.data.id;
+          } else {
+            document.getElementById('editJobName').value = data.data.id;
+          }
+        } else {
+          showToast(data.message || getTranslation('error-occurred'), 'error');
+        }
+      } catch (error) {
+        console.error('Error adding job name:', error);
+        showToast(getTranslation('error-occurred'), 'error');
+      }
+    });
+    
+    cancelAddJobName.addEventListener('click', () => {
+      document.getElementById('addJobNameModal').style.display = 'none';
+      jobNameNameForUser.value = '';
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+      const modal = document.getElementById('addJobNameModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+        jobNameNameForUser.value = '';
+      }
+    });
+  }
+}
+
+// Initialize everything when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  initializeJobTitlesManagement();
+  initializeJobNamesManagement();
+  initializeJobTitlesForAddUser();
+  initializeJobNamesForAddUser();
+  initializeAddJobTitleFromUserModal();
+  initializeAddJobNameFromUserModal();
+  initializeManageUsers();
+});
+
+// =====================
+// Section Selection Buttons
+// =====================
+const sectionPermissions = {
+  general: [
+    'view_logs',
+    'view_dashboard'
+  ],
+  departments: [
+    'add_section',
+    'edit_section', 
+    'delete_section'
+    // استثناء: view_own_department
+  ],
+  folder: [
+    'add_folder',
+    'add_folder_name',
+    'edit_folder',
+    'edit_folder_name',
+    'delete_folder',
+    'delete_folder_name'
+  ],
+  content: [
+    'add_content',
+    'add_many_content',
+    'delete_content'
+  ],
+  approvals: [
+    'transfer_credits'
+  ],
+  signature: [
+    'sign',
+    'sign_on_behalf',
+    'delegate_all',
+    'revoke_delegations'
+  ],
+  accounts: [
+    'add_user',
+    'change_status',
+    'change_role',
+    'delete_user',
+    'change_password',
+    'change_user_info'
+  ]
+};
+
+// تهيئة أزرار تحديد الأقسام
+function initializeSectionButtons() {
+  const sectionButtons = document.querySelectorAll('.btn-select-section');
+  
+  sectionButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const section = button.dataset.section;
+      selectSectionPermissions(section);
+    });
+  });
+}
+
+// تحديد صلاحيات قسم معين
+async function selectSectionPermissions(section) {
+  if (!selectedUserId) {
+    showToast(getTranslation('please-select-user') || 'الرجاء اختيار مستخدم أولاً', 'warning');
+    return;
+  }
+
+  const permissions = sectionPermissions[section];
+  if (!permissions) {
+    showToast('قسم غير معروف', 'error');
+    return;
+  }
+
+  try {
+    // تحديد جميع الصلاحيات في القسم
+    const promises = permissions.map(permission => 
+      fetchJSON(`${apiBase}/users/${selectedUserId}/permissions/${encodeURIComponent(permission)}`, {
+        method: 'POST'
+      })
+    );
+
+    await Promise.all(promises);
+
+    // تحديث الواجهة
+    permissions.forEach(permission => {
+      const checkbox = document.querySelector(`label.switch[data-key="${permission}"] input[type="checkbox"]`);
+      if (checkbox) {
+        checkbox.checked = true;
+      }
+    });
+
+    showToast(`تم تحديد جميع صلاحيات قسم ${getSectionName(section)}`, 'success');
+  } catch (error) {
+    console.error('خطأ في تحديد صلاحيات القسم:', error);
+    showToast('فشل في تحديد صلاحيات القسم: ' + error.message, 'error');
+  }
+}
+
+// الحصول على اسم القسم باللغة الحالية
+function getSectionName(section) {
+  const sectionNames = {
+    general: getTranslation('general-group') || 'عامّ',
+    departments: getTranslation('departments-group') || 'الأقسام',
+    folder: getTranslation('folder-group') || 'المجلد',
+    content: getTranslation('content-group') || 'المحتوى',
+    committees: getTranslation('committees-group') || 'اللجان',
+    'committee-folders': getTranslation('committee-folders-group') || 'مجلدات اللجان',
+    'committee-content': getTranslation('committee-content-group') || 'محتوى اللجان',
+    tickets: getTranslation('tickets-group') || 'التذاكر',
+    'ticket-reports': getTranslation('report-group-tickets') || 'تقارير التذاكر',
+    approvals: getTranslation('approvals-group') || 'الاعتمادات',
+    'approval-reports': getTranslation('report-group-approvals') || 'تقارير الاعتمادات',
+    signature: getTranslation('signature-group') || 'التوقيع',
+    accounts: getTranslation('accounts-group') || 'الحسابات'
+  };
+  
+  return sectionNames[section] || section;
 }
 
 // دالة فتح popup إلغاء التفويضات
@@ -1184,422 +2194,297 @@ async function openRevokeDelegationsPopup() {
   };
 }
 
-// Job Titles Management Functions
-let currentEditingJobTitleId = null;
-
-// Initialize job titles management
-function initializeJobTitlesManagement() {
-  const btnManageJobTitles = document.getElementById('btn-manage-job-titles');
-  const btnAddJobTitle = document.getElementById('btn-add-job-title');
-  const cancelJobTitles = document.getElementById('cancelJobTitles');
-  const saveJobTitle = document.getElementById('saveJobTitle');
-  const cancelAddEditJobTitle = document.getElementById('cancelAddEditJobTitle');
-  const jobTitleName = document.getElementById('jobTitleName');
-  const addEditJobTitleTitle = document.getElementById('addEditJobTitleTitle');
-
-  // Open job titles management modal
-  btnManageJobTitles.addEventListener('click', openJobTitlesModal);
-
-  // Close job titles management modal
-  cancelJobTitles.addEventListener('click', () => {
-    document.getElementById('jobTitlesModal').style.display = 'none';
-  });
-
-  // Add new job title button
-  btnAddJobTitle.addEventListener('click', () => {
-    currentEditingJobTitleId = null;
-    jobTitleName.value = '';
-    addEditJobTitleTitle.textContent = getTranslation('add-job-title');
-    document.getElementById('addEditJobTitleModal').style.display = 'flex';
-  });
-
-  // Save job title
-  saveJobTitle.addEventListener('click', saveJobTitleHandler);
-
-  // Cancel add/edit job title
-  cancelAddEditJobTitle.addEventListener('click', () => {
-    document.getElementById('addEditJobTitleModal').style.display = 'none';
-  });
-
-  // Close modal when clicking outside
-  window.addEventListener('click', (event) => {
-    const jobTitlesModal = document.getElementById('jobTitlesModal');
-    const addEditJobTitleModal = document.getElementById('addEditJobTitleModal');
-    if (event.target === jobTitlesModal) {
-      jobTitlesModal.style.display = 'none';
-    }
-    if (event.target === addEditJobTitleModal) {
-      addEditJobTitleModal.style.display = 'none';
+// إغلاق المودال عند النقر خارج المحتوى
+if (editUserModal) {
+  editUserModal.addEventListener('click', function(event) {
+    if (event.target === this) {
+      editUserModal.style.display = 'none';
     }
   });
 }
 
-// Open job titles management modal
-async function openJobTitlesModal() {
-  document.getElementById('jobTitlesModal').style.display = 'flex';
-  await loadJobTitles();
-}
-
-// Load job titles
-async function loadJobTitles() {
+// دالة فتح modal اقرارات التفويض
+async function openDelegationConfirmationsModal() {
   try {
-    const response = await fetch(`${apiBase}/job-titles`, {
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    const data = await response.json();
+    console.log('Opening delegation confirmations modal...');
+    console.log('Current authToken:', authToken ? 'exists' : 'missing');
     
-    if (data.success) {
-      renderJobTitlesList(data.data);
-    } else {
-      showToast(data.message || getTranslation('error-occurred'), 'error');
+    // إظهار دور المستخدم الحالي للـ debugging
+    if (authToken) {
+      try {
+        const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+        console.log('Current user role:', payload.role);
+        console.log('Current user ID:', payload.id);
+      } catch (e) {
+        console.error('Error parsing JWT payload:', e);
+      }
     }
-  } catch (error) {
-    console.error('Error loading job titles:', error);
-    showToast(getTranslation('error-occurred'), 'error');
-  }
-}
-
-// Render job titles list
-function renderJobTitlesList(jobTitles) {
-  const jobTitlesList = document.getElementById('jobTitlesList');
-  
-  if (jobTitles.length === 0) {
-    jobTitlesList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">لا توجد مسميات وظيفية</div>';
-    return;
-  }
-
-  jobTitlesList.innerHTML = jobTitles.map(jobTitle => `
-    <div class="job-title-item">
-      <div class="job-title-name">${jobTitle.title}</div>
-      <div class="job-title-actions">
-        <button class="btn-edit" onclick="editJobTitleHandler(${jobTitle.id}, '${jobTitle.title}')">
-          <i class="fas fa-edit"></i> ${getTranslation('edit') || 'تعديل'}
-        </button>
-        <button class="btn-delete" onclick="deleteJobTitle(${jobTitle.id})">
-          <i class="fas fa-trash"></i> ${getTranslation('delete') || 'حذف'}
-        </button>
-      </div>
-    </div>
-  `).join('');
-}
-
-// Edit job title
-function editJobTitleHandler(id, title) {
-  currentEditingJobTitleId = id;
-  document.getElementById('jobTitleName').value = title;
-  document.getElementById('addEditJobTitleTitle').textContent = getTranslation('edit-job-title');
-  document.getElementById('addEditJobTitleModal').style.display = 'flex';
-}
-
-// Delete job title
-async function deleteJobTitle(id) {
-  if (!confirm(getTranslation('confirm-delete-job-title'))) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`${apiBase}/job-titles/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    const data = await response.json();
     
-    if (data.success) {
-      showToast(getTranslation('job-title-deleted'), 'success');
-      await loadJobTitles();
-    } else {
-      showToast(data.message || getTranslation('cannot-delete-job-title'), 'error');
-    }
-  } catch (error) {
-    console.error('Error deleting job title:', error);
-    showToast(getTranslation('error-occurred'), 'error');
-  }
-}
-
-// Save job title handler
-async function saveJobTitleHandler() {
-  const jobTitleName = document.getElementById('jobTitleName').value.trim();
-  
-  if (!jobTitleName) {
-    showToast(getTranslation('enter-job-title'), 'warning');
-    return;
-  }
-
-  try {
-    const url = currentEditingJobTitleId 
-      ? `${apiBase}/job-titles/${currentEditingJobTitleId}`
-      : `${apiBase}/job-titles`;
+    // إظهار loading
+    const modal = document.getElementById('delegationConfirmationsModal');
+    const listContainer = document.getElementById('delegationConfirmationsList');
     
-    const method = currentEditingJobTitleId ? 'PUT' : 'POST';
-    
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ title: jobTitleName })
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      showToast(
-        currentEditingJobTitleId 
-          ? getTranslation('job-title-updated')
-          : getTranslation('job-title-added'), 
-        'success'
-      );
-      document.getElementById('addEditJobTitleModal').style.display = 'none';
-      await loadJobTitles();
-    } else {
-      showToast(data.message || getTranslation('error-occurred'), 'error');
-    }
-  } catch (error) {
-    console.error('Error saving job title:', error);
-    showToast(getTranslation('error-occurred'), 'error');
-  }
-}
-
-// Load job titles for dropdown
-async function loadJobTitlesForDropdown(selectElement, selectedValue = '') {
-  try {
-    const response = await fetch(`${apiBase}/job-titles`, {
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    const data = await response.json();
-    
-    if (data.success) {
-      // Clear existing options except the first one
-      selectElement.innerHTML = '<option value="" data-translate="select-job-title">اختر المسمى الوظيفي</option>';
-      
-      // Add job titles
-      data.data.forEach(jobTitle => {
-        const option = document.createElement('option');
-        option.value = jobTitle.id;
-        option.textContent = jobTitle.title;
-        if (jobTitle.id.toString() === selectedValue.toString()) {
-          option.selected = true;
-        }
-        selectElement.appendChild(option);
-      });
-      
-      // Add "Add New Job Title" option
-      const addNewOption = document.createElement('option');
-      addNewOption.value = '__ADD_NEW_JOB_TITLE__';
-      addNewOption.textContent = getTranslation('add-new-job-title');
-      selectElement.appendChild(addNewOption);
-    }
-  } catch (error) {
-    console.error('Error loading job titles for dropdown:', error);
-  }
-}
-
-// Initialize job titles for add user modal
-function initializeJobTitlesForAddUser() {
-  const jobTitleSelect = document.getElementById('jobTitle');
-  
-  // Load job titles when modal opens
-  btnAddUser.addEventListener('click', async () => {
-    await loadJobTitlesForDropdown(jobTitleSelect);
-  });
-  
-  // Handle "Add New Job Title" selection
-  jobTitleSelect.addEventListener('change', function() {
-    if (this.value === '__ADD_NEW_JOB_TITLE__') {
-      this.value = '';
-      document.getElementById('addJobTitleModal').style.display = 'flex';
-    }
-  });
-}
-
-// Handle add new job title from add user modal
-function initializeAddJobTitleFromUserModal() {
-  const saveAddJobTitle = document.getElementById('saveAddJobTitle');
-  const cancelAddJobTitle = document.getElementById('cancelAddJobTitle');
-  const jobTitleNameForUser = document.getElementById('jobTitleNameForUser');
-  
-  saveAddJobTitle.addEventListener('click', async () => {
-    const title = jobTitleNameForUser.value.trim();
-    
-    if (!title) {
-      showToast(getTranslation('enter-job-title'), 'warning');
+    if (!modal) {
+      console.error('Modal element not found');
+      showToast('خطأ في فتح النافذة', 'error');
       return;
     }
     
-    try {
-      const response = await fetch(`${apiBase}/job-titles`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ title })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        showToast(getTranslation('job-title-added'), 'success');
-        document.getElementById('addJobTitleModal').style.display = 'none';
-        jobTitleNameForUser.value = '';
-        
-        // Refresh job titles dropdowns
-        await loadJobTitlesForDropdown(document.getElementById('jobTitle'));
-        await fetchJobTitlesForEditModal('', ''); // Refresh edit modal dropdown
-        
-        // Select the newly added job title in the active modal
-        const activeModal = document.getElementById('addUserModal').style.display === 'flex' ? 'addUserModal' : 'editUserModal';
-        if (activeModal === 'addUserModal') {
-          document.getElementById('jobTitle').value = data.data.id;
-        } else {
-          document.getElementById('editJobTitle').value = data.data.id;
-        }
-      } else {
-        showToast(data.message || getTranslation('error-occurred'), 'error');
-      }
-    } catch (error) {
-      console.error('Error adding job title:', error);
-      showToast(getTranslation('error-occurred'), 'error');
+    if (!listContainer) {
+      console.error('List container element not found');
+      showToast('خطأ في فتح النافذة', 'error');
+      return;
     }
-  });
-  
-  cancelAddJobTitle.addEventListener('click', () => {
-    document.getElementById('addJobTitleModal').style.display = 'none';
-    jobTitleNameForUser.value = '';
-  });
-  
-  // Close modal when clicking outside
-  window.addEventListener('click', (event) => {
-    const modal = document.getElementById('addJobTitleModal');
-    if (event.target === modal) {
-      modal.style.display = 'none';
-      jobTitleNameForUser.value = '';
+    
+    listContainer.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+    modal.style.display = 'flex';
+    
+    // جلب اقرارات التفويض
+    const confirmations = await fetchDelegationConfirmations();
+    
+
+
+    if (confirmations.length === 0) {
+      listContainer.innerHTML = `
+        <div class="delegation-confirmations-empty">
+          <i class="fas fa-clipboard-list"></i>
+          <h3>لا توجد اقرارات تفويض</h3>
+          <p>لم يتم العثور على أي اقرارات تفويض في النظام حتى الآن</p>
+          <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+            اقرارات التفويض تظهر هنا عندما يقوم المستخدمون بتفويض صلاحياتهم للآخرين (الأقسام واللجان والمحاضر)
+          </p>
+        </div>
+      `;
+    } else {
+      renderDelegationConfirmations(confirmations);
     }
-  });
-}
-
-// =====================
-// Section Permissions Functionality
-// =====================
-
-// تعريف الصلاحيات لكل قسم مع الاستثناءات
-const sectionPermissions = {
-  general: [
-    'view_logs',
-    'view_dashboard'
-  ],
-  departments: [
-    'add_section',
-    'edit_section', 
-    'delete_section'
-    // استثناء: view_own_department
-  ],
-  folder: [
-    'add_folder',
-    'add_folder_name',
-    'edit_folder',
-    'edit_folder_name',
-    'delete_folder',
-    'delete_folder_name'
-  ],
-  content: [
-    'add_content',
-    'add_many_content',
-    'delete_content'
-  ],
-  approvals: [
-    'transfer_credits'
-  ],
-  signature: [
-    'sign',
-    'sign_on_behalf',
-    'delegate_all',
-    'revoke_delegations'
-  ],
-  accounts: [
-    'add_user',
-    'change_status',
-    'change_role',
-    'delete_user',
-    'change_password',
-    'change_user_info'
-  ]
-};
-
-// تهيئة أزرار تحديد الأقسام
-function initializeSectionButtons() {
-  const sectionButtons = document.querySelectorAll('.btn-select-section');
-  
-  sectionButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const section = button.dataset.section;
-      selectSectionPermissions(section);
-    });
-  });
-}
-
-// تحديد صلاحيات قسم معين
-async function selectSectionPermissions(section) {
-  if (!selectedUserId) {
-    showToast(getTranslation('please-select-user') || 'الرجاء اختيار مستخدم أولاً', 'warning');
-    return;
-  }
-
-  const permissions = sectionPermissions[section];
-  if (!permissions) {
-    showToast('قسم غير معروف', 'error');
-    return;
-  }
-
-  try {
-    // تحديد جميع الصلاحيات في القسم
-    const promises = permissions.map(permission => 
-      fetchJSON(`${apiBase}/users/${selectedUserId}/permissions/${encodeURIComponent(permission)}`, {
-        method: 'POST'
-      })
-    );
-
-    await Promise.all(promises);
-
-    // تحديث الواجهة
-    permissions.forEach(permission => {
-      const checkbox = document.querySelector(`label.switch[data-key="${permission}"] input[type="checkbox"]`);
-      if (checkbox) {
-        checkbox.checked = true;
-      }
-    });
-
-    showToast(`تم تحديد جميع صلاحيات قسم ${getSectionName(section)}`, 'success');
   } catch (error) {
-    console.error('خطأ في تحديد صلاحيات القسم:', error);
-    showToast('فشل في تحديد صلاحيات القسم: ' + error.message, 'error');
+    console.error('Error opening delegation confirmations modal:', error);
+    showToast('خطأ في تحميل اقرارات التفويض', 'error');
+    
+    const listContainer = document.getElementById('delegationConfirmationsList');
+    if (listContainer) {
+      listContainer.innerHTML = `
+        <div class="delegation-confirmations-empty">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>خطأ في التحميل</h3>
+          <p>حدث خطأ أثناء تحميل اقرارات التفويض: ${error.message}</p>
+        </div>
+      `;
+    }
   }
 }
 
-// الحصول على اسم القسم باللغة الحالية
-function getSectionName(section) {
-  const sectionNames = {
-    general: getTranslation('general-group') || 'عامّ',
-    departments: getTranslation('departments-group') || 'الأقسام',
-    folder: getTranslation('folder-group') || 'المجلد',
-    content: getTranslation('content-group') || 'المحتوى',
-    approvals: getTranslation('approvals-group') || 'الاعتمادات',
-    signature: getTranslation('signature-group') || 'التوقيع',
-    accounts: getTranslation('accounts-group') || 'الحسابات'
-  };
-  
-  return sectionNames[section] || section;
+// دالة إغلاق modal اقرارات التفويض
+function closeDelegationConfirmationsModal() {
+  const modal = document.getElementById('delegationConfirmationsModal');
+  modal.style.display = 'none';
 }
 
-// Initialize everything when DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
-  if (!authToken) return console.log('لا يوجد توكن؛ الرجاء تسجيل الدخول');
-  await loadMyPermissions();
+// دالة جلب اقرارات التفويض من الخادم
+async function fetchDelegationConfirmations() {
+  try {
+    // التحقق من وجود token
+    if (!authToken) {
+      console.error('No authentication token found');
+      throw new Error('No authentication token found');
+    }
 
-  loadUsers();
-  initializeJobTitlesManagement();
-  initializeJobTitlesForAddUser();
-  initializeAddJobTitleFromUserModal();
-  initializeSectionButtons();
-});
+    console.log('Fetching delegation confirmations with token:', authToken.substring(0, 20) + '...');
+    
+    const response = await fetch(`${apiBase}/approvals/delegation-confirmations`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Response data:', data);
+    
+    if (data.status === 'success') {
+      return data.data || [];
+    } else {
+      throw new Error(data.message || 'فشل في جلب اقرارات التفويض');
+    }
+  } catch (error) {
+    console.error('Error fetching delegation confirmations:', error);
+    throw error;
+  }
+}
+
+// دالة استرجاع التوقيع من البيانات المرجعة من الخادم
+function getSignatureFromData(confirmation) {
+  // electronic_signature هو boolean flag يشير إلى تفعيل التوقيع الإلكتروني
+  // signature يحتوي على بيانات التوقيع الفعلية (data URL)
+  
+  // التحقق من وجود توقيع فعلي
+  if (confirmation.signature && 
+      typeof confirmation.signature === 'string' && 
+      confirmation.signature.trim() !== '') {
+    return confirmation.signature;
+  }
+  
+  // إذا لم يكن هناك توقيع فعلي، نتحقق من وجود توقيع إلكتروني
+  if (confirmation.electronic_signature && 
+      typeof confirmation.electronic_signature === 'string' && 
+      confirmation.electronic_signature.trim() !== '') {
+    return confirmation.electronic_signature;
+  }
+  
+  return null;
+}
+
+// دالة عرض اقرارات التفويض
+function renderDelegationConfirmations(confirmations) {
+  // الحصول على معرف المستخدم الحالي
+  const currentUserId = getCurrentUserId();
+  
+  const listContainer = document.getElementById('delegationConfirmationsList');
+  
+  const confirmationsHTML = confirmations.map(confirmation => {
+    const confirmationDate = new Date(confirmation.created_at).toLocaleDateString('ar-SA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const delegationTypeText = confirmation.is_bulk ? 'تفويض شامل' : 'تفويض فردي';
+    const contentTypeText = 'قسم'; // دائماً قسم في هذا المشروع
+
+    // تحديد نوع التفويض للمديرين - عرض جميع التفويضات
+    let delegationTypeBadge = '';
+    let delegationTypeClass = '';
+    
+    // عرض اقرار منفصل حسب نوع التفويض مع فحوصات إضافية
+    if (confirmation.delegation_type === 'sender' && confirmation.delegator) {
+      delegationTypeBadge = `<span class="delegation-type-badge sender">اقرار المرسل: ${confirmation.delegator.fullName || 'غير معروف'}</span>`;
+      delegationTypeClass = 'delegation-sender';
+    } else if (confirmation.delegation_type === 'receiver' && confirmation.delegate) {
+      delegationTypeBadge = `<span class="delegation-type-badge receiver">اقرار المستقبل: ${confirmation.delegate.fullName || 'غير معروف'}</span>`;
+      delegationTypeClass = 'delegation-receiver';
+    }
+
+    let filesHTML = '';
+    if (confirmation.is_bulk) {
+      filesHTML = `
+        <div class="delegation-confirmation-files">
+          <div class="delegation-confirmation-files-summary">
+            تفويض شامل لجميع الملفات المعلقة
+          </div>
+        </div>
+      `;
+    } else if (confirmation.files && confirmation.files.length > 0) {
+      const filesList = confirmation.files.map(file => `
+        <div class="delegation-confirmation-file-item">
+          <span class="delegation-confirmation-file-name">${file.title || file.name || 'عنوان غير معروف'}</span>
+          <span class="delegation-confirmation-file-type">قسم</span>
+        </div>
+      `).join('');
+      
+      filesHTML = `
+        <div class="delegation-confirmation-files">
+          <div class="delegation-confirmation-files-list">
+            ${filesList}
+          </div>
+        </div>
+      `;
+    }
+
+    // فحص وجود delegator و delegate
+    const delegatorName = confirmation.delegator?.fullName || 'غير معروف';
+    const delegatorIdNumber = confirmation.delegator?.idNumber || 'غير محدد';
+    const delegateName = confirmation.delegate?.fullName || 'غير معروف';
+    const delegateIdNumber = confirmation.delegate?.idNumber || 'غير محدد';
+
+    return `
+      <div class="delegation-confirmation-item ${delegationTypeClass}">
+        <div class="delegation-confirmation-header">
+          <div class="delegation-confirmation-title-section">
+            <h3 class="delegation-confirmation-title">اقرار تفويض</h3>
+            ${delegationTypeBadge}
+          </div>
+          <span class="delegation-confirmation-date">${confirmationDate}</span>
+        </div>
+        
+        <div class="delegation-confirmation-type">${delegationTypeText}</div>
+        
+        <div class="delegation-confirmation-details">
+          <div class="delegation-confirmation-section">
+            <h4>معلومات الموظف المفوض</h4>
+            <div class="delegation-confirmation-info-row">
+              <span class="delegation-confirmation-label">الاسم:</span>
+              <span class="delegation-confirmation-value">${delegatorName}</span>
+            </div>
+            <div class="delegation-confirmation-info-row">
+              <span class="delegation-confirmation-label">رقم الهوية:</span>
+              <span class="delegation-confirmation-value">${delegatorIdNumber}</span>
+            </div>
+          </div>
+          
+          <div class="delegation-confirmation-section">
+            <h4>معلومات الموظف المفوض له</h4>
+            <div class="delegation-confirmation-info-row">
+              <span class="delegation-confirmation-label">الاسم:</span>
+              <span class="delegation-confirmation-value">${delegateName}</span>
+            </div>
+            <div class="delegation-confirmation-info-row">
+              <span class="delegation-confirmation-label">رقم الهوية:</span>
+              <span class="delegation-confirmation-value">${delegateIdNumber}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="delegation-confirmation-statement">
+          ${confirmation.delegation_type === 'sender' 
+            ? `أقر الموظف <strong>${delegatorName}</strong> 
+               ذو رقم الهوية <strong>${delegatorIdNumber}</strong> 
+               بأنه يفوض الموظف <strong>${delegateName}</strong> 
+               ذو رقم الهوية <strong>${delegateIdNumber}</strong> 
+               بالتوقيع بالنيابة عنه على ${confirmation.is_bulk ? 'جميع ملفات القسم المعلقة' : 'الملفات المحددة'}.`
+            : `قبل الموظف <strong>${delegateName}</strong> 
+               ذو رقم الهوية <strong>${delegateIdNumber}</strong> 
+               التفويض من الموظف <strong>${delegatorName}</strong> 
+               ذو رقم الهوية <strong>${delegatorIdNumber}</strong> 
+               للتوقيع بالنيابة عنه على ${confirmation.is_bulk ? 'جميع ملفات القسم المعلقة' : 'الملفات المحددة'}.`
+          }
+        </div>
+        
+        ${confirmation.signature ? `
+          <div class="delegation-confirmation-signature">
+            <h4>التوقيع</h4>
+            <img src="${confirmation.signature}" alt="توقيع الموظف" style="max-width: 200px; border: 1px solid #ccc; border-radius: 4px;" />
+          </div>
+        ` : ''}
+        
+        ${filesHTML}
+      </div>
+    `;
+  }).join('');
+  
+  listContainer.innerHTML = confirmationsHTML;
+}
+
+// دالة مساعدة للحصول على معرف المستخدم الحالي
+function getCurrentUserId() {
+  if (!authToken) return null;
+  try {
+    const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+    return payload.id;
+  } catch (e) {
+    console.error('Error parsing JWT payload:', e);
+    return null;
+  }
+}

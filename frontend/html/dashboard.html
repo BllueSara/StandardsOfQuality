@@ -48,64 +48,108 @@
     </div>
   </header>
   <main>
-    <div class="container">
-      <h1 class="page-title" data-translate="dashboard">لوحة التحكم</h1>
-      <div class="dashboard-cards">
-        <div class="card total">
-          <div class="card-icon"><i class="fa fa-folder-open"></i></div>
-          <div class="card-title" data-translate="total-files">إجمالي الملفات</div>
-          <div class="card-value" id="total-files">0</div>
+        <h1 class="page-title" data-translate="dashboard">لوحة التحكم</h1>
+
+                <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card total" onclick="window.location.href='pending-approvals.html'">
+                <div class="card-title" data-translate="total-files">Total Files</div>
+                <div class="card-value" id="total-files">0</div>
+                <div class="card-change" data-translate="total-files-change">+12% this month</div>
+            </div>
+            
+            <div class="stat-card total" onclick="window.location.href='pending-approvals.html'">
+                <div class="card-title" data-translate="approved-files">Approved Files</div>
+                <div class="card-value" id="approved-files">0</div>
+                <div class="card-change" data-translate="approved-files-change">+8% this month</div>
+            </div>
+            
+            <div class="stat-card total" onclick="window.location.href='pending-approvals.html'">
+                <div class="card-title" data-translate="pending-approval">Pending Approval</div>
+                <div class="card-value" id="pending-files">0</div>
+                <div class="card-change" data-translate="pending-files-change">+5% this month</div>
+            </div>
+            
+            <div class="stat-card total" onclick="window.location.href='pending-approvals.html'">
+                <div class="card-title" data-translate="rejected-files">Rejected Files</div>
+                <div class="card-value" id="rejected-files">0</div>
+                <div class="card-change" data-translate="rejected-files-change">-3% this month</div>
+            </div>
         </div>
-        <div class="card approved">
-          <div class="card-icon"><i class="fa fa-check-circle"></i></div>
-          <div class="card-title" data-translate="approved-files">المعتمدة</div>
-          <div class="card-value" id="approved-files">0</div>
+
+        <!-- Dashboard Header for Export Button -->
+        <div class="dashboard-header">
+            <button class="btn btn-primary export-btn" id="exportBtn" data-translate="export-excel">
+                <i class="fas fa-file-excel"></i> تصدير Excel
+            </button>
         </div>
-        <div class="card pending">
-          <div class="card-icon"><i class="fa fa-hourglass-half"></i></div>
-          <div class="card-title" data-translate="pending-files">قيد الانتظار</div>
-          <div class="card-value" id="pending-files">0</div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <!-- Status Pie Chart -->
+            <div class="chart-container">
+                <h3 class="chart-title" data-translate="status-distribution">توزيع الحالات</h3>
+                <canvas id="statusPie" width="400" height="400"></canvas>
+            </div>
+
+            <!-- Department Chart -->
+            <div class="chart-container">
+                <h3 class="chart-title" data-translate="department-distribution">توزيع الأقسام</h3>
+                <canvas id="departmentChart" width="400" height="400"></canvas>
+            </div>
+
+            <!-- Department Performance Chart -->
+            <div class="chart-container">
+                <h3 class="chart-title" data-translate="department-performance">أداء الأقسام</h3>
+                <canvas id="departmentPerformanceChart" width="400" height="400"></canvas>
+            </div>
+
+            <!-- Monthly Trends Chart -->
+            <div class="chart-container">
+                <h3 class="chart-title" data-translate="monthly-trends">الاتجاهات الشهرية</h3>
+                <canvas id="monthlyTrendsChart" width="400" height="400"></canvas>
+            </div>
         </div>
-        <div class="card rejected">
-          <div class="card-icon"><i class="fa fa-times-circle"></i></div>
-          <div class="card-title" data-translate="rejected-files">المرفوضة</div>
-          <div class="card-value" id="rejected-files">0</div>
+
+        <!-- Tables Section -->
+        <div class="tables-section">
+            <!-- Latest Files Table -->
+            <div class="dashboard-table">
+                <h2 data-translate="latest-files">أحدث الملفات</h2>
+                <table id="filesTable">
+                    <thead>
+                        <tr>
+                            <th data-translate="title">العنوان</th>
+                            <th data-translate="department">القسم</th>
+                            <th data-translate="status">الحالة</th>
+                            <th data-translate="created-at">تاريخ الإنشاء</th>
+                            <th data-translate="user">المستخدم</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Department Completion Table -->
+            <div class="dashboard-table">
+                <h2 id="department-completion-title" data-translate="department-completion-title">نسبة اكتمال الاعتمادات لكل قسم</h2>
+                <table id="departmentCompletionTable">
+                    <thead>
+                        <tr>
+                            <th data-translate="department">القسم</th>
+                            <th data-translate="total-files">إجمالي الملفات</th>
+                            <th data-translate="approved-files">الملفات المعتمدة</th>
+                            <th data-translate="completion-percent">نسبة الاكتمال</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
         </div>
-      </div>
-      <div class="dashboard-table">
-        <h2 data-translate="latest-files">أحدث الملفات</h2>
-        <table id="filesTable">
-          <thead>
-            <tr>
-              <th data-translate="title">العنوان</th>
-              <th data-translate="department">القسم</th>
-              <th data-translate="status">الحالة</th>
-              <th data-translate="created-at">تاريخ الإنشاء</th>
-              <th data-translate="user">المستخدم</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- سيتم تعبئته ديناميكياً -->
-          </tbody>
-        </table>
-      </div>
-      <!-- جدول نسبة اكتمال الاعتمادات لكل قسم -->
-      <div class="dashboard-table" id="department-completion-table-wrapper">
-        <h2 id="department-completion-title" data-translate="department-completion-title">نسبة اكتمال الاعتمادات حسب القسم</h2>
-        <table id="departmentCompletionTable">
-          <thead>
-            <tr>
-              <th data-translate="department">القسم</th>
-              <th data-translate="total-files">عدد الملفات الكلي</th>
-              <th data-translate="approved-files">عدد الملفات المعتمدة</th>
-              <th data-translate="completion-percent">النسبة المئوية</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- سيتم تعبئته ديناميكياً -->
-          </tbody>
-        </table>
-      </div>
     </div>
   </main>
             <div id="toast-container" class="toast-container"></div>

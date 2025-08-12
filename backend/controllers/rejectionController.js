@@ -2,6 +2,7 @@ const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 const { logAction } = require('../models/logger');
 const { addReply, getReplies } = require('../models/rejectionReplies');
+const { getFullNameWithJobNameSQL } = require('../models/userUtils');
 require('dotenv').config();
 
 const db = mysql.createPool({
@@ -101,11 +102,16 @@ const getRejectionReason = async (req, res) => {
       contentId = contentId.split('-')[1];
     }
     const [rows] = await db.execute(
-      `SELECT al.comments, u.username FROM approval_logs al JOIN users u ON al.approver_id = u.id WHERE al.content_id = ? AND al.status = 'rejected' ORDER BY al.created_at DESC LIMIT 1`,
+      `SELECT al.comments, ${getFullNameWithJobNameSQL()} AS full_name 
+       FROM approval_logs al 
+       JOIN users u ON al.approver_id = u.id 
+       LEFT JOIN job_names jn ON u.job_name_id = jn.id 
+       WHERE al.content_id = ? AND al.status = 'rejected' 
+       ORDER BY al.created_at DESC LIMIT 1`,
       [contentId]
     );
     const reason = rows.length ? rows[0].comments : '';
-    const author = rows.length ? rows[0].username : '';
+    const author = rows.length ? rows[0].full_name : '';
     res.json({ status: 'success', reason, author });
   } catch (err) {
     console.error('getRejectionReason error:', err);
