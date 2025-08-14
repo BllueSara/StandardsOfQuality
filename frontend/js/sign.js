@@ -14,7 +14,7 @@ let currentDelegationData = null;
 let pendingDelegationData = null;
 
 // دالة لاستخراج userId من الـ token إذا لم يكن موجوداً في localStorage
-function getCurrentUserId() {
+async function getCurrentUserId() {
   if (currentUserId) {
     return currentUserId;
   }
@@ -25,7 +25,7 @@ function getCurrentUserId() {
   }
   
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = await safeGetUserInfo(token);
     currentUserId = payload.id;
     localStorage.setItem('userId', currentUserId);
     return currentUserId;
@@ -36,12 +36,14 @@ function getCurrentUserId() {
 }
 
 // تحديث currentUserId
-currentUserId = getCurrentUserId();
+getCurrentUserId().then(id => {
+  currentUserId = id;
+});
 
 // دالة فحص حالة التفويض مباشرة من قاعدة البيانات
 async function checkDelegationStatus() {
   const token = localStorage.getItem('token');
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   
   if (!token || !userId) {
     return;
@@ -155,7 +157,7 @@ async function checkDelegationStatus() {
 // دالة موحدة للتحقق من سجلات الموافقة للتفويض
 async function checkDelegationApprovalLogs(delegatorId, delegationType, delegationId = null) {
   try {
-    const userId = getCurrentUserId();
+    const userId = await getCurrentUserId();
     console.log('🔍 Checking delegation approval logs:', { delegatorId, delegationType, delegationId, userId });
     
     // التحقق من سجلات الموافقة للتفويض
@@ -194,7 +196,7 @@ async function checkDelegationApprovalLogs(delegatorId, delegationType, delegati
 // دالة للحصول على اسم المستخدم الحالي
 async function getCurrentUserName() {
   try {
-    const userId = getCurrentUserId();
+    const userId = await getCurrentUserId();
     if (!userId) return null;
     
     const response = await fetch(`http://localhost:3006/api/users/${userId}`, {
@@ -218,7 +220,7 @@ async function getCurrentUserName() {
 // دالة للحصول على رقم الهوية الوطني للمستخدم الحالي
 async function getCurrentUserNationalId() {
   try {
-    const userId = getCurrentUserId();
+    const userId = await getCurrentUserId();
     if (!userId) return null;
 
     const response = await fetch(`http://localhost:3006/api/users/${userId}`, {

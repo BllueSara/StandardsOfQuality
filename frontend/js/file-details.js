@@ -168,6 +168,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     return 'Transferred';
                 }
+            case 'sender_signature':
+                if (lang === 'ar') {
+                    return ' تم توقيع المرسل';
+                } else {
+                    return 'sender_signature';
+                }
             default:
                 return status || '-';
         }

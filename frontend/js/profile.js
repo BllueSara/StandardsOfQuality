@@ -64,15 +64,100 @@ document.addEventListener('DOMContentLoaded', function() {
     // إنشاء مودال تعديل الملف الشخصي
     createEditProfileModal();
 
-    // دالة لفك تشفير JWT والحصول على معلومات المستخدم
-    function parseJwt(token) {
+    // ========== الدوال الآمنة من utils.js ==========
+    
+    /**
+     * فك تشفير JWT token بشكل آمن
+     * @param {string} token - JWT token
+     * @returns {object|null} - Decoded payload or null if invalid
+     */
+    function safeDecodeJWT(token) {
         try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
+            if (!token || typeof token !== 'string') {
+                return null;
+            }
+            
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                return null;
+            }
+            
+            const payload = parts[1];
+            const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+            const decoded = atob(paddedPayload);
+            
+            return JSON.parse(decoded);
+        } catch (error) {
+            console.warn('فشل في فك تشفير JWT token:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * جلب معلومات المستخدم من الباك اند (بديل آمن لـ atob)
+     * @param {string} token - JWT token (optional)
+     * @returns {Promise<object|null>} - User info from backend or null if error
+     */
+    async function getUserInfoFromBackend(token = null) {
+        try {
+            const authToken = token || localStorage.getItem('token');
+            if (!authToken) {
+                return null;
+            }
+
+            const response = await fetch('http://localhost:3006/api/auth/user-info', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                console.warn('فشل في جلب معلومات المستخدم من الباك اند:', response.status);
+                return null;
+            }
+
+            const result = await response.json();
+            if (result.status === 'success' && result.data) {
+                return result.data;
+            }
+
+            return null;
+        } catch (error) {
+            console.error('خطأ في جلب معلومات المستخدم من الباك اند:', error);
+            return null;
+        }
+    }
+
+    /**
+     * بديل آمن لـ atob - يستخدم الباك اند لجلب معلومات المستخدم
+     * @param {string} token - JWT token (optional)
+     * @returns {Promise<object|null>} - User info or null
+     */
+    async function safeGetUserInfo(token = null) {
+        // محاولة جلب المعلومات من الباك اند أولاً (الطريقة الآمنة)
+        const backendInfo = await getUserInfoFromBackend(token);
+        if (backendInfo) {
+            return backendInfo;
+        }
+
+        // في حالة فشل الباك اند، نستخدم فك التشفير المحلي كبديل
+        console.warn('استخدام فك التشفير المحلي كبديل...');
+        const authToken = token || localStorage.getItem('token');
+        if (!authToken) {
+            return null;
+        }
+
+        const payload = safeDecodeJWT(authToken);
+        return payload;
+    }
+
+    // دالة لفك تشفير JWT والحصول على معلومات المستخدم (تستخدم الطريقة الآمنة الجديدة)
+    async function parseJwt(token) {
+        try {
+            const payload = await safeGetUserInfo(token);
+            return payload;
         } catch (e) {
             console.error('Error parsing JWT:', e);
             return null;
@@ -125,21 +210,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const token = localStorage.getItem('token');
 
     if (token) {
-        const user = parseJwt(token);
-        if (user) {
-            // عرض رسالة تحميل مؤقتة
-            fullNameSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            emailSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            usernameSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            employeeNumberSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            nationalIdSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            jobTitleSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            jobNameSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            departmentSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
-            
-            // جلب جميع بيانات البروفايل من الخادم
-            fetchUserProfile(user.id).then(userData => {
-                if (userData) {
+        // استخدام async/await للطريقة الآمنة الجديدة
+        (async () => {
+            try {
+                const user = await parseJwt(token);
+                if (user) {
+                    // عرض رسالة تحميل مؤقتة
+                    fullNameSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    emailSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    usernameSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    employeeNumberSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    nationalIdSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    jobTitleSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    jobNameSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    departmentSpan.textContent = getTranslation('loading') || 'جاري التحميل...';
+                    
+                    // جلب جميع بيانات البروفايل من الخادم
+                    const userData = await fetchUserProfile(user.id);
+                    if (userData) {
                     console.log('🎨 عرض البيانات في الواجهة:', userData);
                     console.log('🎯 المنصب الإداري قبل العرض:', userData.job_title);
                     console.log('🎯 المنصب الإداري بعد parseLocalized:', parseLocalized(userData.job_title));
@@ -216,50 +304,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     departmentSpan.textContent = parseLocalized(user.department_name) || getTranslation('not-available');
                 }
-            }).catch(error => {
+                } else {
+                    // إذا كان التوكن غير صالح، توجيه المستخدم لصفحة تسجيل الدخول
+                    alert(getTranslation('invalid-session'));
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
                 console.error('Error loading user profile:', error);
-                // ⚠️ في حالة الخطأ، استخدم البيانات من JWT كاحتياطي
-                // بناء الاسم الكامل من JWT في حالة الخطأ
-                const buildFullNameFromJWTError = (firstName, secondName, thirdName, lastName) => {
-                    const nameParts = [firstName, secondName, thirdName, lastName].filter(part => part && part.trim());
-                    return nameParts.join(' ');
-                };
-                const fullNameFromJWTError = buildFullNameFromJWTError(
-                    user.first_name,
-                    user.second_name,
-                    user.third_name,
-                    user.last_name
-                );
-                fullNameSpan.textContent = fullNameFromJWTError || getTranslation('not-available');
-                emailSpan.textContent = user.email || getTranslation('not-available');
-                usernameSpan.textContent = user.username || getTranslation('not-available');
-                employeeNumberSpan.textContent = user.employee_number || getTranslation('not-available');
-                nationalIdSpan.textContent = user.national_id || getTranslation('not-available');
-                
-                // معالجة خاصة للمسمى الوظيفي (في حالة الخطأ)
-                const jobTitle = user.job_title;
-                if (jobTitle && jobTitle.trim() !== '') {
-                    jobTitleSpan.textContent = parseLocalized(jobTitle);
-                } else {
-                    jobTitleSpan.textContent = getTranslation('not-available');
-                }
-                
-                // معالجة خاصة للمسمى (في حالة الخطأ)
-                const jobName = user.job_name;
-                if (jobName && jobName.trim() !== '') {
-                    jobNameSpan.textContent = jobName;
-                } else {
-                    jobNameSpan.textContent = getTranslation('not-available');
-                }
-                
-                departmentSpan.textContent = parseLocalized(user.department_name) || getTranslation('not-available');
-            });
-
-        } else {
-            // إذا كان التوكن غير صالح، توجيه المستخدم لصفحة تسجيل الدخول
-            alert(getTranslation('invalid-session'));
-            window.location.href = 'login.html';
-        }
+                alert(getTranslation('error-loading-data') || 'خطأ في تحميل البيانات');
+            }
+        })();
     } else {
         // إذا لم يكن هناك توكن، توجيه المستخدم لصفحة تسجيل الدخول
         alert(getTranslation('please-login'));
@@ -420,7 +474,10 @@ async function openEditProfileModal() {
     }
     
     try {
-        const user = parseJwt(token);
+        const user = await parseJwt(token);
+        if (!user) {
+            throw new Error('فشل في فك تشفير التوكن');
+        }
         const userData = await fetchUserProfile(user.id);
         
         if (userData) {
@@ -463,7 +520,10 @@ async function saveProfileChanges() {
     }
     
     try {
-        const user = parseJwt(token);
+        const user = await parseJwt(token);
+        if (!user) {
+            throw new Error('فشل في فك تشفير التوكن');
+        }
         
         // جلب بيانات المستخدم الحالية للحصول على الدور
         const userData = await fetchUserProfile(user.id);
@@ -771,20 +831,7 @@ async function fetchUserProfile(userId) {
     }
 }
 
-// دالة مساعدة لفك تشفير JWT
-function parseJwt(token) {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        console.error('Error parsing JWT:', e);
-        return null;
-    }
-}
+// دالة مساعدة لفك تشفير JWT (تم الاستغناء عنها - تستخدم الدالة الآمنة في الأعلى)
 
 // دالة فتح مودال إضافة مسمى وظيفي جديد
 function openAddJobTitleModal() {

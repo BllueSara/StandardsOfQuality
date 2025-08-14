@@ -604,6 +604,112 @@ function checkRole(allowedRoles = []) {
     next();
   };
 }
+
+// 7) استخراج معلومات المستخدم من التوكن (بديل آمن لـ atob في الفرونت اند)
+const getUserFromToken = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace(/^Bearer\s+/, '');
+    
+    if (!token) {
+      return res.status(401).json({ 
+        status: 'error', 
+        message: 'محتاج توكن' 
+      });
+    }
+
+    // التحقق من صحة التوكن واستخراج المعلومات
+    jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ 
+          status: 'error', 
+          message: 'توكن غير صالح' 
+        });
+      }
+
+      try {
+        // جلب معلومات المستخدم المحدثة من قاعدة البيانات
+        const [userRows] = await db.execute(
+          `SELECT 
+             u.id, u.username, u.email, u.employee_number, 
+             u.job_title_id, u.department_id, u.role, u.status,
+             u.first_name, u.second_name, u.third_name, u.last_name,
+             u.national_id, u.job_name_id,
+             d.name AS department_name,
+             jt.title AS job_title,
+             jn.name AS job_name
+           FROM users u
+           LEFT JOIN departments d ON u.department_id = d.id
+           LEFT JOIN job_titles jt ON u.job_title_id = jt.id
+           LEFT JOIN job_names jn ON u.job_name_id = jn.id
+           WHERE u.id = ?`,
+          [decoded.id]
+        );
+
+        if (userRows.length === 0) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'المستخدم غير موجود'
+          });
+        }
+
+        const user = userRows[0];
+
+        // بناء الاسم الكامل
+        const buildFullName = (firstName, secondName, thirdName, lastName) => {
+          const nameParts = [firstName, secondName, thirdName, lastName].filter(part => part && part.trim());
+          return nameParts.join(' ');
+        };
+
+        const fullName = buildFullName(
+          user.first_name,
+          user.second_name,
+          user.third_name,
+          user.last_name
+        ) || user.username;
+
+        // إرجاع معلومات المستخدم
+        res.status(200).json({
+          status: 'success',
+          data: {
+            id: user.id,
+            username: user.username,
+            full_name: fullName,
+            email: user.email,
+            employee_number: user.employee_number,
+            job_title_id: user.job_title_id,
+            job_title: user.job_title,
+            job_name_id: user.job_name_id,
+            job_name: user.job_name,
+            department_id: user.department_id,
+            department_name: user.department_name,
+            role: user.role,
+            status: user.status,
+            first_name: user.first_name,
+            second_name: user.second_name,
+            third_name: user.third_name,
+            last_name: user.last_name,
+            national_id: user.national_id
+          }
+        });
+
+      } catch (dbError) {
+        console.error('Database Error in getUserFromToken:', dbError);
+        res.status(500).json({ 
+          status: 'error', 
+          message: 'خطأ في استخراج معلومات المستخدم' 
+        });
+      }
+    });
+
+  } catch (error) {
+    console.error('getUserFromToken Error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'خطأ في معالجة الطلب' 
+    });
+  }
+};
 module.exports = {
   register,
   login,
@@ -611,5 +717,7 @@ module.exports = {
   resetPassword,
   authenticateToken,
   adminResetPassword,
-  checkRole
+  checkRole,
+  getUserFromToken
+
 };

@@ -774,6 +774,7 @@ main {
 .btn-qr,
 .btn-reject,
 .btn-preview,
+.btn-track,
 .btn-transfer-file {
   font-size: 0.98rem;
   padding: 6px 16px;
@@ -824,6 +825,14 @@ main {
 }
 .btn-transfer-file:hover {
   background: #7c3aed;
+}
+
+.btn-track {
+  background: #06b6d4;
+  color: #fff;
+}
+.btn-track:hover {
+  background: #0891b2;
 }
 
 .status {

@@ -5,6 +5,21 @@ let currentFolderName   = null;
 let currentDepartmentName = null;
 let isOldContentMode = false;
 
+// دالة لتنسيق التاريخ
+function formatDate(dateString) {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    
+    // تنسيق عربي: يوم/شهر/سنة
+    return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+}
+
 // دالة لتسجيل عرض المحتوى في اللوقز
 async function logContentView(contentId, contentTitle, folderName, departmentName) {
     try {
@@ -53,34 +68,26 @@ const permissions = {
 // 1) مصفوفة الأسماء والاختيار
 let folderNames = [];
 let selectedFolderId = null;
-function getUserRoleFromToken() {
+async function getUserRoleFromToken() {
   const token = localStorage.getItem('token');
   if (!token) return null;
   try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload).role; // يفترض أن الدور موجود في الحمولة كـ 'role'
+      const payload = await safeGetUserInfo(token);
+      return payload ? payload.role : null;
   } catch (e) {
-      console.error('Error decoding token:', e);
+      console.error('Error getting user role:', e);
       return null;
   }
 }
 
-function getUserIdFromToken() {
+async function getUserIdFromToken() {
   const token = localStorage.getItem('token');
   if (!token) return null;
   try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload).id; // يفترض أن معرف المستخدم موجود في الحمولة كـ 'id'
+      const payload = await safeGetUserInfo(token);
+      return payload ? payload.id : null;
   } catch (e) {
-      console.error('Error decoding token:', e);
+      console.error('Error getting user ID:', e);
       return null;
   }
 }
@@ -479,24 +486,22 @@ if (cancelContentBtn) {
     // دالة لجلب التوكن من localStorage (مكررة، يمكن نقلها إلى shared.js)
 
 
-    // دالة لفك تشفير التوكن والحصول على دور المستخدم
-    function getUserRoleFromToken() {
+    // دالة لفك تشفير التوكن والحصول على دور المستخدم (آمنة)
+    async function getUserRoleFromToken() {
         const token = getToken();
         if (!token) return null;
         try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload).role; // افترض أن الدور موجود في الحمولة كـ 'role'
+            const payload = await safeGetUserInfo(token);
+            return payload ? payload.role : null;
         } catch (e) {
-            console.error('Error decoding token:', e);
+            console.error('Error getting user role:', e);
             return null;
         }
     }
 async function fetchPermissions() {
-  const userId = JSON.parse(atob(getToken().split('.')[1])).id;
+  const payload = await safeGetUserInfo(getToken());
+  if (!payload) return;
+  const userId = payload.id;
   const headers = { 'Authorization': `Bearer ${getToken()}` };
   // كالمعتاد: جلب role
   const userRes = await fetch(`${apiBase}/users/${userId}`, { headers });
@@ -558,7 +563,7 @@ async function fetchFolders(departmentId) {
     }
 
     // تصفية المجلدات حسب نوعها وصلاحيات المستخدم
-    const userRole = getUserRoleFromToken();
+    const userRole = await getUserRoleFromToken();
     const userDepartmentId = currentDepartmentId;
     const filteredFolders = await filterFoldersByType(data.data, userRole, userDepartmentId);
 
@@ -663,9 +668,10 @@ async function fetchFolders(departmentId) {
             backToFilesContainer.style.display = 'none';
         }
         
-        const userRole = getUserRoleFromToken();
+        const userRole = await getUserRoleFromToken();
 
         try {
+            // جلب المحتويات العادية
             const response = await fetch(`http://localhost:3006/api/folders/${folderId}/contents`, {
                 headers: {
                     'Authorization': `Bearer ${getToken()}`
@@ -673,6 +679,27 @@ async function fetchFolders(departmentId) {
             });
             const data = await response.json();
             window._lastFilesData = data.data;
+            
+            // جلب المحاضر المرتبطة بالمجلد
+            let protocols = [];
+            try {
+                const protocolsResponse = await fetch(`http://localhost:3006/api/protocols/folder/${folderId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+                
+                if (protocolsResponse.ok) {
+                    const protocolsData = await protocolsResponse.json();
+                    protocols = protocolsData.success ? protocolsData.data : [];
+                } else {
+                    console.log('لا توجد محاضر مرتبطة بهذا المجلد أو خطأ في جلب المحاضر');
+                }
+            } catch (error) {
+                console.log('خطأ في جلب المحاضر:', error);
+                protocols = [];
+            }
+            
             if (response.ok) {
                 const filesList = document.querySelector('.files-list');
                 filesList.innerHTML = '';
@@ -799,6 +826,67 @@ icons += '</div>';
                     });
                 } else {
                     filesList.innerHTML = `<div class="no-content" data-translate="no-contents">${getTranslation('no-contents')}</div>`;
+                }
+                
+                // عرض المحاضر المرتبطة بالمجلد
+                if (protocols && protocols.length > 0) {
+                    // إضافة عنوان قسم المحاضر
+                    const protocolsHeader = document.createElement('div');
+                    protocolsHeader.className = 'protocols-header';
+                    protocolsHeader.innerHTML = `
+                        <h3 style="margin: 20px 0 10px 0; color: #1e40af; border-bottom: 2px solid #3b82f6; padding-bottom: 5px;">
+                            <i class="fas fa-file-alt"></i>
+                            المحاضر المرتبطة بهذا المجلد
+                        </h3>
+                    `;
+                    filesList.appendChild(protocolsHeader);
+                    
+                    protocols.forEach(protocol => {
+                        const protocolItem = document.createElement('div');
+                        protocolItem.className = 'file-item protocol-item';
+                        
+                        const approvalClass = protocol.is_approved ? 'approved' : 'pending';
+                        const approvalStatus = protocol.is_approved ? 'معتمد' : 'في انتظار الاعتماد';
+                        
+                        // تنسيق التاريخ
+                        const formattedDate = formatDate(protocol.protocol_date);
+                        
+                        protocolItem.innerHTML = `
+                            <div class="item-icons">
+                                <a href="#" class="view-protocol-icon" data-id="${protocol.id}">
+                                    <i class="fas fa-eye" style="color: #3b82f6;"></i>
+                                </a>
+                            </div>
+                            <img src="../images/pdf.svg" alt="محضر PDF">
+                            <div class="file-info">
+                                <div class="file-name">${protocol.title}</div>
+                                <div class="approval-status ${approvalClass}">${approvalStatus}</div>
+                                <div class="file-date">${formattedDate}</div>
+                                <div class="file-date">عدد المواضيع: ${protocol.topics_count}</div>
+                            </div>
+                        `;
+                        
+                        filesList.appendChild(protocolItem);
+                        
+                        // إضافة مستمع النقر لعرض المحضر
+                        const viewBtn = protocolItem.querySelector('.view-protocol-icon');
+                        viewBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(`/frontend/html/protocol-list.html?view=${protocol.id}`, '_blank');
+                        });
+                        
+                        // إضافة مستمع النقر على المحضر نفسه لفتح PDF
+                        protocolItem.addEventListener('click', function(e) {
+                            if (!e.target.closest('.view-protocol-icon')) {
+                                if (protocol.file_path) {
+                                    window.open(`http://localhost:3006/uploads/${protocol.file_path}`, '_blank');
+                                } else {
+                                    showToast('ملف PDF غير متوفر', 'error');
+                                }
+                            }
+                        });
+                    });
                 }
             } else {
                 showToast(data.message || 'فشل جلب محتويات المجلد.', 'error');
@@ -1821,17 +1909,16 @@ addOldContentBtn.innerHTML =
     const fileControlsBar = document.querySelector('.file-controls-bar');
     if (fileControlsBar) {
       // دالة جلب صلاحيات المستخدم
-      function userCanAddOldContent() {
-        const role = getUserRoleFromToken();
+      async function userCanAddOldContent() {
+        const role = await getUserRoleFromToken();
         if (role === 'admin') return true;
         // تحقق من الصلاحيات الإضافية
-if (fileControlsBar && (getUserRoleFromToken() === 'admin' || permissions.canAddOldContent)) {
-  fileControlsBar.insertBefore(addOldContentBtn, document.getElementById('addContentBtn'));
-}
-
-        return false;
+        return permissions.canAddOldContent || false;
       }
-      if (userCanAddOldContent()) {
+      
+      // إضافة زر المحتوى القديم إذا كان لديه صلاحية
+      const canAdd = await userCanAddOldContent();
+      if (canAdd) {
         fileControlsBar.insertBefore(addOldContentBtn, document.getElementById('addContentBtn'));
       }
     }
@@ -2065,7 +2152,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (typeof window._lastFoldersData === 'undefined') return;
       
       // تصفية المجلدات حسب نوعها وصلاحيات المستخدم أولاً
-      const userRole = getUserRoleFromToken();
+      const userRole = await getUserRoleFromToken();
       const userDepartmentId = currentDepartmentId;
       const accessibleFolders = await filterFoldersByType(window._lastFoldersData, userRole, userDepartmentId);
       
@@ -2263,7 +2350,8 @@ async function filterFoldersByType(folders, userRole, userDepartmentId) {
   if (!token) return folders;
   
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = await safeGetUserInfo(token);
+    if (!payload) return folders;
     const userId = payload.id;
     
     const filteredFolders = [];

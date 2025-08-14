@@ -1,9 +1,29 @@
 
-function startStatusPolling() {
+async function startStatusPolling() {
   const token = localStorage.getItem('token');
   if (!token) return;
-  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
-  const myId = payload.id;
+  
+  // جلب معلومات المستخدم من الباك اند بدلاً من فك تشفير التوكن
+  let myId = null;
+  try {
+    const userInfoRes = await fetch('http://localhost:3006/api/auth/user-info', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (!userInfoRes.ok) {
+      localStorage.removeItem('token');
+      window.location.href = '/frontend/html/login.html';
+      return;
+    }
+    
+    const { data: userInfo } = await userInfoRes.json();
+    myId = userInfo.id;
+  } catch (error) {
+    console.error('خطأ في جلب معلومات المستخدم:', error);
+    localStorage.removeItem('token');
+    window.location.href = '/frontend/html/login.html';
+    return;
+  }
 
   setInterval(async () => {
     try {
@@ -13,7 +33,7 @@ function startStatusPolling() {
       if (!res.ok) throw new Error();
       const { data: user } = await res.json();
       if (user.status !== 'active') {
-      alert(getTranslation('logout_due_to_deactivation'));
+        alert(getTranslation('logout_due_to_deactivation'));
         localStorage.removeItem('token');
         window.location.href = '/frontend/html/login.html';
       }
@@ -25,13 +45,30 @@ function startStatusPolling() {
 }
 
 // دالة للتحقق من اكتمال بيانات المستخدم
-function checkUserProfileCompletion() {
+async function checkUserProfileCompletion() {
   const token = localStorage.getItem('token');
   if (!token) return;
   
-  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
-  const myId = payload.id;
-  const username = payload.username;
+  // جلب معلومات المستخدم من الباك اند بدلاً من فك تشفير التوكن
+  let myId = null;
+  let username = null;
+  
+  try {
+    const userInfoRes = await fetch('http://localhost:3006/api/auth/user-info', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (!userInfoRes.ok) {
+      return;
+    }
+    
+    const { data: userInfo } = await userInfoRes.json();
+    myId = userInfo.id;
+    username = userInfo.username;
+  } catch (error) {
+    console.error('خطأ في جلب معلومات المستخدم:', error);
+    return;
+  }
 
   // إذا كان المستخدم admin، لا نحتاج للتحقق من اكتمال البيانات
   if (username && username.toLowerCase() === 'admin') {

@@ -76,7 +76,8 @@ async function getDashboardSummary(req, res) {
           SUM(approval_status = 'approved') AS approved,
           SUM(approval_status = 'pending') AS pending,
           SUM(approval_status = 'rejected') AS rejected
-        FROM contents
+        FROM contents c
+        WHERE c.deleted_at IS NULL
       `;
     } else {
       sql = `
@@ -86,12 +87,13 @@ async function getDashboardSummary(req, res) {
           SUM(approval_status = 'pending') AS pending,
           SUM(approval_status = 'rejected') AS rejected
         FROM contents c
-        JOIN folders f ON c.folder_id = f.id
-        WHERE f.department_id IN (
-          SELECT DISTINCT department_id 
-          FROM user_departments 
-          WHERE user_id = ?
-        )
+        JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL
+          AND f.department_id IN (
+            SELECT DISTINCT department_id 
+            FROM user_departments 
+            WHERE user_id = ?
+          )
       `;
       params.push(userId);
     }
@@ -109,9 +111,10 @@ async function getDashboardSummary(req, res) {
           c.created_at,
           COALESCE(${getFullNameSQLWithAlias('u')}, u.username) AS user
         FROM contents c
-        LEFT JOIN folders f ON c.folder_id = f.id
-        LEFT JOIN departments d ON f.department_id = d.id
+        LEFT JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+        LEFT JOIN departments d ON f.department_id = d.id AND d.deleted_at IS NULL
         LEFT JOIN users u ON c.created_by = u.id
+        WHERE c.deleted_at IS NULL
         ORDER BY c.created_at DESC
         LIMIT 10
       `;
@@ -124,14 +127,15 @@ async function getDashboardSummary(req, res) {
           c.created_at,
           COALESCE(${getFullNameSQLWithAlias('u')}, u.username) AS user
         FROM contents c
-        LEFT JOIN folders f ON c.folder_id = f.id
-        LEFT JOIN departments d ON f.department_id = d.id
+        LEFT JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+        LEFT JOIN departments d ON f.department_id = d.id AND d.deleted_at IS NULL
         LEFT JOIN users u ON c.created_by = u.id
-        WHERE f.department_id IN (
-          SELECT DISTINCT department_id 
-          FROM user_departments 
-          WHERE user_id = ?
-        )
+        WHERE c.deleted_at IS NULL
+          AND f.department_id IN (
+            SELECT DISTINCT department_id 
+            FROM user_departments 
+            WHERE user_id = ?
+          )
         ORDER BY c.created_at DESC
         LIMIT 10
       `;
@@ -143,13 +147,13 @@ async function getDashboardSummary(req, res) {
     // نسبة اكتمال الاعتمادات لكل قسم
     let deptSql, deptParams = [];
     if (canViewAll) {
-      deptSql = 'SELECT id, name FROM departments';
+      deptSql = 'SELECT id, name FROM departments WHERE deleted_at IS NULL';
     } else {
       deptSql = `
         SELECT DISTINCT d.id, d.name 
         FROM departments d
         JOIN user_departments ud ON d.id = ud.department_id
-        WHERE ud.user_id = ?
+        WHERE ud.user_id = ? AND d.deleted_at IS NULL
       `;
       deptParams.push(userId);
     }
@@ -164,21 +168,21 @@ async function getDashboardSummary(req, res) {
       if (canViewAll) {
         totalSql = `
           SELECT COUNT(*) AS total FROM contents c
-          JOIN folders f ON c.folder_id = f.id
-          WHERE f.department_id = ?
+          JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+          WHERE f.department_id = ? AND c.deleted_at IS NULL
         `;
         approvedSql = `
           SELECT COUNT(*) AS approved FROM contents c
-          JOIN folders f ON c.folder_id = f.id
-          WHERE f.department_id = ? AND c.approval_status = 'approved'
+          JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+          WHERE f.department_id = ? AND c.approval_status = 'approved' AND c.deleted_at IS NULL
         `;
         totalParams = [dept.id];
         approvedParams = [dept.id];
       } else {
         totalSql = `
           SELECT COUNT(*) AS total FROM contents c
-          JOIN folders f ON c.folder_id = f.id
-          WHERE f.department_id = ? AND f.department_id IN (
+          JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+          WHERE f.department_id = ? AND c.deleted_at IS NULL AND f.department_id IN (
             SELECT DISTINCT department_id 
             FROM user_departments 
             WHERE user_id = ?
@@ -186,10 +190,9 @@ async function getDashboardSummary(req, res) {
         `;
         approvedSql = `
           SELECT COUNT(*) AS approved FROM contents c
-          JOIN folders f ON c.folder_id = f.id
-          WHERE f.department_id = ? AND c.approval_status = 'approved' AND f.department_id IN (
+          JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+          WHERE f.department_id = ? AND c.approval_status = 'approved' AND c.deleted_at IS NULL AND f.department_id IN (
             SELECT DISTINCT department_id 
-            FROM user_departments 
             WHERE user_id = ?
           )
         `;
@@ -253,7 +256,8 @@ async function getStats(req, res) {
           SUM(approval_status = 'approved') AS approved_contents,
           SUM(approval_status = 'pending') AS pending_contents,
           SUM(approval_status = 'rejected') AS rejected_contents
-        FROM contents
+        FROM contents c
+        WHERE c.deleted_at IS NULL
       `;
     } else {
       contentSql = `
@@ -263,12 +267,13 @@ async function getStats(req, res) {
           SUM(approval_status = 'pending') AS pending_contents,
           SUM(approval_status = 'rejected') AS rejected_contents
         FROM contents c
-        JOIN folders f ON c.folder_id = f.id
-        WHERE f.department_id IN (
-          SELECT DISTINCT department_id 
-          FROM user_departments 
-          WHERE user_id = ?
-        )
+        JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL
+          AND f.department_id IN (
+            SELECT DISTINCT department_id 
+            FROM user_departments 
+            WHERE user_id = ?
+          )
       `;
       contentParams.push(userId);
     }
@@ -280,6 +285,7 @@ async function getStats(req, res) {
       SELECT COUNT(*) AS total_users,
              SUM(role = 'admin') AS admins
       FROM users
+      WHERE deleted_at IS NULL
     `);
 
     // إحصائيات الأقسام
@@ -288,13 +294,14 @@ async function getStats(req, res) {
       deptSql = `
         SELECT COUNT(DISTINCT d.id) AS total_departments
         FROM departments d
+        WHERE d.deleted_at IS NULL
       `;
     } else {
       deptSql = `
         SELECT COUNT(DISTINCT d.id) AS total_departments
         FROM departments d
         JOIN user_departments ud ON d.id = ud.department_id
-        WHERE ud.user_id = ?
+        WHERE ud.user_id = ? AND d.deleted_at IS NULL
       `;
       deptParams.push(userId);
     }
@@ -338,6 +345,7 @@ async function getClosedWeek(req, res) {
         FROM contents c
         WHERE c.approval_status = 'approved'
           AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND c.deleted_at IS NULL
         GROUP BY DATE(c.created_at)
         ORDER BY DATE(c.created_at) ASC
       `;
@@ -345,9 +353,10 @@ async function getClosedWeek(req, res) {
       sql = `
         SELECT DATE(c.created_at) AS date, COUNT(*) AS closed_count
         FROM contents c
-        JOIN folders f ON c.folder_id = f.id
+        JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
         WHERE c.approval_status = 'approved'
           AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND c.deleted_at IS NULL
           AND f.department_id IN (
             SELECT DISTINCT department_id 
             FROM user_departments 
@@ -393,8 +402,9 @@ async function getDepartmentStats(req, res) {
           SUM(CASE WHEN c.approval_status = 'pending' THEN 1 ELSE 0 END) AS pending_contents,
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM departments d
-        LEFT JOIN folders f ON f.department_id = d.id
-        LEFT JOIN contents c ON c.folder_id = f.id
+        LEFT JOIN folders f ON f.department_id = d.id AND f.deleted_at IS NULL
+        LEFT JOIN contents c ON c.folder_id = f.id AND c.deleted_at IS NULL
+        WHERE d.deleted_at IS NULL
         GROUP BY d.id, d.name
         HAVING total_contents > 0
         ORDER BY approval_rate DESC, total_contents DESC
@@ -409,13 +419,14 @@ async function getDepartmentStats(req, res) {
           SUM(CASE WHEN c.approval_status = 'pending' THEN 1 ELSE 0 END) AS pending_contents,
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM departments d
-        LEFT JOIN folders f ON f.department_id = d.id
-        LEFT JOIN contents c ON c.folder_id = f.id
-        WHERE d.id IN (
-          SELECT DISTINCT department_id
-          FROM user_departments
-          WHERE user_id = ?
-        )
+        LEFT JOIN folders f ON f.department_id = d.id AND f.deleted_at IS NULL
+        LEFT JOIN contents c ON c.folder_id = f.id AND c.deleted_at IS NULL
+        WHERE d.deleted_at IS NULL
+          AND d.id IN (
+            SELECT DISTINCT department_id
+            FROM user_departments
+            WHERE user_id = ?
+          )
         GROUP BY d.id, d.name
         HAVING total_contents > 0
         ORDER BY approval_rate DESC, total_contents DESC
@@ -459,6 +470,7 @@ async function getMonthlyPerformance(req, res) {
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM contents c
         WHERE c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+          AND c.deleted_at IS NULL
         GROUP BY DATE_FORMAT(c.created_at, '%Y-%m')
         ORDER BY month ASC
       `;
@@ -471,8 +483,9 @@ async function getMonthlyPerformance(req, res) {
           SUM(CASE WHEN c.approval_status = 'pending' THEN 1 ELSE 0 END) AS pending_contents,
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM contents c
-        JOIN folders f ON c.folder_id = f.id
+        JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
         WHERE c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+          AND c.deleted_at IS NULL
           AND f.department_id IN (
             SELECT DISTINCT department_id 
             FROM user_departments 
@@ -517,7 +530,8 @@ async function exportDashboardExcel(req, res) {
           SUM(approval_status = 'approved') AS approved,
           SUM(approval_status = 'pending') AS pending,
           SUM(approval_status = 'rejected') AS rejected
-        FROM contents
+        FROM contents c
+        WHERE c.deleted_at IS NULL
       `;
     } else {
       statsSql = `
@@ -527,12 +541,13 @@ async function exportDashboardExcel(req, res) {
           SUM(approval_status = 'pending') AS pending,
           SUM(approval_status = 'rejected') AS rejected
         FROM contents c
-        JOIN folders f ON c.folder_id = f.id
-        WHERE f.department_id IN (
-          SELECT DISTINCT department_id 
-          FROM user_departments 
-          WHERE user_id = ?
-        )
+        JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL
+          AND f.department_id IN (
+            SELECT DISTINCT department_id 
+            FROM user_departments 
+            WHERE user_id = ?
+          )
       `;
       statsParams.push(userId);
     }
@@ -545,6 +560,7 @@ async function exportDashboardExcel(req, res) {
       SELECT COUNT(*) AS total_users,
              SUM(role = 'admin') AS admins
       FROM users
+      WHERE deleted_at IS NULL
     `);
 
     // جلب إحصائيات الأقسام
@@ -558,8 +574,8 @@ async function exportDashboardExcel(req, res) {
           SUM(CASE WHEN c.approval_status = 'pending' THEN 1 ELSE 0 END) AS pending_contents,
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM departments d
-        LEFT JOIN folders f ON f.department_id = d.id
-        LEFT JOIN contents c ON c.folder_id = f.id
+        LEFT JOIN folders f ON f.department_id = d.id AND f.deleted_at IS NULL
+        LEFT JOIN contents c ON c.folder_id = f.id AND c.deleted_at IS NULL
         GROUP BY d.id, d.name
         HAVING total_contents > 0
         ORDER BY approval_rate DESC, total_contents DESC
@@ -574,13 +590,14 @@ async function exportDashboardExcel(req, res) {
           SUM(CASE WHEN c.approval_status = 'pending' THEN 1 ELSE 0 END) AS pending_contents,
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM departments d
-        LEFT JOIN folders f ON f.department_id = d.id
-        LEFT JOIN contents c ON c.folder_id = f.id
-        WHERE d.id IN (
-          SELECT DISTINCT department_id 
-          FROM user_departments 
-          WHERE user_id = ?
-        )
+        LEFT JOIN folders f ON f.department_id = d.id AND f.deleted_at IS NULL
+        LEFT JOIN contents c ON c.folder_id = f.id AND c.deleted_at IS NULL
+        WHERE d.deleted_at IS NULL
+          AND d.id IN (
+            SELECT DISTINCT department_id 
+            FROM user_departments 
+            WHERE user_id = ?
+          )
         GROUP BY d.id, d.name
         HAVING total_contents > 0
         ORDER BY approval_rate DESC, total_contents DESC
@@ -603,6 +620,7 @@ async function exportDashboardExcel(req, res) {
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM contents c
         WHERE c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+          AND c.deleted_at IS NULL
         GROUP BY DATE_FORMAT(c.created_at, '%Y-%m')
         ORDER BY month ASC
       `;
@@ -615,8 +633,9 @@ async function exportDashboardExcel(req, res) {
           SUM(CASE WHEN c.approval_status = 'pending' THEN 1 ELSE 0 END) AS pending_contents,
           ROUND((SUM(CASE WHEN c.approval_status = 'approved' THEN 1 ELSE 0 END) / COUNT(c.id)) * 100, 1) AS approval_rate
         FROM contents c
-        JOIN folders f ON c.folder_id = f.id
+        JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
         WHERE c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+          AND c.deleted_at IS NULL
           AND f.department_id IN (
             SELECT DISTINCT department_id 
             FROM user_departments 
@@ -638,6 +657,7 @@ async function exportDashboardExcel(req, res) {
         FROM contents c
         WHERE c.approval_status = 'approved'
           AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND c.deleted_at IS NULL
         GROUP BY DATE(c.created_at)
         ORDER BY DATE(c.created_at) ASC
       `;
@@ -645,9 +665,10 @@ async function exportDashboardExcel(req, res) {
       weekSql = `
         SELECT DATE(c.created_at) AS date, COUNT(*) AS closed_count
         FROM contents c
-        JOIN folders f ON c.folder_id = f.id
+        JOIN folders f ON c.folder_id = f.id AND f.deleted_at IS NULL
         WHERE c.approval_status = 'approved'
           AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND c.deleted_at IS NULL
           AND f.department_id IN (
             SELECT DISTINCT department_id 
             FROM user_departments 

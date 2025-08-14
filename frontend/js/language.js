@@ -2587,10 +2587,12 @@ const translations = {
         'approved-files': 'الملفات المعتمدة ',
         'pending-approval': 'ملفات بانتظار الاعتماد',
         'rejected-files': 'الملفات المرفوضة',
+        'track-file' : 'تتبع الملف'
         
     },
     en: {
-      'total-files': 'Total Files',
+      'total-files': 'Total Files', 
+      'track-file' : 'Track File',
       'approved-files': 'Approved Files',
       'rejected-files': 'Rejected Files',
       'pending-approval': 'Pending Approval',

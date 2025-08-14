@@ -7,7 +7,9 @@ const {
   resetPassword,
   authenticateToken,
   adminResetPassword,
-  checkRole
+  checkRole,
+  getUserFromToken
+
 } = require('../controllers/authController');
 
 router.post('/register', register);
@@ -16,5 +18,6 @@ router.post('/forgot-password',          forgotPassword);
 router.post('/reset-password/:token',    resetPassword);
 router.put ('/users/:id/reset-password', authenticateToken, adminResetPassword);
 router.get('/check-role', authenticateToken, checkRole);
+router.get('/user-info', getUserFromToken);
 
 module.exports = router;

@@ -38,6 +38,7 @@ const contentController = require('./controllers/contentController');
 const dashboardRouter = require('./routers/dashboardRoutes');
 const jobTitlesRoutes = require('./routers/jobTitles');
 const jobNamesRoutes = require('./routers/jobNames');
+const superAdminRoutes = require('./routers/superAdmin.routes');
 
 app.use(cors());
 app.use(express.json());
@@ -70,6 +71,9 @@ app.put('/api/contents/:id/approval-sequence', contentController.updateContentAp
 app.use('/api/job-titles', jobTitlesRoutes);
 app.use('/api/job-names', jobNamesRoutes);
 
+// Super Admin routes
+app.use('/api/super-admin', superAdminRoutes);
+
 // اختبار الاتصال
 db.connect((err) => {
   if (err) {
@@ -91,10 +95,23 @@ app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
     try {
     await initializeJobNames();
+    await initializeSoftDelete();
   } catch (error) {
-    console.error('خطأ في تهيئة جدول job_names:', error);
+    console.error('خطأ في تهيئة الجداول:', error);
   }
 });
+
+// تهيئة soft delete عند بدء التطبيق
+const initializeSoftDelete = async () => {
+  try {
+    const { addSoftDeleteColumns } = require('./utils/softDelete');
+    await addSoftDeleteColumns();
+    console.log('✅ تم تهيئة حقول soft delete بنجاح');
+  } catch (error) {
+    console.error('❌ خطأ في تهيئة حقول soft delete:', error);
+    console.log('سيستمر الخادم في العمل رغم خطأ تهيئة soft delete');
+  }
+};
 
 // تهيئة جدول job_names عند بدء التطبيق
 const initializeJobNames = async () => {

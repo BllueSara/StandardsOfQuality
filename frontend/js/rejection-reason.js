@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   // تحديث النصوص عند التحميل
   updatePageTexts();
-  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(token);
   const currentUserId = payload.id;
   window.currentUserId = currentUserId;
   window.currentUsername = payload.username; // حفظ اسم المستخدم الحالي للمقارنة

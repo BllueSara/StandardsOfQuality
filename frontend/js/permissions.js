@@ -101,7 +101,7 @@ if (btnClearCache) {
   btnClearCache.onclick = async () => {
     // تحقق من أن المستخدم admin
     const authToken = localStorage.getItem('token') || '';
-    const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+    const payload = await safeGetUserInfo(authToken);
     const myRole = payload.role;
     
     if (myRole !== 'admin') {
@@ -159,14 +159,21 @@ const btnRevokeFiles = document.getElementById('btn-revoke-files');
 if (btnRevokeFiles) {
   // تحقق من الدور مباشرة من التوكن
   let isAdmin = false;
-  try {
-    const token = localStorage.getItem('token');
-    if (token) {
-      const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
-      isAdmin = payload.role === 'admin';
-    }
-  } catch {}
-  btnRevokeFiles.style.display = (myPermsSet.has('revoke_files') || isAdmin) ? '' : 'none';
+  
+  // دالة للتحقق من الدور
+  async function checkAdminRole() {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = await safeGetUserInfo(token);
+        isAdmin = payload.role === 'admin';
+      }
+    } catch {}
+    btnRevokeFiles.style.display = (myPermsSet.has('revoke_files') || isAdmin) ? '' : 'none';
+  }
+  
+  // استدعاء الدالة
+  checkAdminRole();
   btnRevokeFiles.onclick = async () => {
     if (!selectedUserId) return showToast(getTranslation('please-select-user'));
     // جلب الملفات من API
@@ -304,7 +311,7 @@ async function fetchJSON(url, opts = {}) {
 async function loadMyPermissions() {
   if (!authToken) return;
   try {
-    const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+    const payload = await safeGetUserInfo(authToken);
     const myId = payload.id;
     const perms = await fetchJSON(`${apiBase}/users/${myId}/permissions`);
     myPermsSet = new Set(perms);
@@ -415,7 +422,7 @@ async function loadUsers() {
 // =====================
 async function selectUser(id) {
   const authToken = localStorage.getItem('token') || '';
-  const jwtPayload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+  const jwtPayload = await safeGetUserInfo(authToken);
 
   // 2) فعل العرض للمستخدم المحدد
   selectedUserId = id;
@@ -453,7 +460,7 @@ profileStatus.onclick = async () => {
     return;
   }
   // تحقق: فقط admin أو من لديه change_status يمكنه التغيير
-  const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(authToken);
   const myRole = payload.role;
   if (!(myRole === 'admin' || myPermsSet.has('change_status'))) {
     return;
@@ -514,7 +521,7 @@ try {
 document.querySelector('.user-profile-header')?.classList.add('active');
 
   // دور المستخدم الحالي
-  const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(authToken);
   const myRole = payload.role;
   const isAdmin = myRole === 'admin';
 
@@ -940,7 +947,7 @@ document.addEventListener('change', (e) => {
 // إظهار الزر حسب الصلاحية عند اختيار المستخدم
 async function showEditUserInfoButton(u) {
   const authToken = localStorage.getItem('token') || '';
-  const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(authToken);
   const myRole = payload.role;
   const myId = payload.id;
   
@@ -971,7 +978,7 @@ if (btnEditUserInfo) {
     // جلب بيانات المستخدم الحالي
     const u = await fetchJSON(`${apiBase}/users/${selectedUserId}`);
     const authToken = localStorage.getItem('token') || '';
-    const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+    const payload = await safeGetUserInfo(authToken);
     
     // تحقق: إذا كان المستهدف admin، فقط admin نفسه يمكنه التعديل
     if (u.role === 'admin' && !(payload.role === 'admin' && Number(u.id) === Number(payload.id))) {
@@ -2212,7 +2219,7 @@ async function openDelegationConfirmationsModal() {
     // إظهار دور المستخدم الحالي للـ debugging
     if (authToken) {
       try {
-        const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+        const payload = await safeGetUserInfo(authToken);
         console.log('Current user role:', payload.role);
         console.log('Current user ID:', payload.id);
       } catch (e) {
@@ -2256,7 +2263,7 @@ async function openDelegationConfirmationsModal() {
         </div>
       `;
     } else {
-      renderDelegationConfirmations(confirmations);
+      await renderDelegationConfirmations(confirmations);
     }
   } catch (error) {
     console.error('Error opening delegation confirmations modal:', error);
@@ -2346,9 +2353,9 @@ function getSignatureFromData(confirmation) {
 }
 
 // دالة عرض اقرارات التفويض
-function renderDelegationConfirmations(confirmations) {
+async function renderDelegationConfirmations(confirmations) {
   // الحصول على معرف المستخدم الحالي
-  const currentUserId = getCurrentUserId();
+      const currentUserId = await getCurrentUserId();
   
   const listContainer = document.getElementById('delegationConfirmationsList');
   
@@ -2478,10 +2485,10 @@ function renderDelegationConfirmations(confirmations) {
 }
 
 // دالة مساعدة للحصول على معرف المستخدم الحالي
-function getCurrentUserId() {
+async function getCurrentUserId() {
   if (!authToken) return null;
   try {
-    const payload = JSON.parse(atob(authToken.split('.')[1] || '{}'));
+    const payload = await safeGetUserInfo(authToken);
     return payload.id;
   } catch (e) {
     console.error('Error parsing JWT payload:', e);

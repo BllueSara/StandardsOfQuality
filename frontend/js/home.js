@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
   if (!token) return;
 
-  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(token);
   const userId  = payload.id;
   const role    = payload.role;
   const isAdmin = role === 'admin';
@@ -124,7 +124,7 @@ document.addEventListener('visibilitychange', async () => {
 async function updateNotifCount() {
   const token = localStorage.getItem('token');
   if (!token) return;
-  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(token);
   const userId  = payload.id;
   try {
     const notifRes = await fetch(`${apiBase}/users/${userId}/notifications/unread-count`, {

@@ -10,6 +10,7 @@ if (typeof getTranslation === 'undefined') {
       'reject': 'رفض',
       'preview': 'معاينة',
       'transfer-file': 'تحويل الملف',
+      'track-file': 'تتبع الملف',
       'approved': 'معتمد',
       'rejected': 'مرفوض',
       'pending': 'في الانتظار',
@@ -96,7 +97,7 @@ function showToast(message, type = 'info', duration = 3000) {
 // جلب صلاحيات المستخدم
 async function fetchPermissions() {
   if (!token) return;
-  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(token);
   const userId = payload.id, role = payload.role;
   if (role === 'admin') {
     permissionsKeys = ['*'];
@@ -192,7 +193,7 @@ console.log('pending-approvals.js loaded');
 document.addEventListener('DOMContentLoaded', async () => {
   if (!token) return showToast(getTranslation('please-login'), 'error');
   // تعيين اسم المستخدم الحالي من JWT token
-  const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+  const payload = await safeGetUserInfo(token);
   window.currentUsername = payload.username;
   await fetchPermissions();
 
@@ -380,9 +381,14 @@ function renderApprovals(items) {
         actions += `<button class="btn-reject">${getTranslation('reject')}</button>`;
       }
       actions += `<button class="btn-preview">${getTranslation('preview')}</button>`;
+      actions += `<button class="btn-track">${getTranslation('track-file')}</button>`;
       if (canTransfer) {
         actions += `<button class="btn-transfer-file">${getTranslation('transfer-file')}</button>`;
       }
+    } else if (item.approval_status === 'approved') {
+      // للملفات المعتمدة، نعرض فقط زر المعاينة والتتبع
+      actions += `<button class="btn-preview">${getTranslation('preview')}</button>`;
+      actions += `<button class="btn-track">${getTranslation('track-file')}</button>`;
     }
 
     const contentType = item.type === 'committee'
@@ -672,6 +678,24 @@ else {
     });
   });
 
+  // معالج حدث زر تتبع الملف
+  document.querySelectorAll('.approval-card .btn-track').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      const card = e.target.closest('.approval-card');
+      const itemId = card.dataset.id;
+      const item = allItems.find(i => i.id == itemId);
+
+      if (!item) {
+        showToast(getTranslation('error-loading'), 'error');
+        return;
+      }
+
+      // فتح صفحة تتبع الملف في نفس الصفحة
+      const trackUrl = `track-request.html?id=${itemId}&type=${item.type || 'department'}&title=${encodeURIComponent(item.title)}&source=${encodeURIComponent(item.source_name)}`;
+      window.location.href = trackUrl;
+    });
+  });
+
   // Attach event for transfer file button
   document.querySelectorAll('.approval-card .btn-transfer-file').forEach(btn => {
     console.log('[initActions] ربط زر التحويل', btn);
@@ -850,7 +874,7 @@ function setupSignatureModal() {
     }
     
     // استخراج معلومات المستخدم من JWT token
-    const tokenPayload = JSON.parse(atob(token.split('.')[1] || '{}'));
+    const tokenPayload = await safeGetUserInfo(token);
     
     const contentType = card.dataset.type;
     const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
@@ -2095,7 +2119,7 @@ async function showSingleDelegationConfirmation(delegateTo, contentId, contentTy
     }
     
     // جلب معلومات المستخدم الحالي (المفوض) من قاعدة البيانات
-    const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+    const payload = await safeGetUserInfo(token);
     const currentUserId = payload.id;
     console.log('[showSingleDelegationConfirmation] Current user ID from JWT:', currentUserId);
     
@@ -2181,7 +2205,7 @@ async function showBulkDelegationConfirmation(delegateTo, notes = '') {
     }
     
     // جلب معلومات المستخدم الحالي (المفوض) من قاعدة البيانات
-    const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+    const payload = await safeGetUserInfo(token);
     const currentUserId = payload.id;
     console.log('[showBulkDelegationConfirmation] Current user ID from JWT:', currentUserId);
     

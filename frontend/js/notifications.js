@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!token) return alert(getTranslation('notifications-not-logged-in'));
 
   try {
-    payload = JSON.parse(atob(token.split('.')[1]));
+    payload = await safeGetUserInfo(token);
   } catch {
     return alert(getTranslation('notifications-invalid-token'));
   }

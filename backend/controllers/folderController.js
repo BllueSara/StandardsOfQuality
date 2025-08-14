@@ -1,6 +1,7 @@
 // backend/controllers/folderController.js
 const mysql = require('mysql2/promise');
 const jwt   = require('jsonwebtoken');
+const { softDeleteFolderWithContents } = require('../utils/softDelete');
 require('dotenv').config();
 
 const pool = mysql.createPool({
@@ -111,7 +112,7 @@ const getFolders = async (req, res) => {
 
     // تحقق من وجود القسم
     const [dept] = await conn.execute(
-      'SELECT id, name FROM departments WHERE id = ?', 
+      'SELECT id, name FROM departments WHERE id = ? AND deleted_at IS NULL', 
       [departmentId]
     );
     if (!dept.length) {
@@ -124,7 +125,7 @@ const getFolders = async (req, res) => {
               `SELECT f.id, f.name, f.type, f.created_at, ${getFullNameSQLWithAliasAndFallback('u')} AS created_by
        FROM folders f
        LEFT JOIN users u ON u.id = f.created_by
-       WHERE f.department_id = ?
+       WHERE f.department_id = ? AND f.deleted_at IS NULL
        ORDER BY f.created_at DESC`,
       [departmentId]
     );
@@ -175,7 +176,7 @@ const createFolder = async (req, res) => {
 
     // تحقق من القسم
     const [dept] = await conn.execute(
-      'SELECT id, name FROM departments WHERE id = ?', 
+      'SELECT id, name FROM departments WHERE id = ? AND deleted_at IS NULL', 
       [departmentId]
     );
     if (!dept.length) {
@@ -193,7 +194,7 @@ const createFolder = async (req, res) => {
 
     // تحقق عدم التكرار
     const [exists] = await conn.execute(
-      'SELECT id FROM folders WHERE department_id = ? AND name = ?',
+      'SELECT id FROM folders WHERE department_id = ? AND name = ? AND deleted_at IS NULL',
       [departmentId, name]
     );
     if (exists.length) {
@@ -273,7 +274,7 @@ const updateFolder = async (req, res) => {
 
     // جلب المجلد القديم مع اسم القسم
     const [rows] = await conn.execute(
-      'SELECT f.*, d.name as department_name FROM folders f JOIN departments d ON f.department_id = d.id WHERE f.id = ?', 
+      'SELECT f.*, d.name as department_name FROM folders f JOIN departments d ON f.department_id = d.id WHERE f.id = ? AND f.deleted_at IS NULL AND d.deleted_at IS NULL', 
       [folderId]
     );
     if (!rows.length) {
@@ -341,7 +342,7 @@ const getFolderById = async (req, res) => {
        FROM folders f
        LEFT JOIN users u ON f.created_by = u.id
        LEFT JOIN departments d ON f.department_id = d.id
-       WHERE f.id = ?`,
+       WHERE f.id = ? AND f.deleted_at IS NULL AND d.deleted_at IS NULL`,
       [folderId]
     );
 
@@ -378,7 +379,7 @@ const deleteFolder = async (req, res) => {
 
     // تحقق من وجود المجلد مع اسم القسم
     const [folder] = await conn.execute(
-      'SELECT f.*, d.name as department_name FROM folders f JOIN departments d ON f.department_id = d.id WHERE f.id = ?', 
+      'SELECT f.*, d.name as department_name FROM folders f JOIN departments d ON f.department_id = d.id WHERE f.id = ? AND f.deleted_at IS NULL AND d.deleted_at IS NULL', 
       [folderId]
     );
     if (!folder.length) {
@@ -392,11 +393,13 @@ const deleteFolder = async (req, res) => {
     const userLanguage = getUserLanguageFromToken(h.split(' ')[1]);
     const departmentName = getDepartmentNameByLanguage(folder[0].department_name, userLanguage);
 
-    // حذف كل المحتويات المرتبطة أولاً
-    await conn.execute('DELETE FROM contents WHERE folder_id = ?', [folderId]);
-
-    // ثم حذف المجلد
-    await conn.execute('DELETE FROM folders WHERE id = ?', [folderId]);
+    // حذف المجلد والمحتويات باستخدام soft delete
+    const deleted = await softDeleteFolderWithContents(folderId, decoded.id);
+    
+    if (!deleted) {
+      conn.release();
+      return res.status(400).json({ message: 'فشل في حذف المجلد.' });
+    }
 
     conn.release();
     
@@ -424,7 +427,7 @@ const deleteFolder = async (req, res) => {
 const getFolderNames = async (req, res) => {
   try {
     const conn = await pool.getConnection();
-    const [rows] = await conn.execute('SELECT id, name FROM folder_names ORDER BY name ASC');
+    const [rows] = await conn.execute('SELECT id, name FROM folder_names WHERE deleted_at IS NULL ORDER BY name ASC');
     conn.release();
     return res.json({ status: 'success', data: rows });
   } catch (err) {
@@ -526,6 +529,20 @@ function validateTextLanguage(text, requiredLanguage) {
 
   try {
     const conn = await pool.getConnection();
+    
+    // التحقق من عدم التكرار
+    const [exists] = await conn.execute(
+      'SELECT id FROM folder_names WHERE name = ? AND deleted_at IS NULL',
+      [name]
+    );
+    if (exists.length > 0) {
+      conn.release();
+      return res.status(409).json({ 
+        status: 'error',
+        message: 'اسم المجلد موجود بالفعل' 
+      });
+    }
+    
     const [result] = await conn.execute(
       'INSERT INTO folder_names (name) VALUES (?)',
       [name]
@@ -618,7 +635,7 @@ const updateFolderName = async (req, res) => {
   try {
     // 1) جيب الاسم القديم
     const [rows] = await conn.execute(
-      'SELECT name FROM folder_names WHERE id = ?',
+      'SELECT name FROM folder_names WHERE id = ? AND deleted_at IS NULL',
       [id]
     );
     if (!rows.length) {
@@ -626,6 +643,19 @@ const updateFolderName = async (req, res) => {
       return res.status(404).json({ message: '❌ لم يتم العثور على اسم المجلد.' });
     }
     const oldName = rows[0].name;
+
+    // التحقق من عدم التكرار مع الاسم الجديد
+    const [exists] = await conn.execute(
+      'SELECT id FROM folder_names WHERE name = ? AND id != ? AND deleted_at IS NULL',
+      [name, id]
+    );
+    if (exists.length > 0) {
+      conn.release();
+      return res.status(409).json({ 
+        status: 'error',
+        message: 'اسم المجلد الجديد موجود بالفعل' 
+      });
+    }
 
     // 2) ابدأ معاملة علشان إذا فشل التحديث في أي مكان نرجع الحالة كما هي
     await conn.beginTransaction();
@@ -687,8 +717,12 @@ const deleteFolderName = async (req, res) => {
     const conn = await pool.getConnection();
     
     // جلب الاسم قبل الحذف لتسجيله في اللوق
-    const [nameRows] = await conn.execute('SELECT name FROM folder_names WHERE id = ?', [id]);
-    const folderName = nameRows.length > 0 ? nameRows[0].name : 'غير معروف';
+    const [nameRows] = await conn.execute('SELECT name FROM folder_names WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (nameRows.length === 0) {
+      conn.release();
+      return res.status(404).json({ message: '❌ اسم المجلد غير موجود أو تم حذفه مسبقاً.' });
+    }
+    const folderName = nameRows[0].name;
     
     const [result] = await conn.execute(
       'DELETE FROM folder_names WHERE id = ?',
@@ -761,7 +795,7 @@ const getSharedUsersForFolder = async (req, res) => {
 
     // تحقق من وجود المجلد وأنه من نوع shared
     const [folder] = await conn.execute(
-      'SELECT id, type FROM folders WHERE id = ?',
+      'SELECT id, type FROM folders WHERE id = ? AND deleted_at IS NULL',
       [folderId]
     );
     
@@ -781,7 +815,7 @@ const getSharedUsersForFolder = async (req, res) => {
        FROM users u
        JOIN approval_logs al ON u.id = al.approver_id
        JOIN contents c ON al.content_id = c.id
-       WHERE c.folder_id = ?
+       WHERE c.folder_id = ? AND c.deleted_at IS NULL
        ORDER BY u.username`,
       [folderId]
     );

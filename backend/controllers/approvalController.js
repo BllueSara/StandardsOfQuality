@@ -127,6 +127,9 @@ const getUserPendingApprovals = async (req, res) => {
         LEFT JOIN users u2 ON ca.user_id = u2.id
         LEFT JOIN job_names jn2 ON u2.job_name_id = jn2.id
         WHERE c.is_approved = 0
+          AND c.deleted_at IS NULL
+          AND f.deleted_at IS NULL
+          AND d.deleted_at IS NULL
         GROUP BY c.id
       `);
 
@@ -168,6 +171,9 @@ const getUserPendingApprovals = async (req, res) => {
       LEFT JOIN users u2 ON ca.user_id = u2.id
       LEFT JOIN job_names jn2 ON u2.job_name_id = jn2.id
       WHERE c.is_approved = 0
+        AND c.deleted_at IS NULL
+        AND f.deleted_at IS NULL
+        AND d.deleted_at IS NULL
       GROUP BY c.id
     `);
 
@@ -303,7 +309,7 @@ const handleApproval = async (req, res) => {
   
       // جلب التسلسل للتحقق من الموقع الأصلي
       let approvalSequence = [];
-      const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+      const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
       if (customRows.length && customRows[0].custom_approval_sequence) {
         try {
           const parsed = JSON.parse(customRows[0].custom_approval_sequence);
@@ -314,13 +320,13 @@ const handleApproval = async (req, res) => {
       }
       if (approvalSequence.length === 0) {
         // جلب من القسم
-        const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [contentId]);
+        const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
         if (folderRows.length) {
           const folderId = folderRows[0].folder_id;
-          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL', [folderId]);
           if (deptRows.length) {
             const departmentId = deptRows[0].department_id;
-            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [departmentId]);
             if (seqRows.length) {
               let approvalSequenceRaw = seqRows[0].approval_sequence;
               if (Array.isArray(approvalSequenceRaw)) {
@@ -456,7 +462,7 @@ const handleApproval = async (req, res) => {
       // إذا كان الرفض، إرسال إشعار لصاحب الملف
       if (!approved) {
         try {
-          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ?', [contentId]);
+          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
           if (ownerRows.length) {
             const ownerId = ownerRows[0].created_by;
             const fileTitle = ownerRows[0].title || '';
@@ -477,7 +483,7 @@ const handleApproval = async (req, res) => {
       try {
         let approvalSequenceFinal = [];
         // جلب custom_approval_sequence من جدول contents
-        const [customRowsFinal] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+        const [customRowsFinal] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
         if (customRowsFinal.length && customRowsFinal[0].custom_approval_sequence) {
           try {
             const parsed = JSON.parse(customRowsFinal[0].custom_approval_sequence);
@@ -489,15 +495,15 @@ const handleApproval = async (req, res) => {
         // إذا لا يوجد custom أو كان فارغًا، استخدم approval_sequence من القسم
         if (approvalSequenceFinal.length === 0) {
           // جلب folder_id من جدول contents
-          const [folderRows] = await db.execute(`SELECT folder_id FROM contents WHERE id = ?`, [contentId]);
+          const [folderRows] = await db.execute(`SELECT folder_id FROM contents WHERE id = ? AND deleted_at IS NULL`, [contentId]);
           if (folderRows.length) {
             const folderId = folderRows[0].folder_id;
             // جلب department_id من جدول folders
-            const [deptRows] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId]);
+            const [deptRows] = await db.execute(`SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL`, [folderId]);
             if (deptRows.length) {
               const departmentId = deptRows[0].department_id;
               // جلب approval_sequence من جدول departments
-              const [seqRows] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId]);
+              const [seqRows] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL`, [departmentId]);
               if (seqRows.length) {
                 const rawSeq = seqRows[0].approval_sequence;
                 if (Array.isArray(rawSeq)) {
@@ -557,7 +563,7 @@ const handleApproval = async (req, res) => {
           `, [currentUserId, contentId]);
           
           // إرسال إشعار لصاحب الملف بأن الملف تم اعتماده من الجميع
-          const [ownerRowsFinal] = await db.execute(`SELECT created_by, title FROM contents WHERE id = ?`, [contentId]);
+          const [ownerRowsFinal] = await db.execute(`SELECT created_by, title FROM contents WHERE id = ? AND deleted_at IS NULL`, [contentId]);
           if (ownerRowsFinal.length) {
             const ownerIdFinal = ownerRowsFinal[0].created_by;
             const fileTitleFinal = ownerRowsFinal[0].title || '';
@@ -631,7 +637,7 @@ const handleApproval = async (req, res) => {
         
         // إرسال إشعار لصاحب الملف بالرفض
         try {
-          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ?', [contentId]);
+          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
           if (ownerRows.length) {
             const ownerId = ownerRows[0].created_by;
             const fileTitle = ownerRows[0].title || '';
@@ -651,7 +657,7 @@ const handleApproval = async (req, res) => {
       if (approved) {
         // جلب التسلسل للتحقق
         let approvalSequence = [];
-        const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+        const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
         if (customRows.length && customRows[0].custom_approval_sequence) {
           try {
             const parsed = JSON.parse(customRows[0].custom_approval_sequence);
@@ -661,13 +667,13 @@ const handleApproval = async (req, res) => {
           } catch {}
         }
         if (approvalSequence.length === 0) {
-          const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [contentId]);
+          const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
           if (folderRows.length) {
             const folderId = folderRows[0].folder_id;
-            const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+            const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL', [folderId]);
             if (deptRows.length) {
               const departmentId = deptRows[0].department_id;
-              const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+              const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [departmentId]);
               if (seqRows.length) {
                 const rawSeq = seqRows[0].approval_sequence;
                 if (Array.isArray(rawSeq)) {
@@ -697,7 +703,7 @@ const handleApproval = async (req, res) => {
           `, [currentUserId, contentId]);
           
           // إرسال إشعار لصاحب الملف
-          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ?', [contentId]);
+          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
           if (ownerRows.length) {
             const ownerId = ownerRows[0].created_by;
             const fileTitle = ownerRows[0].title || '';
@@ -730,8 +736,8 @@ const handleApproval = async (req, res) => {
               WHERE id = ?
             `, [currentUserId, contentId]);
             
-            // إرسال إشعار لصاحب الملف
-            const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ?', [contentId]);
+                      // إرسال إشعار لصاحب الملف
+          const [ownerRows] = await db.execute('SELECT created_by, title FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
             if (ownerRows.length) {
               const ownerId = ownerRows[0].created_by;
               const fileTitle = ownerRows[0].title || '';
@@ -747,7 +753,7 @@ const handleApproval = async (req, res) => {
       }
 
       // جلب تفاصيل الملف للتسجيل
-      const [itemDetails] = await db.execute(`SELECT title FROM contents WHERE id = ?`, [contentId]);
+      const [itemDetails] = await db.execute(`SELECT title FROM contents WHERE id = ? AND deleted_at IS NULL`, [contentId]);
       const itemTitle = itemDetails.length > 0 ? itemDetails[0].title : `رقم ${contentId}`;
 
       // تسجيل الحركة
@@ -831,7 +837,7 @@ const handleApproval = async (req, res) => {
         // جلب التسلسل الفعلي (custom أو department)
         let approvalSequence2 = [];
         // جلب custom_approval_sequence من جدول contents
-        const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+        const [customRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
         if (customRows.length && customRows[0].custom_approval_sequence) {
           try {
             const parsed = JSON.parse(customRows[0].custom_approval_sequence);
@@ -843,15 +849,15 @@ const handleApproval = async (req, res) => {
         // إذا لا يوجد custom أو كان فارغًا، استخدم approval_sequence من القسم
         if (approvalSequence2.length === 0) {
           // جلب folder_id من جدول contents
-          const [folderRows2] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ?`, [contentId]);
+          const [folderRows2] = await db.execute(`SELECT folder_id FROM ${contentsTable} WHERE id = ? AND deleted_at IS NULL`, [contentId]);
           if (folderRows2.length) {
             const folderId2 = folderRows2[0].folder_id;
             // جلب department_id من جدول folders
-            const [deptRows2] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId2]);
+            const [deptRows2] = await db.execute(`SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL`, [folderId2]);
             if (deptRows2.length) {
               const departmentId2 = deptRows2[0].department_id;
               // جلب approval_sequence من جدول departments
-              const [seqRows2] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId2]);
+              const [seqRows2] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL`, [departmentId2]);
               if (seqRows2.length) {
                 const rawSeq = seqRows2[0].approval_sequence;
                 if (Array.isArray(rawSeq)) {
@@ -891,7 +897,7 @@ const handleApproval = async (req, res) => {
             if (!logNext.length || logNext[0].status !== 'approved') {
               await db.execute(`INSERT IGNORE INTO ${contentApproversTable} (content_id, user_id) VALUES (?, ?)`, [contentId, nextApproverId]);
               // إرسال إشعار للشخص التالي
-              const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+              const [contentRows] = await db.execute(`SELECT title FROM ${contentsTable} WHERE id = ? AND deleted_at IS NULL`, [contentId]);
               const fileTitle = contentRows.length ? contentRows[0].title : '';
               await insertNotification(
                 nextApproverId,
@@ -918,7 +924,7 @@ const handleApproval = async (req, res) => {
       
       // إرسال إشعار لصاحب الملف بالرفض
       try {
-        const [ownerRows] = await db.execute(`SELECT created_by, title FROM ${contentsTable} WHERE id = ?`, [contentId]);
+        const [ownerRows] = await db.execute(`SELECT created_by, title FROM ${contentsTable} WHERE id = ? AND deleted_at IS NULL`, [contentId]);
         if (ownerRows.length) {
           const ownerId = ownerRows[0].created_by;
           const fileTitle = ownerRows[0].title || '';
@@ -967,7 +973,7 @@ const handleApproval = async (req, res) => {
     // تحقق من اكتمال الاعتماد من جميع أعضاء التسلسل (custom أو department)
     let approvalSequence = [];
     // جلب custom_approval_sequence من جدول contents
-    const [customRowsFinal] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [contentId]);
+            const [customRowsFinal] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ? AND deleted_at IS NULL', [contentId]);
     if (customRowsFinal.length && customRowsFinal[0].custom_approval_sequence) {
       try {
         const parsed = JSON.parse(customRowsFinal[0].custom_approval_sequence);
@@ -983,11 +989,11 @@ const handleApproval = async (req, res) => {
       if (folderRows.length) {
         const folderId = folderRows[0].folder_id;
         // جلب department_id من جدول folders
-        const [deptRows] = await db.execute(`SELECT department_id FROM folders WHERE id = ?`, [folderId]);
+                    const [deptRows] = await db.execute(`SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL`, [folderId]);
         if (deptRows.length) {
           const departmentId = deptRows[0].department_id;
           // جلب approval_sequence من جدول departments
-          const [seqRows] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ?`, [departmentId]);
+                      const [seqRows] = await db.execute(`SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL`, [departmentId]);
           if (seqRows.length) {
             const rawSeq = seqRows[0].approval_sequence;
             if (Array.isArray(rawSeq)) {
@@ -1073,7 +1079,7 @@ const handleApproval = async (req, res) => {
 async function generateFinalSignedPDF(contentId) {
   // 1) جلب مسار الملف
   const [fileRows] = await db.execute(
-    `SELECT file_path FROM contents WHERE id = ?`,
+    `SELECT file_path FROM contents WHERE id = ? AND deleted_at IS NULL`,
     [contentId]
   );
   if (!fileRows.length) {
@@ -1100,15 +1106,11 @@ async function generateFinalSignedPDF(contentId) {
   const [logs] = await db.execute(`
     SELECT
       al.signed_as_proxy,
-              ${getFullNameWithJobNameSQLWithAlias('u_actual', 'jn_actual')} AS actual_signer,
-        ${getFullNameWithJobNameSQLWithAlias('u_original', 'jn_original')} AS original_user,
+      ${getFullNameWithJobNameSQLWithAlias('u_actual', 'jn_actual')} AS actual_signer,
+      ${getFullNameWithJobNameSQLWithAlias('u_original', 'jn_original')} AS original_user,
       u_actual.first_name AS actual_first_name,
-      u_actual.second_name AS actual_second_name,
-      u_actual.third_name AS actual_third_name,
       u_actual.last_name AS actual_last_name,
       u_original.first_name AS original_first_name,
-      u_original.second_name AS original_second_name,
-      u_original.third_name AS original_third_name,
       u_original.last_name AS original_last_name,
       al.signature,
       al.electronic_signature,
@@ -1153,6 +1155,14 @@ async function generateFinalSignedPDF(contentId) {
     }
     return text;
   };
+  
+  // دالة مساعدة لبناء الاسم مع المسمى والاسم الأول والأخير فقط
+  const buildNameForPDF = (firstName, lastName, jobName) => {
+    const nameParts = [firstName, lastName].filter(part => part && part.trim());
+    const fullName = nameParts.join(' ');
+    return (jobName && typeof jobName === 'string' && jobName.trim()) ? `${jobName} ${fullName}` : fullName;
+  };
+  
   // استخدام الدالة المستوردة من userUtils.js
 
   // تعريف خط Amiri العربي
@@ -1176,7 +1186,7 @@ async function generateFinalSignedPDF(contentId) {
 
   // 5) جلب اسم الملف لعرضه كعنوان
   const [contentRows] = await db.execute(
-    `SELECT title FROM contents WHERE id = ?`,
+    `SELECT title FROM contents WHERE id = ? AND deleted_at IS NULL`,
     [contentId]
   );
   const rawTitle = contentRows.length > 0 ? contentRows[0].title : '';
@@ -1241,18 +1251,12 @@ async function generateFinalSignedPDF(contentId) {
       day: '2-digit'
     });
 
-    // بناء الاسم الكامل للموقع الفعلي مع job name
-    const actualSignerFullName = buildFullName(
+    // بناء الاسم الكامل للموقع الفعلي مع job name (الاسم الأول والأخير فقط)
+    const actualSignerFullNameWithJob = buildNameForPDF(
       log.actual_first_name,
-      log.actual_second_name,
-      log.actual_third_name,
-      log.actual_last_name
+      log.actual_last_name,
+      log.actual_job_name
     ) || log.actual_signer || 'N/A';
-    
-    // إضافة job name للاسم الكامل
-    const actualSignerFullNameWithJob = log.actual_job_name && log.actual_job_name.trim() 
-      ? `${log.actual_job_name} ${actualSignerFullName}`
-      : actualSignerFullName;
 
     // إضافة صف الاعتماد مع معالجة النصوص العربية
     approvalTableBody.push([
@@ -1266,18 +1270,12 @@ async function generateFinalSignedPDF(contentId) {
 
     // إذا كان تفويض، أضف صف إضافي للمفوض الأصلي
     if (log.signed_as_proxy && log.original_user) {
-      // بناء الاسم الكامل للمفوض الأصلي مع job name
-      const originalUserFullName = buildFullName(
+      // بناء الاسم الكامل للمفوض الأصلي مع job name (الاسم الأول والأخير فقط)
+      const originalUserFullNameWithJob = buildNameForPDF(
         log.original_first_name,
-        log.original_second_name,
-        log.original_third_name,
-        log.original_last_name
+        log.original_last_name,
+        log.original_job_name
       ) || log.original_user || 'N/A';
-      
-      // إضافة job name للاسم الكامل للمفوض الأصلي
-      const originalUserFullNameWithJob = log.original_job_name && log.original_job_name.trim()
-        ? `${log.original_job_name} ${originalUserFullName}`
-        : originalUserFullName;
 
       approvalTableBody.push([
         { text: '(Proxy for)', style: 'proxyCell' },
@@ -1468,6 +1466,9 @@ const getAssignedApprovals = async (req, res) => {
       LEFT JOIN users u_reject ON al_reject.approver_id = u_reject.id
       LEFT JOIN job_names jn_reject ON u_reject.job_name_id = jn_reject.id
       WHERE c.approval_status IN ('pending', 'approved', 'rejected')
+        AND c.deleted_at IS NULL
+        AND f.deleted_at IS NULL
+        AND d.deleted_at IS NULL
       GROUP BY c.id
     `;
 
@@ -1844,7 +1845,7 @@ const acceptProxyDelegation = async (req, res) => {
 
     // جلب تسلسل الاعتماد (custom أو department)
     const [contentRows] = await db.execute(
-      'SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ?',
+              'SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ? AND deleted_at IS NULL',
       [contentId]
     );
     let sequence = [];
@@ -1859,13 +1860,13 @@ const acceptProxyDelegation = async (req, res) => {
     if (!useCustom && contentRows.length && contentRows[0].folder_id) {
       const folderId = contentRows[0].folder_id;
       const [folderRows] = await db.execute(
-        'SELECT department_id FROM folders WHERE id = ?',
+        'SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL',
         [folderRows[0].folder_id]
       );
       if (folderRows.length) {
         const departmentId = folderRows[0].department_id;
         const [deptRows] = await db.execute(
-          'SELECT approval_sequence FROM departments WHERE id = ?',
+          'SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL',
           [departmentId]
         );
         if (deptRows.length && deptRows[0].approval_sequence) {
@@ -2244,6 +2245,7 @@ const revokeAllDelegations = async (req, res) => {
     const [allContentRows] = await db.execute(`
       SELECT id, custom_approval_sequence 
       FROM contents
+      WHERE deleted_at IS NULL
     `);
     
 
@@ -2292,6 +2294,7 @@ const revokeAllDelegations = async (req, res) => {
     const [allDeptRows] = await db.execute(`
       SELECT id, approval_sequence 
       FROM departments
+      WHERE deleted_at IS NULL
     `);
     
 
@@ -2318,7 +2321,7 @@ const revokeAllDelegations = async (req, res) => {
         let newDeptSequence = [];
         
         for (let i = 0; i < currentSequence.length; i++) {
-          if (Number(currentSequence[i]) === Number(delegateeId)) {
+        if (Number(currentSequence[i]) === Number(delegateeId)) {
             // استبدال المفوض إليه بالمفوض الأصلي في نفس المكان
             newDeptSequence.push(Number(userId));
   
@@ -2346,11 +2349,11 @@ const revokeAllDelegations = async (req, res) => {
         );
         
         // جلب القسم المرتبط بالملف
-        const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ?', [row.content_id]);
+        const [folderRows] = await db.execute('SELECT folder_id FROM contents WHERE id = ? AND deleted_at IS NULL', [row.content_id]);
         if (folderRows.length) {
           const folderId = folderRows[0].folder_id;
           // جلب التسلسل من جدول الملفات (custom_approval_sequence) أو من القسم (approval_sequence)
-          const [contentRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ?', [row.content_id]);
+          const [contentRows] = await db.execute('SELECT custom_approval_sequence FROM contents WHERE id = ? AND deleted_at IS NULL', [row.content_id]);
           let customSeqRaw = contentRows.length ? contentRows[0].custom_approval_sequence : null;
           let usedCustom = false;
           let seqArr = [];
@@ -2362,10 +2365,10 @@ const revokeAllDelegations = async (req, res) => {
             } catch { seqArr = []; }
           } else {
             // جلب من القسم
-            const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+            const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL', [folderId]);
             if (deptRows.length) {
               const departmentId = deptRows[0].department_id;
-              const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+              const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [departmentId]);
               if (seqRows.length && seqRows[0].approval_sequence) {
                 let seqRaw = seqRows[0].approval_sequence;
                 try {
@@ -2401,7 +2404,7 @@ const revokeAllDelegations = async (req, res) => {
               await db.execute('UPDATE contents SET custom_approval_sequence = ? WHERE id = ?', [JSON.stringify(seqArr), row.content_id]);
             } else {
               // جلب القسم مرة أخرى
-              const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+              const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL', [folderId]);
               if (deptRows.length) {
                 const departmentId = deptRows[0].department_id;
                 await db.execute('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(seqArr), departmentId]);
@@ -2662,7 +2665,7 @@ const processBulkDelegation = async (req, res) => {
         // جلب تسلسل الاعتماد (custom أو approval)
         let sequence = [];
         let useCustom = false;
-        const [contentRows] = await db.execute('SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ?', [fileId]);
+        const [contentRows] = await db.execute('SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ? AND deleted_at IS NULL', [fileId]);
         if (contentRows.length && contentRows[0].custom_approval_sequence) {
           try {
             let raw = fixSequenceString(contentRows[0].custom_approval_sequence);
@@ -2676,10 +2679,10 @@ const processBulkDelegation = async (req, res) => {
           } catch { sequence = []; }
         } else if (contentRows.length && contentRows[0].folder_id) {
           const folderId = contentRows[0].folder_id;
-          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL', [folderId]);
           if (deptRows.length) {
             const departmentId = deptRows[0].department_id;
-            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [departmentId]);
             if (seqRows.length && seqRows[0].approval_sequence) {
               try {
                 let raw = fixSequenceString(seqRows[0].approval_sequence);
@@ -2741,12 +2744,12 @@ const processBulkDelegation = async (req, res) => {
         // تحديث approval_sequence في جدول departments أيضاً إذا كان هناك folder_id
         if (contentRows.length && contentRows[0].folder_id) {
           const folderId = contentRows[0].folder_id;
-          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL', [folderId]);
           if (deptRows.length) {
             const departmentId = deptRows[0].department_id;
             
             // جلب approval_sequence الحالي من جدول departments
-            const [currentDeptSeq] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+            const [currentDeptSeq] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [departmentId]);
             let currentSequence = [];
             if (currentDeptSeq.length && currentDeptSeq[0].approval_sequence) {
               try {
@@ -2778,7 +2781,7 @@ const processBulkDelegation = async (req, res) => {
     
             
             // التحقق من أن التحديث تم بنجاح
-            const [verifyUpdate] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+            const [verifyUpdate] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [departmentId]);
             if (verifyUpdate.length) {
       
             }
@@ -3107,7 +3110,7 @@ const processBulkDelegationUnified = async (req, res) => {
         // جلب تسلسل الاعتماد (custom أو approval)
         let sequence = [];
         let useCustom = false;
-        const [contentRows] = await db.execute('SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ?', [fileId]);
+        const [contentRows] = await db.execute('SELECT custom_approval_sequence, folder_id FROM contents WHERE id = ? AND deleted_at IS NULL', [fileId]);
         if (contentRows.length && contentRows[0].custom_approval_sequence) {
           try {
             let raw = fixSequenceString(contentRows[0].custom_approval_sequence);
@@ -3121,10 +3124,10 @@ const processBulkDelegationUnified = async (req, res) => {
           } catch { sequence = []; }
         } else if (contentRows.length && contentRows[0].folder_id) {
           const folderId = contentRows[0].folder_id;
-          const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ?', [folderId]);
+                      const [deptRows] = await db.execute('SELECT department_id FROM folders WHERE id = ? AND deleted_at IS NULL', [folderId]);
           if (deptRows.length) {
             const departmentId = deptRows[0].department_id;
-            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ?', [departmentId]);
+            const [seqRows] = await db.execute('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [departmentId]);
             if (seqRows.length && seqRows[0].approval_sequence) {
               try {
                 let raw = fixSequenceString(seqRows[0].approval_sequence);
@@ -3224,6 +3227,7 @@ const processBulkDelegationUnified = async (req, res) => {
         SELECT id, custom_approval_sequence 
         FROM contents 
         WHERE custom_approval_sequence IS NOT NULL AND custom_approval_sequence != ''
+          AND deleted_at IS NULL
       `);
       
       console.log('[PROCESS BULK UNIFIED] Processing all contents with custom sequence:', allContentRows.length);
@@ -3279,6 +3283,7 @@ const processBulkDelegationUnified = async (req, res) => {
       const [allDeptRows] = await db.execute(`
         SELECT id, approval_sequence 
         FROM departments
+        WHERE deleted_at IS NULL
       `);
       
       
@@ -3606,7 +3611,7 @@ const getDelegationConfirmations = async (req, res) => {
       let fileInfo = null;
       if (row.content_id) {
         try {
-          const [contentRows] = await db.execute('SELECT title FROM contents WHERE id = ?', [row.content_id]);
+          const [contentRows] = await db.execute('SELECT title FROM contents WHERE id = ? AND deleted_at IS NULL', [row.content_id]);
           if (contentRows.length > 0) {
             fileInfo = {
               id: row.content_id,
