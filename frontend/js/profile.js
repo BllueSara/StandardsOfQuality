@@ -31,6 +31,148 @@ function parseLocalized(text) {
   }
 }
 
+// ========== الدوال الآمنة ==========
+
+/**
+ * فك تشفير JWT token بشكل آمن
+ * @param {string} token - JWT token
+ * @returns {object|null} - Decoded payload or null if invalid
+ */
+function safeDecodeJWT(token) {
+    try {
+        if (!token || typeof token !== 'string') {
+            return null;
+        }
+        
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return null;
+        }
+        
+        const payload = parts[1];
+        const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+        const decoded = atob(paddedPayload);
+        
+        return JSON.parse(decoded);
+    } catch (error) {
+        console.warn('فشل في فك تشفير JWT token:', error.message);
+        return null;
+    }
+}
+
+/**
+ * جلب معلومات المستخدم من الباك اند (بديل آمن لـ atob)
+ * @param {string} token - JWT token (optional)
+ * @returns {Promise<object|null>} - User info from backend or null if error
+ */
+async function getUserInfoFromBackend(token = null) {
+    try {
+        const authToken = token || localStorage.getItem('token');
+        if (!authToken) {
+            return null;
+        }
+
+        const response = await fetch('http://localhost:3006/api/auth/user-info', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.warn('فشل في جلب معلومات المستخدم من الباك اند:', response.status);
+            return null;
+        }
+
+        const result = await response.json();
+        if (result.status === 'success' && result.data) {
+            return result.data;
+        }
+
+        return null;
+    } catch (error) {
+        console.error('خطأ في جلب معلومات المستخدم من الباك اند:', error);
+        return null;
+    }
+}
+
+/**
+ * بديل آمن لـ atob - يستخدم الباك اند لجلب معلومات المستخدم
+ * @param {string} token - JWT token (optional)
+ * @returns {Promise<object|null>} - User info or null
+ */
+async function safeGetUserInfo(token = null) {
+    // محاولة جلب المعلومات من الباك اند أولاً (الطريقة الآمنة)
+    const backendInfo = await getUserInfoFromBackend(token);
+    if (backendInfo) {
+        return backendInfo;
+    }
+
+    // في حالة فشل الباك اند، نستخدم فك التشفير المحلي كبديل
+    console.warn('استخدام فك التشفير المحلي كبديل...');
+    const authToken = token || localStorage.getItem('token');
+    if (!authToken) {
+        return null;
+    }
+
+    const payload = safeDecodeJWT(authToken);
+    return payload;
+}
+
+// دالة لفك تشفير JWT والحصول على معلومات المستخدم (تستخدم الطريقة الآمنة الجديدة)
+async function parseJwt(token) {
+    try {
+        const payload = await safeGetUserInfo(token);
+        return payload;
+    } catch (e) {
+        console.error('Error parsing JWT:', e);
+        return null;
+    }
+}
+
+// دالة لجلب معلومات المستخدم من الخادم
+async function fetchUserProfile(userId) {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            throw new Error('No token available');
+        }
+
+        const response = await fetch(`http://localhost:3006/api/users/${userId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Unauthorized - Please login again');
+            } else if (response.status === 404) {
+                throw new Error('User not found');
+            } else {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        }
+
+        const result = await response.json();
+        console.log('📡 استجابة الخادم:', result);
+        
+        if (result.status === 'success' && result.data) {
+            console.log('✅ بيانات المستخدم من الخادم:', result.data);
+            console.log('🎯 المنصب الإداري من الخادم:', result.data.job_title);
+            return result.data;
+        } else {
+            throw new Error('Invalid response format');
+        }
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const fullNameSpan = document.getElementById('profile-full-name');
     const usernameSpan = document.getElementById('profile-username');
@@ -63,148 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // إنشاء مودال تعديل الملف الشخصي
     createEditProfileModal();
-
-    // ========== الدوال الآمنة من utils.js ==========
-    
-    /**
-     * فك تشفير JWT token بشكل آمن
-     * @param {string} token - JWT token
-     * @returns {object|null} - Decoded payload or null if invalid
-     */
-    function safeDecodeJWT(token) {
-        try {
-            if (!token || typeof token !== 'string') {
-                return null;
-            }
-            
-            const parts = token.split('.');
-            if (parts.length !== 3) {
-                return null;
-            }
-            
-            const payload = parts[1];
-            const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
-            const decoded = atob(paddedPayload);
-            
-            return JSON.parse(decoded);
-        } catch (error) {
-            console.warn('فشل في فك تشفير JWT token:', error.message);
-            return null;
-        }
-    }
-
-    /**
-     * جلب معلومات المستخدم من الباك اند (بديل آمن لـ atob)
-     * @param {string} token - JWT token (optional)
-     * @returns {Promise<object|null>} - User info from backend or null if error
-     */
-    async function getUserInfoFromBackend(token = null) {
-        try {
-            const authToken = token || localStorage.getItem('token');
-            if (!authToken) {
-                return null;
-            }
-
-            const response = await fetch('http://localhost:3006/api/auth/user-info', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                console.warn('فشل في جلب معلومات المستخدم من الباك اند:', response.status);
-                return null;
-            }
-
-            const result = await response.json();
-            if (result.status === 'success' && result.data) {
-                return result.data;
-            }
-
-            return null;
-        } catch (error) {
-            console.error('خطأ في جلب معلومات المستخدم من الباك اند:', error);
-            return null;
-        }
-    }
-
-    /**
-     * بديل آمن لـ atob - يستخدم الباك اند لجلب معلومات المستخدم
-     * @param {string} token - JWT token (optional)
-     * @returns {Promise<object|null>} - User info or null
-     */
-    async function safeGetUserInfo(token = null) {
-        // محاولة جلب المعلومات من الباك اند أولاً (الطريقة الآمنة)
-        const backendInfo = await getUserInfoFromBackend(token);
-        if (backendInfo) {
-            return backendInfo;
-        }
-
-        // في حالة فشل الباك اند، نستخدم فك التشفير المحلي كبديل
-        console.warn('استخدام فك التشفير المحلي كبديل...');
-        const authToken = token || localStorage.getItem('token');
-        if (!authToken) {
-            return null;
-        }
-
-        const payload = safeDecodeJWT(authToken);
-        return payload;
-    }
-
-    // دالة لفك تشفير JWT والحصول على معلومات المستخدم (تستخدم الطريقة الآمنة الجديدة)
-    async function parseJwt(token) {
-        try {
-            const payload = await safeGetUserInfo(token);
-            return payload;
-        } catch (e) {
-            console.error('Error parsing JWT:', e);
-            return null;
-        }
-    }
-
-    // دالة لجلب معلومات المستخدم من الخادم
-    async function fetchUserProfile(userId) {
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('No token available');
-            }
-
-            const response = await fetch(`http://localhost:3006/api/users/${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Unauthorized - Please login again');
-                } else if (response.status === 404) {
-                    throw new Error('User not found');
-                } else {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-            }
-
-            const result = await response.json();
-            console.log('📡 استجابة الخادم:', result);
-            
-            if (result.status === 'success' && result.data) {
-                console.log('✅ بيانات المستخدم من الخادم:', result.data);
-                console.log('🎯 المنصب الإداري من الخادم:', result.data.job_title);
-                return result.data;
-            } else {
-                throw new Error('Invalid response format');
-            }
-        } catch (error) {
-            console.error('Error fetching user profile:', error);
-            return null;
-        }
-    }
 
     // جلب التوكن من localStorage
     const token = localStorage.getItem('token');
@@ -789,45 +789,6 @@ async function fetchJobNamesForEditModal(selectedId, selectedName) {
         
     } catch (error) {
         console.error('Error fetching job names for edit modal:', error);
-    }
-}
-
-// دالة مساعدة لجلب بيانات المستخدم
-async function fetchUserProfile(userId) {
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No token available');
-        }
-
-        const response = await fetch(`http://localhost:3006/api/users/${userId}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('Unauthorized - Please login again');
-            } else if (response.status === 404) {
-                throw new Error('User not found');
-            } else {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-        }
-
-        const result = await response.json();
-        
-        if (result.status === 'success' && result.data) {
-            return result.data;
-        } else {
-            throw new Error('Invalid response format');
-        }
-    } catch (error) {
-        console.error('Error fetching user profile:', error);
-        return null;
     }
 }
 

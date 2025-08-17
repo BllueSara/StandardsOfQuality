@@ -2,7 +2,79 @@
 // Add JavaScript specific to the departments page here
 const apiBase      = 'http://localhost:3006/api';
 
-document.addEventListener('DOMContentLoaded', async function() {
+// Wait for all scripts to load and DOM to be ready
+function initializeDeletedItemsButton() {
+    console.log('Initializing deleted items button...');
+    console.log('Document ready state:', document.readyState);
+    console.log('Page header elements:', document.querySelectorAll('.page-header'));
+    console.log('H1 elements:', document.querySelectorAll('h1'));
+    
+    // Initialize deleted items modal
+    let deletedItemsModal;
+    if (typeof DeletedItemsModal !== 'undefined') {
+        deletedItemsModal = new DeletedItemsModal();
+        console.log('DeletedItemsModal initialized successfully');
+    } else {
+        console.error('DeletedItemsModal class not found');
+        console.log('Available global objects:', Object.keys(window));
+        return;
+    }
+    
+    // Add deleted items button
+    const pageHeader = document.querySelector('.page-header');
+    console.log('Page header found:', pageHeader);
+    
+    if (pageHeader) {
+        const deletedItemsBtn = document.createElement('button');
+        deletedItemsBtn.className = 'btn-primary deleted-items-btn';
+        deletedItemsBtn.style.cssText = 'background: red !important; color: white !important; padding: 10px 20px !important; border: none !important; border-radius: 5px !important; cursor: pointer !important; margin-left: 20px !important; display: inline-block !important;';
+        deletedItemsBtn.innerHTML = `
+            <i class="fas fa-trash-restore"></i>
+            <span data-translate="deleted-items">ما تم حذفه</span>
+        `;
+        
+        const title = pageHeader.querySelector('h1');
+        console.log('Title element found:', title);
+        
+        if (title) {
+            title.parentNode.insertBefore(deletedItemsBtn, title.nextSibling);
+            console.log('Deleted items button inserted successfully');
+        } else {
+            console.log('Title element not found, inserting at end of page-header');
+            pageHeader.appendChild(deletedItemsBtn);
+        }
+        
+        // Add click event to open modal
+        deletedItemsBtn.addEventListener('click', () => {
+            if (deletedItemsModal) {
+                deletedItemsModal.show('departments');
+            } else {
+                console.error('DeletedItemsModal not initialized');
+            }
+        });
+    } else {
+        console.log('Page header not found');
+        // Try to find alternative elements
+        const h1Elements = document.querySelectorAll('h1');
+        console.log('Found H1 elements:', h1Elements);
+        if (h1Elements.length > 0) {
+            console.log('First H1 parent:', h1Elements[0].parentElement);
+        }
+    }
+}
+
+// Try to initialize immediately if DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initializeDeletedItemsButton, 100);
+    });
+} else {
+    // DOM is already ready
+    setTimeout(initializeDeletedItemsButton, 100);
+}
+
+// Main function to initialize the page
+async function initializeDepartmentsPage() {
     // دالة إظهار التوست
     function showToast(message, type = 'info', duration = 3000) {
         let toastContainer = document.getElementById('toast-container');
@@ -628,10 +700,18 @@ editModalSaveBtn.addEventListener('click', async () => {
     });
 
     // Init
-await fetchPermissions();
-updateAddButtonVisibility();
-await fetchDepartments();
-updateSearchPlaceholder();
+    await fetchPermissions();
+    updateAddButtonVisibility();
+    await fetchDepartments();
+    updateSearchPlaceholder();
 
     window.goBack = () => window.history.back();
-});
+}
+
+// Call the main function when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDepartmentsPage);
+} else {
+    // DOM is already ready
+    initializeDepartmentsPage();
+}

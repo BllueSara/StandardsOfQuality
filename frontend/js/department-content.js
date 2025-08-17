@@ -288,6 +288,49 @@ function renderEditFolderNames(list) {
 
 
 document.addEventListener('DOMContentLoaded',async function() {
+  console.log('DOM loaded in department-content.js');
+    
+    // Initialize deleted items modal
+    let deletedItemsModal;
+    if (typeof DeletedItemsModal !== 'undefined') {
+        deletedItemsModal = new DeletedItemsModal();
+    }
+    
+    // Add deleted items button
+    const pageHeader = document.querySelector('.page-header');
+    console.log('Page header found:', pageHeader);
+    
+    if (pageHeader) {
+        const deletedItemsBtn = document.createElement('button');
+        deletedItemsBtn.className = 'btn-primary deleted-items-btn';
+        deletedItemsBtn.innerHTML = `
+            <i class="fas fa-trash-restore"></i>
+            <span data-translate="deleted-items">ما تم حذفه</span>
+        `;
+        
+        const title = pageHeader.querySelector('h1');
+        console.log('Title element found:', title);
+        
+        if (title) {
+            title.parentNode.insertBefore(deletedItemsBtn, title.nextSibling);
+            console.log('Deleted items button inserted successfully');
+        } else {
+            console.log('Title element not found, inserting at end of page-header');
+            pageHeader.appendChild(deletedItemsBtn);
+        }
+        
+        // Add click event to open modal
+        deletedItemsBtn.addEventListener('click', () => {
+            if (deletedItemsModal) {
+                deletedItemsModal.show('content');
+            } else {
+                console.error('DeletedItemsModal not initialized');
+            }
+        });
+    } else {
+        console.log('Page header not found');
+    }
+
     // console.log('DOMContentLoaded event fired in department-content.js');
    const toggleBtn   = document.getElementById('folderNameToggle');
   const menu        = document.getElementById('folderNameMenu');

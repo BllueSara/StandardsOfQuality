@@ -65,6 +65,12 @@ const statusList = ['pending', 'approved', 'rejected'];
 let currentGroupIndex = 0;
 let isBulkDelegation = false; // متغير عالمي لتحديد وضع التفويض الجماعي
 
+// متغيرات جديدة لحماية من النقر المتكرر
+let isProcessingApproval = false;
+let isProcessingSignature = false;
+let isProcessingDelegation = false;
+let processingTimeout = null;
+
 // Toast notification function
 function showToast(message, type = 'info', duration = 3000) {
     let toastContainer = document.getElementById('toast-container');
@@ -92,6 +98,126 @@ function showToast(message, type = 'info', duration = 3000) {
             toast.remove();
         }, 500); // Should match CSS animation duration
     }, duration);
+}
+
+// دالة جديدة لحماية الأزرار من النقر المتكرر
+function setButtonProcessingState(button, isProcessing, processingText = 'جاري المعالجة...', originalText = null) {
+  if (!button) return;
+  
+  if (isProcessing) {
+    // حفظ النص الأصلي إذا لم يتم حفظه من قبل
+    if (!originalText) {
+      button.dataset.originalText = button.innerHTML;
+    }
+    
+    // تعطيل الزر وإظهار حالة المعالجة
+    button.disabled = true;
+    button.style.opacity = '0.6';
+    button.style.cursor = 'not-allowed';
+    button.style.pointerEvents = 'none';
+    button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${processingText}`;
+    
+    // إضافة مؤشر بصري
+    button.classList.add('processing');
+    
+    // إضافة CSS إضافي لتحسين المظهر
+    button.style.transition = 'all 0.3s ease';
+    button.style.transform = 'scale(0.98)';
+    button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+  } else {
+    // إعادة تفعيل الزر وإعادة النص الأصلي
+    button.disabled = false;
+    button.style.opacity = '1';
+    button.style.cursor = 'pointer';
+    button.style.pointerEvents = 'auto';
+    button.innerHTML = button.dataset.originalText || originalText || button.innerHTML;
+    
+    // إزالة المؤشر البصري
+    button.classList.remove('processing');
+    
+    // إعادة تعيين CSS
+    button.style.transform = 'scale(1)';
+    button.style.boxShadow = '';
+  }
+}
+
+// دالة لحماية من النقر المتكرر مع timeout
+function protectFromDoubleClick(button, processingText = 'جاري المعالجة...') {
+  if (!button || button.disabled) return false;
+  
+  // تعطيل الزر فوراً
+  setButtonProcessingState(button, true, processingText);
+  
+  // إعادة تفعيل الزر بعد 5 ثواني كحد أقصى
+  if (processingTimeout) {
+    clearTimeout(processingTimeout);
+  }
+  
+  processingTimeout = setTimeout(() => {
+    if (button) {
+      setButtonProcessingState(button, false);
+    }
+  }, 5000);
+  
+  return true;
+}
+
+// دالة لتعطيل جميع أزرار البطاقة
+function disableCardActions(contentId) {
+  const card = document.querySelector(`.approval-card[data-id="${contentId}"]`);
+  if (!card) return;
+  
+  const actionButtons = card.querySelectorAll('button');
+  actionButtons.forEach(button => {
+    button.disabled = true;
+    button.style.opacity = '0.5';
+    button.style.cursor = 'not-allowed';
+    button.style.pointerEvents = 'none';
+    
+    // إضافة مؤشر بصري
+    button.classList.add('processing');
+    
+    // حفظ النص الأصلي
+    if (!button.dataset.originalText) {
+      button.dataset.originalText = button.innerHTML;
+    }
+    
+    // إضافة نص المعالجة
+    button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...`;
+    
+    // إضافة CSS إضافي لتحسين المظهر
+    button.style.transition = 'all 0.3s ease';
+    button.style.transform = 'scale(0.95)';
+    button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    button.style.filter = 'grayscale(30%)';
+  });
+}
+
+// دالة لإعادة تفعيل جميع أزرار البطاقة
+function enableCardActions(contentId) {
+  const card = document.querySelector(`.approval-card[data-id="${contentId}"]`);
+  if (!card) return;
+  
+  const actionButtons = card.querySelectorAll('button');
+  actionButtons.forEach(button => {
+    button.disabled = false;
+    button.style.opacity = '1';
+    button.style.cursor = 'pointer';
+    button.style.pointerEvents = 'auto';
+    
+    // إزالة المؤشر البصري
+    button.classList.remove('processing');
+    
+    // إعادة النص الأصلي
+    if (button.dataset.originalText) {
+      button.innerHTML = button.dataset.originalText;
+    }
+    
+    // إعادة تعيين CSS
+    button.style.transform = 'scale(1)';
+    button.style.boxShadow = '';
+    button.style.filter = '';
+  });
 }
 
 // جلب صلاحيات المستخدم
@@ -178,6 +304,14 @@ function getLocalizedName(name) {
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) modal.style.display = 'none';
+  
+  // إعادة تفعيل أزرار البطاقة إذا كان المودال هو مودال الرفض أو التوقيع الإلكتروني أو التفويض
+  if ((modalId === 'rejectModal' || modalId === 'qrModal' || modalId === 'delegateModal') && selectedContentId) {
+    const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
+    if (card && card.dataset.status === 'pending') {
+      enableCardActions(selectedContentId);
+    }
+  }
 }
 
 function setupCloseButtons() {
@@ -223,6 +357,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnSendReason.addEventListener('click', async () => {
       const reason = document.getElementById('rejectReason').value.trim();
       if (!reason) return showToast(getTranslation('please-enter-reason'), 'warning');
+      
+      // حماية من النقر المتكرر
+      if (!protectFromDoubleClick(btnSendReason, 'جاري إرسال الرفض...')) {
+        return;
+      }
+      
       try {
         await fetchJSON(`${apiBase}/contents/rejections/${selectedContentId}`, {
           method: 'POST',
@@ -235,7 +375,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) {
         console.error('Failed to send rejection:', e);
         showToast(getTranslation('error-sending'), 'error');
+        // إعادة تفعيل الزر في حالة الخطأ
+        setButtonProcessingState(btnSendReason, false);
+        // إعادة تفعيل أزرار البطاقة في حالة الخطأ
+        enableCardActions(selectedContentId);
       }
+    });
+  }
+
+  // إضافة معالجة للإلغاء في مودال الرفض
+  const btnCancelReject = document.getElementById('btnCancelReject');
+  if (btnCancelReject) {
+    btnCancelReject.addEventListener('click', () => {
+      // إعادة تفعيل أزرار البطاقة عند الإلغاء
+      if (selectedContentId) {
+        enableCardActions(selectedContentId);
+      }
+      
+      // إعادة تفعيل زر الإرسال إذا كان معطلاً
+      const btnSendReason = document.getElementById('btnSendReason');
+      if (btnSendReason && btnSendReason.disabled) {
+        setButtonProcessingState(btnSendReason, false);
+      }
+      
+      closeModal('rejectModal');
     });
   }
 
@@ -581,13 +744,18 @@ function initActions() {
   document.querySelectorAll('.approval-card .btn-sign').forEach(btn => {
     btn.addEventListener('click', e => {
       const id = e.target.closest('.approval-card').dataset.id;
+      // تعطيل جميع أزرار البطاقة فوراً
+      disableCardActions(id);
       openSignatureModal(id);
     });
   });
 
   document.querySelectorAll('.approval-card .btn-delegate').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      selectedContentId = e.target.closest('.approval-card').dataset.id;
+      const id = e.target.closest('.approval-card').dataset.id;
+      // تعطيل جميع أزرار البطاقة فوراً
+      disableCardActions(id);
+      selectedContentId = id;
       // فتح مودال اختيار المستخدم أولاً
       openModal('delegateModal');
       loadDepartments();
@@ -596,14 +764,20 @@ function initActions() {
   
   document.querySelectorAll('.approval-card .btn-qr').forEach(btn => {
     btn.addEventListener('click', e => {
-      selectedContentId = e.target.closest('.approval-card').dataset.id;
+      const id = e.target.closest('.approval-card').dataset.id;
+      // تعطيل جميع أزرار البطاقة فوراً
+      disableCardActions(id);
+      selectedContentId = id;
       openModal('qrModal');
     });
   });
 
   document.querySelectorAll('.approval-card .btn-reject').forEach(btn => {
     btn.addEventListener('click', e => {
-      selectedContentId = e.target.closest('.approval-card').dataset.id;
+      const id = e.target.closest('.approval-card').dataset.id;
+      // تعطيل جميع أزرار البطاقة فوراً
+      disableCardActions(id);
+      selectedContentId = id;
       openModal('rejectModal');
     });
   });
@@ -713,6 +887,12 @@ else {
 document.getElementById('btnElectronicApprove')?.addEventListener('click', async () => {
   if (!selectedContentId) return alert(getTranslation('please-select-user'));
 
+  // حماية من النقر المتكرر
+  const btnElectronicApprove = document.getElementById('btnElectronicApprove');
+  if (!protectFromDoubleClick(btnElectronicApprove, 'جاري التوقيع...')) {
+    return;
+  }
+
   const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
   const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
 
@@ -733,8 +913,31 @@ document.getElementById('btnElectronicApprove')?.addEventListener('click', async
   } catch (err) {
     console.error('Failed to electronically approve:', err);
     showToast(getTranslation('error-sending'), 'error');
+    // إعادة تفعيل الزر في حالة الخطأ
+    setButtonProcessingState(btnElectronicApprove, false);
+    // إعادة تفعيل أزرار البطاقة في حالة الخطأ
+    enableCardActions(selectedContentId);
   }
 });
+
+// إضافة معالجة للإلغاء في مودال التوقيع الإلكتروني
+const btnCancelQr = document.getElementById('btnCancelQr');
+if (btnCancelQr) {
+  btnCancelQr.addEventListener('click', () => {
+    // إعادة تفعيل أزرار البطاقة عند الإلغاء
+    if (selectedContentId) {
+      enableCardActions(selectedContentId);
+    }
+    
+    // إعادة تفعيل زر التوقيع إذا كان معطلاً
+    const btnElectronicApprove = document.getElementById('btnElectronicApprove');
+    if (btnElectronicApprove && btnElectronicApprove.disabled) {
+      setButtonProcessingState(btnElectronicApprove, false);
+    }
+    
+    closeModal('qrModal');
+  });
+}
 
 function openSignatureModal(contentId) {
   selectedContentId = contentId;
@@ -771,6 +974,14 @@ function openSignatureModal(contentId) {
 function closeSignatureModal() {
   document.getElementById('signatureModal').style.display = 'none';
   clearCanvas();
+  
+  // إعادة تفعيل أزرار البطاقة إذا لم يتم الاعتماد
+  if (selectedContentId) {
+    const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
+    if (card && card.dataset.status === 'pending') {
+      enableCardActions(selectedContentId);
+    }
+  }
 }
 
 function clearCanvas() {
@@ -860,6 +1071,15 @@ function setupSignatureModal() {
     closeSignatureModal();
   });
   
+  function handleCancelClick() {
+    // إعادة تفعيل أزرار البطاقة عند الإلغاء
+    if (selectedContentId) {
+      enableCardActions(selectedContentId);
+    }
+    
+    closeSignatureModal();
+  }
+  
   document.getElementById('btnConfirmSignature').addEventListener('click', async () => {
     // التحقق من وجود توقيع
     if (!currentSignature) {
@@ -870,6 +1090,12 @@ function setupSignatureModal() {
     const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
     if (!card) {
       showToast(getTranslation('error-loading') || 'خطأ في تحميل البيانات', 'error');
+      return;
+    }
+    
+    // حماية من النقر المتكرر
+    const confirmButton = document.getElementById('btnConfirmSignature');
+    if (!protectFromDoubleClick(confirmButton, 'جاري إرسال التوقيع...')) {
       return;
     }
     
@@ -926,6 +1152,10 @@ function setupSignatureModal() {
     } catch (err) {
       console.error('Failed to send signature:', err);
       showToast(getTranslation('error-sending'), 'error');
+      // إعادة تفعيل الزر في حالة الخطأ
+      setButtonProcessingState(confirmButton, false);
+      // إعادة تفعيل أزرار البطاقة في حالة الخطأ
+      enableCardActions(selectedContentId);
     }
   });
 }
@@ -1111,6 +1341,11 @@ if (btnDelegateConfirm) {
     const notes = document.getElementById('delegateNotes').value;
     if (!userId) return showToast(getTranslation('please-select-user'), 'warning');
     
+    // حماية من النقر المتكرر
+    if (!protectFromDoubleClick(btnDelegateConfirm, 'جاري معالجة التفويض...')) {
+      return;
+    }
+    
     // إغلاق مودال التفويض
     closeModal('delegateModal');
     
@@ -1122,6 +1357,10 @@ if (btnDelegateConfirm) {
       const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
       if (!card) {
         showToast(getTranslation('error-loading') || 'خطأ في تحميل البيانات', 'error');
+        // إعادة تفعيل الزر في حالة الخطأ
+        setButtonProcessingState(btnDelegateConfirm, false);
+        // إعادة تفعيل أزرار البطاقة في حالة الخطأ
+        enableCardActions(selectedContentId);
         return;
       }
       const contentType = card.dataset.type;
@@ -1129,6 +1368,25 @@ if (btnDelegateConfirm) {
     }
     
     isBulkDelegation = false;
+  });
+}
+
+// إضافة معالجة للإلغاء في مودال التفويض
+const btnCancelDelegate = document.getElementById('btnCancelDelegate');
+if (btnCancelDelegate) {
+  btnCancelDelegate.addEventListener('click', () => {
+    // إعادة تفعيل أزرار البطاقة عند الإلغاء
+    if (selectedContentId) {
+      enableCardActions(selectedContentId);
+    }
+    
+    // إعادة تفعيل زر التأكيد إذا كان معطلاً
+    const btnDelegateConfirm = document.getElementById('btnDelegateConfirm');
+    if (btnDelegateConfirm && btnDelegateConfirm.disabled) {
+      setButtonProcessingState(btnDelegateConfirm, false);
+    }
+    
+    closeModal('delegateModal');
   });
 }
 
@@ -1734,6 +1992,19 @@ function closeDelegationConfirmationPopup() {
   activeCanvas = null;
   activeCtx = null;
   console.log('🔍 Delegation confirmation popup closed, activeCanvas reset');
+  
+  // إعادة تفعيل أزرار البطاقة إذا كان هناك contentId محدد
+  if (selectedContentId) {
+    const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
+    if (card && card.dataset.status === 'pending') {
+      enableCardActions(selectedContentId);
+    }
+  }
+  
+  // إعادة تفعيل أزرار البطاقة إذا كان هناك contentId في بيانات التفويض
+  if (currentDelegationData && currentDelegationData.contentId) {
+    enableCardActions(currentDelegationData.contentId);
+  }
 }
 
 // دالة تهيئة التوقيع
@@ -1968,6 +2239,17 @@ function rejectDelegation() {
     return;
   }
   
+  // إعادة تفعيل أزرار البطاقة عند رفض التفويض
+  if (currentDelegationData.contentId) {
+    enableCardActions(currentDelegationData.contentId);
+  }
+  
+  // إعادة تفعيل زر التأكيد إذا كان معطلاً
+  const confirmButton = document.querySelector('#delegationConfirmationPopup .btn-primary');
+  if (confirmButton && confirmButton.disabled) {
+    setButtonProcessingState(confirmButton, false);
+  }
+  
   // إغلاق البوب أب
   closeDelegationConfirmationPopup();
   
@@ -2037,10 +2319,24 @@ async function processSingleDelegation(data) {
       }, 1500);
     } else {
       showToast(result.message || 'فشل إرسال طلب التفويض', 'error');
+      // إعادة تفعيل أزرار البطاقة في حالة الفشل
+      if (data.contentId) {
+        enableCardActions(data.contentId);
+      }
     }
   } catch (error) {
     console.error('🔍 Error processing single delegation:', error);
     showToast('خطأ في إرسال طلب التفويض', 'error');
+    // إعادة تفعيل أزرار البطاقة في حالة الخطأ
+    if (data.contentId) {
+      enableCardActions(data.contentId);
+    }
+  } finally {
+    // إعادة تفعيل جميع الأزرار في حالة النجاح أو الفشل
+    const confirmButton = document.querySelector('#delegationConfirmationPopup .btn-primary');
+    if (confirmButton) {
+      setButtonProcessingState(confirmButton, false);
+    }
   }
 }
 
@@ -2082,10 +2378,24 @@ async function processBulkDelegation(data) {
       }, 1500);
     } else {
       showToast(result.message || 'فشل إرسال طلب التفويض الشامل', 'error');
+      // إعادة تفعيل أزرار البطاقة في حالة الفشل
+      if (data.contentId) {
+        enableCardActions(data.contentId);
+      }
     }
   } catch (error) {
     console.error('🔍 Error processing bulk delegation:', error);
     showToast('خطأ في إرسال طلب التفويض الشامل', 'error');
+    // إعادة تفعيل أزرار البطاقة في حالة الخطأ
+    if (data.contentId) {
+      enableCardActions(data.contentId);
+    }
+  } finally {
+    // إعادة تفعيل جميع الأزرار في حالة النجاح أو الفشل
+    const confirmButton = document.querySelector('#delegationConfirmationPopup .btn-primary');
+    if (confirmButton) {
+      setButtonProcessingState(confirmButton, false);
+    }
   }
 }
 

@@ -39,6 +39,7 @@ const dashboardRouter = require('./routers/dashboardRoutes');
 const jobTitlesRoutes = require('./routers/jobTitles');
 const jobNamesRoutes = require('./routers/jobNames');
 const superAdminRoutes = require('./routers/superAdmin.routes');
+const deletedItemsRoutes = require('./routers/deletedItemsRoutes');
 
 app.use(cors());
 app.use(express.json());
@@ -70,6 +71,7 @@ app.use('/api/approvals', approvalRouter);
 app.put('/api/contents/:id/approval-sequence', contentController.updateContentApprovalSequence);
 app.use('/api/job-titles', jobTitlesRoutes);
 app.use('/api/job-names', jobNamesRoutes);
+app.use('/api/deleted-items', deletedItemsRoutes);
 
 // Super Admin routes
 app.use('/api/super-admin', superAdminRoutes);
