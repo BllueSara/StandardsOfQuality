@@ -1103,6 +1103,105 @@ async function generateFinalSignedPDF(contentId) {
     return console.error('❌ Failed to load original PDF or electronic seal:', err);
   }
 
+  // 3) جلب الأدوار من custom_approval_roles أو approval_roles
+  let approvalRoles = [];
+  try {
+    console.log('🔍 [PDF] جلب الأدوار للملف:', contentId);
+    
+    // جرب custom_approval_roles أولاً
+    const [customRolesRows] = await db.execute(
+      'SELECT custom_approval_roles, folder_id FROM contents WHERE id = ? AND deleted_at IS NULL',
+      [contentId]
+    );
+    
+    console.log('🔍 [PDF] custom_approval_roles raw:', customRolesRows[0]?.custom_approval_roles);
+    
+    if (customRolesRows.length && customRolesRows[0].custom_approval_roles) {
+      try {
+        const rawCustomRoles = customRolesRows[0].custom_approval_roles;
+        console.log('🔍 [PDF] custom_approval_roles raw:', rawCustomRoles, 'type:', typeof rawCustomRoles);
+        
+        if (Array.isArray(rawCustomRoles)) {
+          approvalRoles = rawCustomRoles;
+          console.log('✅ [PDF] custom_approval_roles is already array:', approvalRoles);
+        } else if (typeof rawCustomRoles === 'string') {
+          // محاولة تحليل JSON
+          try {
+            approvalRoles = JSON.parse(rawCustomRoles);
+            console.log('✅ [PDF] تم تحليل custom_approval_roles JSON:', approvalRoles);
+          } catch (jsonError) {
+            // إذا فشل JSON، جرب تقسيم النص بالفاصلة
+            console.log('⚠️ [PDF] فشل تحليل JSON، جرب تقسيم النص:', rawCustomRoles);
+            if (rawCustomRoles.includes(',')) {
+              approvalRoles = rawCustomRoles.split(',').map(role => role.trim());
+              console.log('✅ [PDF] تم تقسيم النص بالفاصلة:', approvalRoles);
+            } else {
+              // إذا كان نص واحد فقط
+              approvalRoles = [rawCustomRoles.trim()];
+              console.log('✅ [PDF] نص واحد فقط:', approvalRoles);
+            }
+          }
+        } else {
+          console.log('⚠️ [PDF] custom_approval_roles نوع غير متوقع:', typeof rawCustomRoles);
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to parse custom_approval_roles:', e);
+      }
+    }
+    
+    // إذا لم يوجد custom_approval_roles، جرب approval_roles من القسم
+    if (!approvalRoles.length && customRolesRows.length) {
+      const folderId = customRolesRows[0].folder_id;
+      console.log('🔍 [PDF] جرب approval_roles من القسم، folder_id:', folderId);
+      
+      if (folderId) {
+        const [deptRows] = await db.execute(
+          'SELECT d.approval_roles FROM folders f JOIN departments d ON f.department_id = d.id WHERE f.id = ? AND f.deleted_at IS NULL',
+          [folderId]
+        );
+        
+        console.log('🔍 [PDF] department approval_roles raw:', deptRows[0]?.approval_roles);
+        
+        if (deptRows.length && deptRows[0].approval_roles) {
+          try {
+            const rawRoles = deptRows[0].approval_roles;
+            console.log('🔍 [PDF] department approval_roles raw:', rawRoles, 'type:', typeof rawRoles);
+            
+            if (Array.isArray(rawRoles)) {
+              approvalRoles = rawRoles;
+              console.log('✅ [PDF] department approval_roles is already array:', approvalRoles);
+            } else if (typeof rawRoles === 'string') {
+              // محاولة تحليل JSON
+              try {
+                approvalRoles = JSON.parse(rawRoles);
+                console.log('✅ [PDF] تم تحليل department approval_roles JSON:', approvalRoles);
+              } catch (jsonError) {
+                // إذا فشل JSON، جرب تقسيم النص بالفاصلة
+                console.log('⚠️ [PDF] فشل تحليل JSON، جرب تقسيم النص:', rawRoles);
+                if (rawRoles.includes(',')) {
+                  approvalRoles = rawRoles.split(',').map(role => role.trim());
+                  console.log('✅ [PDF] تم تقسيم النص بالفاصلة:', approvalRoles);
+                } else {
+                  // إذا كان نص واحد فقط
+                  approvalRoles = [rawRoles.trim()];
+                  console.log('✅ [PDF] نص واحد فقط:', approvalRoles);
+                }
+              }
+            } else {
+              console.log('⚠️ [PDF] department approval_roles نوع غير متوقع:', typeof rawRoles);
+            }
+          } catch (e) {
+            console.warn('⚠️ Failed to parse department approval_roles:', e);
+          }
+        }
+      }
+    }
+    
+    console.log('🎯 [PDF] الأدوار النهائية:', approvalRoles);
+  } catch (e) {
+    console.warn('⚠️ Failed to fetch approval roles:', e);
+  }
+
   const [logs] = await db.execute(`
     SELECT
       al.signed_as_proxy,
@@ -1223,6 +1322,7 @@ async function generateFinalSignedPDF(contentId) {
 
   // إضافة بيانات الاعتمادات
   let rowIndex = 1;
+  console.log('🔍 [PDF] بدء معالجة الاعتمادات، rowIndex:', rowIndex);
   const getSignatureCell = (log) => {
     if (log.signature && log.signature.startsWith('data:image')) {
       // صورة توقيع يدوي
@@ -1236,9 +1336,42 @@ async function generateFinalSignedPDF(contentId) {
     }
   };
   for (const log of logs) {
-    // نوع الاعتماد
-    const approvalType = rowIndex === 1 ? 'Reviewed' : 
-                        rowIndex === logs.length ? 'Approver' : 'Reviewed';
+    // نوع الاعتماد - استخدام الأدوار المحفوظة إذا كانت متوفرة
+    let approvalType = 'Reviewed'; // افتراضي
+    
+    console.log(`🔍 [PDF] معالجة السجل ${rowIndex}, approvalRoles:`, approvalRoles, 'length:', approvalRoles.length);
+    
+    if (approvalRoles.length > 0 && rowIndex <= approvalRoles.length) {
+      // استخدام الدور المحفوظ
+      const role = approvalRoles[rowIndex - 1];
+      console.log(`🔍 [PDF] الدور المحفوظ للسجل ${rowIndex}:`, role);
+      
+      if (role) {
+        // تحويل الدور إلى نص مفهوم
+        switch (role) {
+          case 'prepared':
+            approvalType = 'Prepared';
+            break;
+          case 'updated':
+            approvalType = 'Updated';
+            break;
+          case 'reviewed':
+            approvalType = 'Reviewed';
+            break;
+          case 'approved':
+            approvalType = 'Approved';
+            break;
+          default:
+            approvalType = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+        console.log(`✅ [PDF] تم تحديد الدور للسجل ${rowIndex}:`, approvalType);
+      }
+    } else {
+      // استخدام المنطق القديم إذا لم تكن الأدوار متوفرة
+      approvalType = rowIndex === 1 ? 'Reviewed' : 
+                    rowIndex === logs.length ? 'Approver' : 'Reviewed';
+      console.log(`⚠️ [PDF] استخدام المنطق القديم للسجل ${rowIndex}:`, approvalType);
+    }
     
     // طريقة الاعتماد
     const approvalMethod = log.signature ? 'Hand Signature' : 

@@ -514,3 +514,119 @@ body[lang="en"] .toast-container,
     left: auto !important;
     right: 20px !important;
 }
+
+/* تصميم شارات الأدوار */
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 60px;
+    margin-top: 4px;
+    border: 1px solid;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-prepared {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-color: #90caf9;
+}
+
+.role-updated {
+    background-color: #fff3e0;
+    color: #f57c00;
+    border-color: #ffcc02;
+}
+
+.role-reviewed {
+    background-color: #e8f5e8;
+    color: #388e3c;
+    border-color: #81c784;
+}
+
+.role-approved {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+    border-color: #66bb6a;
+    font-weight: 700;
+}
+
+/* تحسين تصميم اختيار الأدوار */
+.person-role-select {
+    margin-top: 8px !important;
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+    font-size: 0.9rem !important;
+}
+
+.person-role-select:focus {
+    border-color: #2563eb !important;
+    background-color: #ffffff !important;
+}
+
+/* تحسين المسافات بين العناصر */
+#personsFields .form-group,
+.quality-user-select-group .form-group {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+}
+
+/* تصميم قسم الجودة */
+.quality-person-count-group {
+    background: #e3f2fd;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #bbdefb;
+    margin-bottom: 20px;
+}
+
+.quality-person-count-group label {
+    color: #1976d2;
+    font-weight: 600;
+}
+
+/* تحسين عرض سلسلة الأشخاص */
+.persons-chain {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+}
+
+.person-node {
+    background: #ffffff;
+    padding: 12px 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.person-node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* تحسين الأسهم */
+.arrow-line .dashed {
+    border-top: 2px dashed #6c757d;
+}
+
+.arrow-line::after {
+    border-top: 2px solid #6c757d;
+}
+
+.arrow-line::before {
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-right: 10px solid #6c757d;
+}
+
+[dir="ltr"] .arrow-line::before {
+    border-right: none;
+    border-left: 10px solid #6c757d;
+}

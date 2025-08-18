@@ -315,13 +315,13 @@ function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isB
   // تحضير قائمة الملفات
   let filesList = '';
   if (isBulk) {
-    filesList = '<p class="files-summary" style="padding: 15px; background: #e3f2fd; border-radius: 4px; color: #1976d2; text-align: center; margin: 10px 0;">تفويض شامل لجميع ملفات القسم المعلقة</p>';
+    filesList = `<p class="files-summary" style="padding: 15px; background: #e3f2fd; border-radius: 4px; color: #1976d2; text-align: center; margin: 10px 0;">${getTranslation('comprehensive-delegation')}</p>`;
   } else {
     filesList = '<div class="files-list">';
     files.forEach(file => {
       filesList += `<div class="file-item" style="padding: 10px; background: #f8f9fa; border-radius: 4px; margin: 5px 0; border-left: 3px solid #007bff;">
         <span class="file-name" style="font-weight: bold;">${file.title || file.name}</span>
-        <span class="file-type" style="color: #666; margin-right: 10px;">ملف قسم</span>
+        <span class="file-type" style="color: #666; margin-right: 10px;">${getTranslation('department-report')}</span>
       </div>`;
     });
     filesList += '</div>';
@@ -331,63 +331,63 @@ function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isB
   popup.innerHTML = `
     <div class="delegation-confirmation-content" style="background: white; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);">
       <div class="delegation-header" style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="margin: 0; color: #333;">إقرار قبول التفويض</h3>
+        <h3 style="margin: 0; color: #333;">${getTranslation('delegation-confirmation')}</h3>
         <button class="close-btn" onclick="closeDelegationConfirmationPopup()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
       </div>
       
       <div class="delegation-body" style="padding: 20px;">
         <div class="delegator-info" style="margin-bottom: 20px;">
-          <h4 style="color: #333; margin-bottom: 15px;">معلومات الموظف المفوض</h4>
+          <h4 style="color: #333; margin-bottom: 15px;">${getTranslation('delegator-info')}</h4>
           <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-            <span class="label" style="font-weight: bold;">الاسم الكامل:</span>
+            <span class="label" style="font-weight: bold;">${getTranslation('full-name')}:</span>
             <span class="value">${delegatorInfo.fullName}</span>
           </div>
           <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-            <span class="label" style="font-weight: bold;">رقم الهوية:</span>
+            <span class="label" style="font-weight: bold;">${getTranslation('id-number')}:</span>
             <span class="value">${delegatorInfo.idNumber}</span>
           </div>
         </div>
         
         <div class="delegate-info" style="margin-bottom: 20px;">
-          <h4 style="color: #333; margin-bottom: 15px;">معلومات الموظف المفوض له</h4>
+          <h4 style="color: #333; margin-bottom: 15px;">${getTranslation('delegate-info')}</h4>
           <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-            <span class="label" style="font-weight: bold;">الاسم الكامل:</span>
+            <span class="label" style="font-weight: bold;">${getTranslation('full-name')}:</span>
             <span class="value">${delegateInfo.fullName}</span>
           </div>
           <div class="info-row" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-            <span class="label" style="font-weight: bold;">رقم الهوية:</span>
+            <span class="label" style="font-weight: bold;">${getTranslation('id-number')}:</span>
             <span class="value">${delegateInfo.idNumber}</span>
           </div>
         </div>
         
         <div class="delegation-details" style="margin-bottom: 20px;">
-          <h4 style="color: #333; margin-bottom: 15px;">تفاصيل التفويض</h4>
+          <h4 style="color: #333; margin-bottom: 15px;">${getTranslation('delegation-details')}</h4>
           <div class="delegation-type" style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-            <span class="label" style="font-weight: bold;">نوع التفويض:</span>
-            <span class="value">${isBulk ? 'تفويض شامل' : 'تفويض فردي'}</span>
+            <span class="label" style="font-weight: bold;">${getTranslation('delegation-type')}:</span>
+            <span class="value">${isBulk ? getTranslation('comprehensive-delegation') : getTranslation('single-delegation')}</span>
           </div>
           ${filesList}
         </div>
         
         <div class="delegation-statement" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
           <p class="statement-text" style="margin: 0; line-height: 1.6; color: #333;">
-            أقر بأنني أقبل التفويض من الموظف <strong>${delegatorInfo.fullName}</strong> 
-            ذو رقم الهوية <strong>${delegatorInfo.idNumber}</strong> 
-            للتوقيع بالنيابة عنه على ${isBulk ? 'جميع ملفات القسم المعلقة' : 'الملفات المحددة'}.
+            ${getTranslation('delegation-confirmation-message')} <strong>${delegatorInfo.fullName}</strong> 
+            ${getTranslation('delegation-confirmation-message-2')} <strong>${delegatorInfo.idNumber}</strong> 
+            ${getTranslation('delegation-confirmation-message-3')} ${isBulk ? getTranslation('delegation-confirmation-message-5') : getTranslation('delegation-confirmation-message-4')}.
           </p>
         </div>
         
         <div style="padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; margin-bottom: 20px;">
           <p style="margin: 0; color: #856404; font-weight: bold; text-align: center;">
-            ⚠️ يجب عليك الرد على هذا التفويض قبل المتابعة
+            ⚠️ ${getTranslation('delegation-error-no-signature')}
           </p>
         </div>
       </div>
       
       <div class="delegation-footer" style="padding: 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; gap: 10px;">
-        <button class="btn btn-danger" onclick="rejectDelegation()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">رفض التفويض</button>
-        <button class="btn btn-secondary" onclick="closeDelegationConfirmationPopup()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">إلغاء</button>
-        <button class="btn btn-primary" onclick="confirmDelegation()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">أقبل التفويض</button>
+        <button class="btn btn-danger" onclick="rejectDelegation()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">${getTranslation('reject-delegation')}</button>
+        <button class="btn btn-secondary" onclick="closeDelegationConfirmationPopup()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">${getTranslation('cancel-delegation')}</button>
+        <button class="btn btn-primary" onclick="confirmDelegation()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">${getTranslation('confirm-delegation')}</button>
       </div>
     </div>
   `;
@@ -510,13 +510,13 @@ async function processSingleDelegation(data) {
     
     const result = await response.json();
     if (result.status === 'success') {
-      showToast('تم قبول التفويض بنجاح', 'success');
+      showToast(getTranslation('delegation-sent-success'), 'success');
       closeDelegationConfirmationPopup();
       setTimeout(() => {
         window.location.reload();
       }, 1000);
     } else {
-      showToast(result.message || 'فشل في قبول التفويض', 'error');
+      showToast(result.message || getTranslation('delegation-failed'), 'error');
     }
   } catch (error) {
     console.error('Error accepting single delegation:', error);
@@ -554,13 +554,13 @@ async function processBulkDelegation(data) {
     
     const result = await response.json();
     if (result.status === 'success') {
-      showToast('تم قبول التفويض الشامل بنجاح', 'success');
+      showToast(getTranslation('delegation-bulk-sent'), 'success');
       closeDelegationConfirmationPopup();
       setTimeout(() => {
         window.location.reload();
       }, 1000);
     } else {
-      showToast(result.message || 'فشل في قبول التفويض الشامل', 'error');
+      showToast(result.message || getTranslation('delegation-failed'), 'error');
     }
   } catch (error) {
     console.error('Error accepting bulk delegation:', error);

@@ -1,4 +1,6 @@
 // approvals-recived.js
+// تم تحديث الملف لحل مشكلة أزرار "جاري المعالجة" عند إغلاق البوب أبز
+// جميع أزرار الإغلاق (×) الآن تعيد تعيين حالة الأزرار إلى الحالة الأصلية
 
 // Fallback translation function if not defined elsewhere
 if (typeof getTranslation === 'undefined') {
@@ -41,10 +43,34 @@ if (typeof getTranslation === 'undefined') {
       'hospital-manager': 'مدير المستشفى',
       'select-person': 'اختر شخص',
       'all-fields-required': 'جميع الحقول مطلوبة',
-      'confirm-transfer': 'تم تأكيد التحويل'
+      'confirm-transfer': 'تم تأكيد التحويل',
+      'select-role': 'اختر الدور',
+      'department': 'قسم',
+      'send-reason': 'إرسال السبب',
+      'electronic-approve': 'توقيع إلكتروني',
+      'cancel': 'إلغاء',
+      'clear': 'مسح',
+      'file-will-be-sent': 'سيتم إرسال الملف بعد اعتماده من آخر شخص في القسم للأشخاص المختارين',
+      'transfer-file-sender': 'سيتم إرسال الملف بعد اعتماده من آخر شخص في القسم للأشخاص المختارين',
+      // الأدوار في سلسلة الموافقة
+      'prepared': 'مُعد',
+      'updated': 'محدث',
+      'reviewed': 'مراجع',
+      'approved': 'معتمد'
     };
     return translations[key] || key;
   };
+}
+
+// دالة ترجمة الأدوار
+function getRoleTranslation(role) {
+  const roleTranslations = {
+    'prepared': getTranslation('prepared') || 'Prepared',
+    'updated': getTranslation('updated') || 'Updated',
+    'reviewed': getTranslation('reviewed') || 'Reviewed',
+    'approved': getTranslation('approved') || 'Approved'
+  };
+  return roleTranslations[role] || role;
 }
 
 let filteredItems = [];
@@ -220,6 +246,74 @@ function enableCardActions(contentId) {
   });
 }
 
+// دالة مساعدة لإعادة تعيين حالة جميع الأزرار في مودال معين
+function resetModalButtons(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  
+  const allButtons = modal.querySelectorAll('button');
+  allButtons.forEach(button => {
+    // إعادة تفعيل الزر
+    button.disabled = false;
+    button.style.opacity = '1';
+    button.style.cursor = 'pointer';
+    button.style.pointerEvents = 'auto';
+    
+    // إزالة جميع classes المعالجة
+    button.classList.remove('loading', 'processing');
+    
+    // إعادة تعيين CSS
+    button.style.transform = 'scale(1)';
+    button.style.boxShadow = '';
+    button.style.filter = '';
+    
+    // إعادة النص الأصلي إذا كان محفوظاً
+    if (button.dataset.originalText) {
+      button.innerHTML = button.dataset.originalText;
+    }
+  });
+}
+
+// دالة مساعدة لإعادة تعيين حالة جميع الأزرار في جميع المودالز المفتوحة
+function resetAllModalButtons() {
+  const modalIds = ['rejectModal', 'qrModal', 'delegateModal', 'fileTransferModal', 'signatureModal'];
+  
+  modalIds.forEach(modalId => {
+    const modal = document.getElementById(modalId);
+    if (modal && modal.style.display !== 'none') {
+      resetModalButtons(modalId);
+    }
+  });
+}
+
+// دالة مساعدة لإعادة تعيين حالة جميع الأزرار في البوب أبز
+function resetAllPopupButtons() {
+  const popup = document.getElementById('delegationConfirmationPopup');
+  if (popup) {
+    const allButtons = popup.querySelectorAll('button');
+    allButtons.forEach(button => {
+      // إعادة تفعيل الزر
+      button.disabled = false;
+      button.style.opacity = '1';
+      button.style.cursor = 'pointer';
+      button.style.pointerEvents = 'auto';
+      
+      // إزالة جميع classes المعالجة
+      button.classList.remove('loading', 'processing');
+      
+      // إعادة تعيين CSS
+      button.style.transform = 'scale(1)';
+      button.style.boxShadow = '';
+      button.style.filter = '';
+      
+      // إعادة النص الأصلي إذا كان محفوظاً
+      if (button.dataset.originalText) {
+        button.innerHTML = button.dataset.originalText;
+      }
+    });
+  }
+}
+
 // جلب صلاحيات المستخدم
 async function fetchPermissions() {
   if (!token) return;
@@ -305,12 +399,45 @@ function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) modal.style.display = 'none';
   
-  // إعادة تفعيل أزرار البطاقة إذا كان المودال هو مودال الرفض أو التوقيع الإلكتروني أو التفويض
-  if ((modalId === 'rejectModal' || modalId === 'qrModal' || modalId === 'delegateModal') && selectedContentId) {
+  // استخدام الدالة المساعدة لإعادة تعيين حالة الأزرار
+  resetModalButtons(modalId);
+  
+  // إعادة تفعيل أزرار البطاقة إذا كان المودال هو مودال الرفض أو التوقيع الإلكتروني أو التفويض أو التحويل
+  if ((modalId === 'rejectModal' || modalId === 'qrModal' || modalId === 'delegateModal' || modalId === 'fileTransferModal') && selectedContentId) {
     const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
     if (card && card.dataset.status === 'pending') {
       enableCardActions(selectedContentId);
     }
+  }
+  
+  // إعادة تعيين متغيرات خاصة ببعض المودالز
+  if (modalId === 'fileTransferModal') {
+    // إعادة تعيين متغيرات التحويل
+    currentTransferSequence = [];
+    currentTransferUsers = [];
+    currentTransferRoles = [];
+    newDeptUsers = [];
+    selectedNewUsers = [];
+    selectedNewRoles = [];
+    
+    // إعادة تعيين حقول النموذج
+    const personCount = document.getElementById('personCount');
+    const transferDept = document.getElementById('transferDept');
+    const personsFields = document.getElementById('personsFields');
+    const transferPersonsChain = document.getElementById('transferPersonsChain');
+    
+    if (personCount) personCount.value = '';
+    if (transferDept) transferDept.value = '';
+    if (personsFields) personsFields.innerHTML = '';
+    if (transferPersonsChain) transferPersonsChain.innerHTML = '';
+  }
+  
+  // إعادة تعيين متغيرات التفويض
+  if (modalId === 'delegateModal') {
+    const delegateUser = document.getElementById('delegateUser');
+    const delegateNotes = document.getElementById('delegateNotes');
+    if (delegateUser) delegateUser.value = '';
+    if (delegateNotes) delegateNotes.value = '';
   }
 }
 
@@ -402,6 +529,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // إضافة معالجة لأزرار الإغلاق في مودال الرفض
+  document.querySelectorAll('[data-modal="rejectModal"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // إعادة تفعيل أزرار البطاقة عند الإغلاق
+      if (selectedContentId) {
+        enableCardActions(selectedContentId);
+      }
+      
+      // إعادة تفعيل زر الإرسال إذا كان معطلاً
+      const btnSendReason = document.getElementById('btnSendReason');
+      if (btnSendReason && btnSendReason.disabled) {
+        setButtonProcessingState(btnSendReason, false);
+      }
+    });
+  });
+
   // **رابط أزرار الباجينشن خارج أي شرط**
 
 
@@ -481,18 +624,7 @@ function openModal(modalId) {
   document.getElementById(modalId).style.display = 'flex';
 }
 
-function closeModal(modalId) {
-  document.getElementById(modalId).style.display = 'none';
-}
-
-function setupCloseButtons() {
-  document.querySelectorAll('.modal-close').forEach(btn => {
-    btn.addEventListener('click', e => {
-      const modalId = btn.dataset.modal || btn.closest('.modal-overlay').id;
-      closeModal(modalId);
-    });
-  });
-}
+// تم حذف التعريف المكرر - استخدم التعريف الأصلي أعلاه
 
 function renderApprovals(items) {
   const list = document.querySelector('.approvals-list');
@@ -814,7 +946,7 @@ function initActions() {
           method: 'POST',
           body: JSON.stringify({
             contentId: numericItemId,
-            contentType: item.type || 'department',
+            contentType: item.type || getTranslation('department'),
             contentTitle: item.title,
             sourceName: item.source_name,
             folderName: item.folder_name || item.folderName || ''
@@ -865,7 +997,7 @@ else {
       }
 
       // فتح صفحة تتبع الملف في نفس الصفحة
-      const trackUrl = `track-request.html?id=${itemId}&type=${item.type || 'department'}&title=${encodeURIComponent(item.title)}&source=${encodeURIComponent(item.source_name)}`;
+      const trackUrl = `track-request.html?id=${itemId}&type=${item.type || getTranslation('department')}&title=${encodeURIComponent(item.title)}&source=${encodeURIComponent(item.source_name)}`;
       window.location.href = trackUrl;
     });
   });
@@ -939,6 +1071,22 @@ if (btnCancelQr) {
   });
 }
 
+// إضافة معالجة لأزرار الإغلاق في مودال التوقيع الإلكتروني
+document.querySelectorAll('[data-modal="qrModal"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // إعادة تفعيل أزرار البطاقة عند الإغلاق
+    if (selectedContentId) {
+      enableCardActions(selectedContentId);
+    }
+    
+    // إعادة تفعيل زر التوقيع إذا كان معطلاً
+    const btnElectronicApprove = document.getElementById('btnElectronicApprove');
+    if (btnElectronicApprove && btnElectronicApprove.disabled) {
+      setButtonProcessingState(btnElectronicApprove, false);
+    }
+  });
+});
+
 function openSignatureModal(contentId) {
   selectedContentId = contentId;
   const modal = document.getElementById('signatureModal');
@@ -972,8 +1120,35 @@ function openSignatureModal(contentId) {
 }
 
 function closeSignatureModal() {
-  document.getElementById('signatureModal').style.display = 'none';
+  const modal = document.getElementById('signatureModal');
+  if (modal) modal.style.display = 'none';
   clearCanvas();
+  
+  // استخدام الدالة المساعدة لإعادة تعيين حالة الأزرار
+  resetModalButtons('signatureModal');
+  
+  // إعادة تعيين التبويبات
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  tabBtns.forEach(b => b.classList.remove('active'));
+  tabContents.forEach(c => c.classList.remove('active'));
+  
+  // تفعيل تبويب التوقيع المباشر افتراضياً
+  const drawTab = document.querySelector('[data-tab="draw"]');
+  const drawTabContent = document.getElementById('draw-tab');
+  if (drawTab) drawTab.classList.add('active');
+  if (drawTabContent) drawTabContent.classList.add('active');
+  
+  // إعادة تعيين منطقة رفع الصور
+  const uploadArea = document.getElementById('uploadArea');
+  const uploadPreview = document.getElementById('uploadPreview');
+  if (uploadArea && uploadPreview) {
+    uploadArea.style.display = 'block';
+    uploadPreview.style.display = 'none';
+  }
+  
+  // إعادة تعيين التوقيع الحالي
+  currentSignature = null;
   
   // إعادة تفعيل أزرار البطاقة إذا لم يتم الاعتماد
   if (selectedContentId) {
@@ -1069,6 +1244,22 @@ function setupSignatureModal() {
   
   document.getElementById('btnCancelSignature').addEventListener('click', () => {
     closeSignatureModal();
+  });
+
+  // إضافة معالجة لأزرار الإغلاق في مودال التوقيع
+  document.querySelectorAll('[data-modal="signatureModal"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // إعادة تفعيل أزرار البطاقة عند الإغلاق
+      if (selectedContentId) {
+        enableCardActions(selectedContentId);
+      }
+      
+      // إعادة تفعيل زر التأكيد إذا كان معطلاً
+      const btnConfirmSignature = document.getElementById('btnConfirmSignature');
+      if (btnConfirmSignature && btnConfirmSignature.disabled) {
+        setButtonProcessingState(btnConfirmSignature, false);
+      }
+    });
   });
   
   function handleCancelClick() {
@@ -1390,6 +1581,22 @@ if (btnCancelDelegate) {
   });
 }
 
+// إضافة معالجة لأزرار الإغلاق في مودال التفويض
+document.querySelectorAll('[data-modal="delegateModal"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // إعادة تفعيل أزرار البطاقة عند الإغلاق
+    if (selectedContentId) {
+      enableCardActions(selectedContentId);
+    }
+    
+    // إعادة تفعيل زر التأكيد إذا كان معطلاً
+    const btnDelegateConfirm = document.getElementById('btnDelegateConfirm');
+    if (btnDelegateConfirm && btnDelegateConfirm.disabled) {
+      setButtonProcessingState(btnDelegateConfirm, false);
+    }
+  });
+});
+
 function disableActionsFor(contentId) {
   const row = document.querySelector(`.approval-card[data-id="${contentId}"]`);
   if (!row) return;
@@ -1400,9 +1607,11 @@ function disableActionsFor(contentId) {
 // === File Transfer Modal Logic ===
 let currentTransferSequence = [];
 let currentTransferUsers = [];
+let currentTransferRoles = [];
 let currentTransferDeptId = null;
 let newDeptUsers = [];
 let selectedNewUsers = [];
+let selectedNewRoles = [];
 
 async function getApprovalSequenceByDept(deptId) {
   try {
@@ -1410,11 +1619,14 @@ async function getApprovalSequenceByDept(deptId) {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
-    console.log('[getApprovalSequenceByDept]', deptId, data.approval_sequence);
-    return data.approval_sequence || [];
+    console.log('[getApprovalSequenceByDept]', deptId, data.approval_sequence, data.approval_roles);
+    return {
+      sequence: data.approval_sequence || [],
+      roles: data.approval_roles || []
+    };
   } catch (err) {
     console.error('[getApprovalSequenceByDept] error', err);
-    return [];
+    return { sequence: [], roles: [] };
   }
 }
 
@@ -1467,20 +1679,24 @@ async function openFileTransferModal() {
   if (!item) return;
   // جلب سلسلة الاعتماد القديمة (approval_sequence)
   let sequence = [];
+  let roles = [];
   if (item.approval_sequence && Array.isArray(item.approval_sequence)) {
     sequence = item.approval_sequence;
   } else if (item.approval_sequence && typeof item.approval_sequence === 'string') {
     try { sequence = JSON.parse(item.approval_sequence); } catch { sequence = []; }
   } else if (item.department_id) {
-    sequence = await getApprovalSequenceByDept(item.department_id);
+    const deptData = await getApprovalSequenceByDept(item.department_id);
+    sequence = deptData.sequence;
+    roles = deptData.roles;
   }
   currentTransferSequence = sequence.slice();
-  console.log('[openFileTransferModal] sequence', sequence);
+  currentTransferRoles = roles.slice();
+  console.log('[openFileTransferModal] sequence', sequence, 'roles', roles);
   // جلب بيانات المستخدمين
   currentTransferUsers = await getUsersByIds(sequence);
   console.log('[openFileTransferModal] currentTransferUsers', currentTransferUsers);
   // اعرض السلسلة القديمة فقط
-  renderTransferChain(currentTransferSequence, currentTransferUsers, []);
+  renderTransferChain(currentTransferSequence, currentTransferUsers, [], currentTransferRoles);
   // أفرغ الدروب داون
   document.getElementById('personsFields').innerHTML = '';
   document.getElementById('personCount').value = '';
@@ -1496,18 +1712,23 @@ async function handleDeptOrCountChange() {
   document.getElementById('personsFields').innerHTML = '';
   console.log('[handleDeptOrCountChange] deptId:', deptId, 'count:', count);
   if (!deptId || !count) {
-    renderTransferChain(currentTransferSequence, currentTransferUsers, []);
+    renderTransferChain(currentTransferSequence, currentTransferUsers, [], currentTransferRoles);
     return;
   }
   // جلب أعضاء القسم الجديد
   newDeptUsers = await getUsersByDept(deptId);
   selectedNewUsers = Array(count).fill('');
+  selectedNewRoles = Array(count).fill('');
   console.log('[handleDeptOrCountChange] newDeptUsers:', newDeptUsers);
   for (let i = 0; i < count; i++) {
     const group = document.createElement('div');
     group.className = 'form-group';
+    
+    // عنوان اختيار الشخص
     const label = document.createElement('label');
     label.textContent = `${getTranslation('select-person')} ${i+1}`;
+    
+    // dropdown اختيار الشخص
     const select = document.createElement('select');
     select.className = 'person-select-new';
     select.innerHTML = `<option value="">${getTranslation('select-person')}</option>`;
@@ -1517,16 +1738,75 @@ async function handleDeptOrCountChange() {
       opt.textContent = user.name;
       select.appendChild(opt);
     });
+    
+    // dropdown اختيار الدور
+    const roleSelect = document.createElement('select');
+    roleSelect.className = 'person-role-select';
+    roleSelect.innerHTML = `
+      <option value="">${getTranslation('select-role') || 'اختر الدور'}</option>
+      <option value="prepared">${getTranslation('prepared') || 'Prepared'}</option>
+      <option value="updated">${getTranslation('updated') || 'Updated'}</option>
+      <option value="reviewed">${getTranslation('reviewed') || 'Reviewed'}</option>
+      <option value="approved">${getTranslation('approved') || 'Approved'}</option>
+    `;
+    
+    // معالج تغيير الشخص
     select.onchange = function() {
       selectedNewUsers[i] = select.value;
       console.log('[person-select-new] selectedNewUsers:', selectedNewUsers);
-      renderTransferChain(currentTransferSequence, currentTransferUsers, selectedNewUsers);
+      renderTransferChain(currentTransferSequence, currentTransferUsers, selectedNewUsers, currentTransferRoles);
     };
+    
+    // معالج تغيير الدور
+    roleSelect.onchange = function() {
+      // تحديث الدور في المصفوفة
+      if (!selectedNewUsers[i]) return; // لا تحدث الدور إذا لم يتم اختيار شخص
+      
+      const selectedRole = roleSelect.value;
+      selectedNewRoles[i] = selectedRole;
+      console.log(`[person-role-select] Person ${i+1} role changed to:`, selectedRole);
+      console.log('[person-role-select] selectedNewRoles:', selectedNewRoles);
+      
+      // تحديث السلسلة مع الأدوار الجديدة
+      renderTransferChain(currentTransferSequence, currentTransferUsers, selectedNewUsers, currentTransferRoles);
+    };
+    
+    // إضافة العناصر للمجموعة
     group.appendChild(label);
     group.appendChild(select);
+    group.appendChild(roleSelect);
+    
+    // إضافة CSS للمجموعة
+    group.style.cssText = `
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #f9f9f9;
+    `;
+    
+    // تنسيق العناصر
+    select.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    `;
+    
+    roleSelect.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+    `;
+    
     document.getElementById('personsFields').appendChild(group);
   }
-  renderTransferChain(currentTransferSequence, currentTransferUsers, selectedNewUsers);
+  renderTransferChain(currentTransferSequence, currentTransferUsers, selectedNewUsers, currentTransferRoles);
 }
 
 // أضف دالة جلب مدير المستشفى
@@ -1544,34 +1824,38 @@ async function fetchManager() {
 }
 
 // تعريف واحد فقط لدالة renderTransferChain
-async function renderTransferChain(sequence, users, newUserIdsArr) {
-  console.log('renderTransferChain called, nodes:', sequence, newUserIdsArr);
+async function renderTransferChain(sequence, users, newUserIdsArr, roles = []) {
+  console.log('renderTransferChain called, nodes:', sequence, newUserIdsArr, 'roles:', roles);
   const chainDiv = document.getElementById('transferPersonsChain');
   chainDiv.innerHTML = '';
   let oldNodes = [];
   let newNodes = [];
 
   // 1. الأشخاص القدامى
-  sequence.forEach((uid) => {
+  sequence.forEach((uid, index) => {
     const user = users.find(u => u.id == uid);
+    const role = roles[index] || '';
     oldNodes.push({
       id: user ? user.id : uid,
       name: user ? user.name : uid,
       departmentId: user ? (user.departmentId || user.department_id) : undefined,
-      isNew: false
+      isNew: false,
+      role: role
     });
   });
 
   // 2. الأشخاص الجدد
   if (Array.isArray(newUserIdsArr)) {
-    newUserIdsArr.forEach((uid) => {
+    newUserIdsArr.forEach((uid, index) => {
       if (!uid) return;
       const user = newDeptUsers.find(u => u.id == uid);
+      const role = selectedNewRoles[index] || '';
       newNodes.push({
         id: user ? user.id : uid,
         name: user ? user.name : uid,
         departmentId: user ? (user.departmentId || user.department_id) : undefined,
-        isNew: true
+        isNew: true,
+        role: role
       });
     });
   }
@@ -1621,9 +1905,18 @@ async function renderTransferChain(sequence, users, newUserIdsArr) {
       }
       const personNode = document.createElement('div');
       personNode.className = 'person-node';
+      
+      // إضافة شارة الدور إذا كان موجوداً
+      let roleBadge = '';
+      if (node.role) {
+        const roleText = getRoleTranslation(node.role);
+        roleBadge = `<div class="role-badge role-${node.role}">${roleText}</div>`;
+      }
+      
       personNode.innerHTML = `
         <div class="person-circle"><i class="fa fa-user"></i></div>
         <div class="person-name">${node.name}</div>
+        ${roleBadge}
       `;
       container.appendChild(personNode);
     });
@@ -1691,6 +1984,22 @@ document.querySelectorAll('.modal-close[data-modal="fileTransferModal"]').forEac
   btn.addEventListener('click', closeFileTransferModal);
 });
 
+// إضافة معالجة لأزرار الإغلاق في مودال التحويل
+document.querySelectorAll('[data-modal="fileTransferModal"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // إعادة تفعيل أزرار البطاقة عند الإغلاق
+    if (selectedContentId) {
+      enableCardActions(selectedContentId);
+    }
+    
+    // إعادة تفعيل زر التأكيد إذا كان معطلاً
+    const btnTransferConfirm = document.getElementById('btnTransferConfirm');
+    if (btnTransferConfirm && btnTransferConfirm.disabled) {
+      setButtonProcessingState(btnTransferConfirm, false);
+    }
+  });
+});
+
 document.getElementById('btnTransferConfirm').addEventListener('click', async function(e) {
   e.preventDefault();
   // التسلسل النهائي = القدامى + الجدد (بدون فراغات)
@@ -1698,10 +2007,27 @@ document.getElementById('btnTransferConfirm').addEventListener('click', async fu
     ...currentTransferSequence,
     ...selectedNewUsers.filter(Boolean)
   ];
+  
+  // الأدوار النهائية = القدامى + الجدد (بدون فراغات)
+  const finalRoles = [
+    ...currentTransferRoles,
+    ...selectedNewRoles.filter((role, index) => selectedNewUsers[index]) // فقط الأدوار للأشخاص المختارين
+  ];
+  
   if (!selectedContentId || !finalSequence.length) {
     showToast(getTranslation('all-fields-required'), 'warning');
     return;
   }
+  
+  // التحقق من أن عدد الأدوار يساوي عدد الأشخاص
+  if (finalSequence.length !== finalRoles.length) {
+    console.warn('[btnTransferConfirm] Sequence and roles length mismatch:', finalSequence.length, finalRoles.length);
+    // إضافة أدوار فارغة للأشخاص الذين ليس لديهم أدوار
+    while (finalRoles.length < finalSequence.length) {
+      finalRoles.push('');
+    }
+  }
+  
   try {
     // جلب مدير المستشفى من الباكند وإضافته للسلسلة
     let managerId = null;
@@ -1713,21 +2039,30 @@ document.getElementById('btnTransferConfirm').addEventListener('click', async fu
       if (data.status === 'success' && data.data && data.data.id) {
         managerId = data.data.id;
         finalSequence.push(managerId);
+        finalRoles.push('approved'); // المدير دائماً معتمد
       }
     } catch (err) {
       // إذا فشل الجلب، تجاهل إضافة المدير
     }
+    
+    console.log('[btnTransferConfirm] Final sequence:', finalSequence);
+    console.log('[btnTransferConfirm] Final roles:', finalRoles);
+    
     await fetch(`${apiBase}/contents/${selectedContentId}/approval-sequence`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ approval_sequence: finalSequence })
+      body: JSON.stringify({ 
+        approval_sequence: finalSequence,
+        approval_roles: finalRoles
+      })
     });
     closeFileTransferModal();
     showToast(getTranslation('confirm-transfer'), 'success');
   } catch (err) {
+    console.error('[btnTransferConfirm] Error:', err);
     showToast(getTranslation('error-sending'), 'error');
   }
 });
@@ -1764,15 +2099,9 @@ async function loadTransferDepartments() {
 }
 
 function closeFileTransferModal() {
-  document.getElementById('fileTransferModal').style.display = 'none';
-  document.getElementById('personCount').value = '';
-  document.getElementById('transferDept').value = '';
-  document.getElementById('personsFields').innerHTML = '';
-  document.getElementById('transferPersonsChain').innerHTML = '';
+  // استخدام دالة closeModal المحسنة
+  closeModal('fileTransferModal');
 }
-
-// إضافة دالة setupPersonCountHandler لمنع الخطأ
-function setupPersonCountHandler() {}
 
 // إضافة دوال الإقرار والتوقيع للتفويض
 let currentDelegationData = null;
@@ -1827,13 +2156,13 @@ function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isB
   // تحضير قائمة الملفات
   let filesList = '';
   if (isBulk) {
-    filesList = '<p class="files-summary">تفويض شامل لجميع ملفات القسم المعلقة</p>';
+    filesList = `<p class="files-summary">${getTranslation('comprehensive-delegation')}</p>`;
   } else {
     filesList = '<div class="files-list">';
     files.forEach(file => {
       filesList += `<div class="file-item">
         <span class="file-name">${file.title || file.name}</span>
-        <span class="file-type">ملف قسم</span>
+        <span class="file-type">${getTranslation('department-report')}</span>
       </div>`;
     });
     filesList += '</div>';
@@ -1847,10 +2176,10 @@ function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isB
   // Header
   const header = document.createElement('div');
   header.className = 'delegation-header';
-  header.innerHTML = `
-    <h3>إقرار التفويض</h3>
-    <button class="close-btn" onclick="closeDelegationConfirmationPopup()">&times;</button>
-  `;
+      header.innerHTML = `
+      <h3>${getTranslation('delegation-confirmation')}</h3>
+      <button class="close-btn" onclick="closeDelegationConfirmationPopup()">&times;</button>
+    `;
   
   // Body
   const body = document.createElement('div');
@@ -1859,78 +2188,78 @@ function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isB
   // Delegator info
   const delegatorInfoDiv = document.createElement('div');
   delegatorInfoDiv.className = 'delegator-info';
-  delegatorInfoDiv.innerHTML = `
-    <h4>معلومات الموظف المفوض</h4>
-    <div class="info-row">
-      <span class="label">الاسم الكامل:</span>
-      <span class="value">${delegatorInfo.fullName}</span>
-    </div>
-    <div class="info-row">
-      <span class="label">رقم الهوية:</span>
-      <span class="value">${delegatorInfo.idNumber}</span>
-    </div>
-  `;
+      delegatorInfoDiv.innerHTML = `
+      <h4>${getTranslation('delegator-info')}</h4>
+      <div class="info-row">
+        <span class="label">${getTranslation('full-name')}:</span>
+        <span class="value">${delegatorInfo.fullName}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">${getTranslation('id-number')}:</span>
+        <span class="value">${delegatorInfo.idNumber}</span>
+      </div>
+    `;
   
   // Delegate info
   const delegateInfoDiv = document.createElement('div');
   delegateInfoDiv.className = 'delegate-info';
-  delegateInfoDiv.innerHTML = `
-    <h4>معلومات الموظف المفوض له</h4>
-    <div class="info-row">
-      <span class="label">الاسم الكامل:</span>
-      <span class="value">${delegateInfo.fullName}</span>
-    </div>
-    <div class="info-row">
-      <span class="label">رقم الهوية:</span>
-      <span class="value">${delegateInfo.idNumber}</span>
-    </div>
-  `;
+      delegateInfoDiv.innerHTML = `
+      <h4>${getTranslation('delegate-info')}</h4>
+      <div class="info-row">
+        <span class="label">${getTranslation('full-name')}:</span>
+        <span class="value">${delegateInfo.fullName}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">${getTranslation('id-number')}:</span>
+        <span class="value">${delegateInfo.idNumber}</span>
+      </div>
+    `;
   
   // Delegation details
   const detailsDiv = document.createElement('div');
   detailsDiv.className = 'delegation-details';
-  detailsDiv.innerHTML = `
-    <h4>تفاصيل التفويض</h4>
-    <div class="delegation-type">
-      <span class="label">نوع التفويض:</span>
-      <span class="value">${isBulk ? 'تفويض شامل' : 'تفويض فردي'}</span>
-    </div>
-    ${filesList}
-  `;
+      detailsDiv.innerHTML = `
+      <h4>${getTranslation('delegation-details')}</h4>
+      <div class="delegation-type">
+        <span class="label">${getTranslation('delegation-type')}:</span>
+        <span class="value">${isBulk ? getTranslation('comprehensive-delegation') : getTranslation('single-delegation')}</span>
+      </div>
+      ${filesList}
+    `;
   
   // Delegation statement
   const statementDiv = document.createElement('div');
   statementDiv.className = 'delegation-statement';
-  statementDiv.innerHTML = `
-    <p class="statement-text">
-      أقر بأنني أفوض الموظف <strong>${delegateInfo.fullName}</strong> 
-      ذو رقم الهوية <strong>${delegateInfo.idNumber}</strong> 
-      بالتوقيع بالنيابة عني على ${isBulk ? 'جميع ملفات القسم المعلقة' : 'الملفات المحددة'}.
-    </p>
-  `;
+      statementDiv.innerHTML = `
+      <p class="statement-text">
+        ${getTranslation('delegation-confirmation-message')} <strong>${delegateInfo.fullName}</strong> 
+        ${getTranslation('delegation-confirmation-message-2')} <strong>${delegateInfo.idNumber}</strong> 
+        ${getTranslation('delegation-confirmation-message-3')} ${isBulk ? getTranslation('delegation-confirmation-message-5') : getTranslation('delegation-confirmation-message-4')}.
+      </p>
+    `;
   
   // Signature section - إضافة كانفاس للتوقيع
   const signatureSection = document.createElement('div');
   signatureSection.className = 'delegation-signature-section';
-  signatureSection.innerHTML = `
-    <h4>توقيع المرسل</h4>
-    <div class="signature-canvas-container">
-      <div class="signature-controls" style="margin-top: 10px;">
-        <button type="button" onclick="clearSignatureCanvas()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-right: 5px; cursor: pointer;">
-          مسح التوقيع
-        </button>
+      signatureSection.innerHTML = `
+      <h4>${getTranslation('delegation-signature-section')}</h4>
+      <div class="signature-canvas-container">
+        <div class="signature-controls" style="margin-top: 10px;">
+          <button type="button" onclick="clearSignatureCanvas()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-right: 5px; cursor: pointer;">
+            ${getTranslation('clear')}
+          </button>
+        </div>
       </div>
-    </div>
-  `;
+    `;
   
   // Footer
   const footer = document.createElement('div');
   footer.className = 'delegation-footer';
-  footer.innerHTML = `
-    <button class="btn btn-danger" onclick="rejectDelegation()">رفض التفويض</button>
-    <button class="btn btn-secondary" onclick="closeDelegationConfirmationPopup()">إلغاء</button>
-    <button class="btn btn-primary" onclick="confirmDelegation()">تأكيد التفويض</button>
-  `;
+      footer.innerHTML = `
+      <button class="btn btn-danger" onclick="rejectDelegation()">${getTranslation('reject-delegation')}</button>
+      <button class="btn btn-secondary" onclick="closeDelegationConfirmationPopup()">${getTranslation('cancel-delegation')}</button>
+      <button class="btn btn-primary" onclick="confirmDelegation()">${getTranslation('confirm-delegation')}</button>
+    `;
   
   // Assembly
   body.appendChild(delegatorInfoDiv);
@@ -1985,6 +2314,30 @@ function showDelegationConfirmationPopup(delegatorInfo, delegateInfo, files, isB
 function closeDelegationConfirmationPopup() {
   const popup = document.getElementById('delegationConfirmationPopup');
   if (popup) {
+    // إعادة تعيين حالة جميع الأزرار في البوب أب قبل الإزالة
+    const allButtons = popup.querySelectorAll('button');
+    allButtons.forEach(button => {
+      // إعادة تفعيل الزر
+      button.disabled = false;
+      button.style.opacity = '1';
+      button.style.cursor = 'pointer';
+      button.style.pointerEvents = 'auto';
+      
+      // إزالة جميع classes المعالجة
+      button.classList.remove('loading', 'processing');
+      
+      // إعادة تعيين CSS
+      button.style.transform = 'scale(1)';
+      button.style.boxShadow = '';
+      button.style.filter = '';
+      
+      // إعادة النص الأصلي إذا كان محفوظاً
+      if (button.dataset.originalText) {
+        button.innerHTML = button.dataset.originalText;
+      }
+    });
+    
+    // إزالة البوب أب
     popup.remove();
   }
   
@@ -2005,6 +2358,9 @@ function closeDelegationConfirmationPopup() {
   if (currentDelegationData && currentDelegationData.contentId) {
     enableCardActions(currentDelegationData.contentId);
   }
+  
+  // إعادة تعيين متغيرات التفويض
+  currentDelegationData = null;
 }
 
 // دالة تهيئة التوقيع
@@ -2307,9 +2663,9 @@ async function processSingleDelegation(data) {
     if (result.status === 'success') {
       let message;
       if (contentType === 'committee') {
-        message = 'تم إرسال طلب التفويض للجنة بنجاح';
+        message = getTranslation('delegation-committee-sent');
       } else {
-        message = 'تم إرسال طلب التفويض بنجاح';
+        message = getTranslation('delegation-sent-success');
       }
       showToast(message, 'success');
       closeDelegationConfirmationPopup();
@@ -2318,7 +2674,7 @@ async function processSingleDelegation(data) {
         window.location.reload();
       }, 1500);
     } else {
-      showToast(result.message || 'فشل إرسال طلب التفويض', 'error');
+      showToast(result.message || getTranslation('delegation-failed'), 'error');
       // إعادة تفعيل أزرار البطاقة في حالة الفشل
       if (data.contentId) {
         enableCardActions(data.contentId);
@@ -2408,9 +2764,6 @@ function authHeaders() {
   };
 }
 
-// إضافة دالة setupPersonCountHandler لمنع الخطأ
-function setupPersonCountHandler() {}
-
 // دوال التفويض مع الإقرار والتوقيع
 async function showSingleDelegationConfirmation(delegateTo, contentId, contentType, notes = '') {
   try {
@@ -2424,7 +2777,7 @@ async function showSingleDelegationConfirmation(delegateTo, contentId, contentTy
     console.log('[showSingleDelegationConfirmation] User data:', userData);
     
     if (userData.status !== 'success') {
-      showToast('خطأ في جلب معلومات المستخدم', 'error');
+      showToast(getTranslation('delegation-error-loading'), 'error');
       return;
     }
     
@@ -2440,7 +2793,7 @@ async function showSingleDelegationConfirmation(delegateTo, contentId, contentTy
     console.log('[showSingleDelegationConfirmation] Current user data from API:', currentUserData);
     
     if (currentUserData.status !== 'success') {
-      showToast('خطأ في جلب معلومات المستخدم الحالي', 'error');
+      showToast(getTranslation('delegation-error-loading'), 'error');
       return;
     }
     
@@ -2454,7 +2807,7 @@ async function showSingleDelegationConfirmation(delegateTo, contentId, contentTy
     if (!contentResponse.ok) {
       const errorText = await contentResponse.text();
       console.error('[showSingleDelegationConfirmation] Content response error:', errorText);
-      showToast(`خطأ في جلب معلومات الملف: ${contentResponse.status}`, 'error');
+      showToast(getTranslation('delegation-error-loading'), 'error');
       return;
     }
     
@@ -2462,7 +2815,7 @@ async function showSingleDelegationConfirmation(delegateTo, contentId, contentTy
     console.log('[showSingleDelegationConfirmation] Content data:', contentData);
     
     if (contentData.status !== 'success') {
-      showToast('خطأ في جلب معلومات الملف', 'error');
+      showToast(getTranslation('delegation-error-loading'), 'error');
       return;
     }
     
@@ -2494,7 +2847,7 @@ async function showSingleDelegationConfirmation(delegateTo, contentId, contentTy
     
   } catch (error) {
     console.error('[showSingleDelegationConfirmation] Error:', error);
-    showToast('خطأ في عرض تأكيد التفويض', 'error');
+    showToast(getTranslation('delegation-error-processing'), 'error');
   }
 }
 
@@ -2510,7 +2863,7 @@ async function showBulkDelegationConfirmation(delegateTo, notes = '') {
     console.log('[showBulkDelegationConfirmation] User data:', userData);
     
     if (userData.status !== 'success') {
-      showToast('خطأ في جلب معلومات المستخدم', 'error');
+      showToast(getTranslation('delegation-error-loading'), 'error');
       return;
     }
     
@@ -2526,7 +2879,7 @@ async function showBulkDelegationConfirmation(delegateTo, notes = '') {
     console.log('[showBulkDelegationConfirmation] Current user data from API:', currentUserData);
     
     if (currentUserData.status !== 'success') {
-      showToast('خطأ في جلب معلومات المستخدم الحالي', 'error');
+      showToast(getTranslation('delegation-error-loading'), 'error');
       return;
     }
     
@@ -2559,7 +2912,7 @@ async function showBulkDelegationConfirmation(delegateTo, notes = '') {
     
   } catch (error) {
     console.error('[showBulkDelegationConfirmation] Error:', error);
-    showToast('خطأ في عرض تأكيد التفويض الشامل', 'error');
+    showToast(getTranslation('delegation-error-processing'), 'error');
   }
 }
 
@@ -2582,7 +2935,7 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       const card = e.target.closest('.approval-card');
       const contentId = card.dataset.id;
-      const contentType = card.dataset.type || 'department';
+      const contentType = card.dataset.type || getTranslation('department');
       
       // فتح modal اختيار المستخدم
       openModal('delegateModal');
@@ -2621,7 +2974,7 @@ document.addEventListener('DOMContentLoaded', function() {
       closeModal('delegateModal');
       
       // عرض بوب أب الإقرار والتوقيع
-      await handleSingleDelegation(delegateTo, selectedContentId, 'department', notes);
+      await handleSingleDelegation(delegateTo, selectedContentId, getTranslation('department'), notes);
     });
   }
   
@@ -2646,5 +2999,96 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// إضافة دالة setupPersonCountHandler لمنع الخطأ
-function setupPersonCountHandler() {}
+// إضافة معالجة شاملة لجميع أزرار الإغلاق
+document.addEventListener('DOMContentLoaded', function() {
+  // معالجة جميع أزرار الإغلاق في جميع المودالز
+  const allCloseButtons = document.querySelectorAll('.modal-close, [data-modal]');
+  
+  allCloseButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const modalId = this.dataset.modal || this.closest('.modal-overlay')?.id;
+      if (!modalId) return;
+      
+      // إعادة تعيين حالة جميع الأزرار في المودال
+      resetModalButtons(modalId);
+      
+      // إعادة تفعيل أزرار البطاقة إذا كان هناك contentId محدد
+      if (selectedContentId) {
+        const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
+        if (card && card.dataset.status === 'pending') {
+          enableCardActions(selectedContentId);
+        }
+      }
+      
+      // إعادة تعيين أزرار خاصة في بعض المودالز
+      if (modalId === 'qrModal') {
+        const btnElectronicApprove = document.getElementById('btnElectronicApprove');
+        if (btnElectronicApprove && btnElectronicApprove.disabled) {
+          setButtonProcessingState(btnElectronicApprove, false);
+        }
+      } else if (modalId === 'rejectModal') {
+        const btnSendReason = document.getElementById('btnSendReason');
+        if (btnSendReason && btnSendReason.disabled) {
+          setButtonProcessingState(btnSendReason, false);
+        }
+      } else if (modalId === 'delegateModal') {
+        const btnDelegateConfirm = document.getElementById('btnDelegateConfirm');
+        if (btnDelegateConfirm && btnDelegateConfirm.disabled) {
+          setButtonProcessingState(btnDelegateConfirm, false);
+        }
+      } else if (modalId === 'fileTransferModal') {
+        const btnTransferConfirm = document.getElementById('btnTransferConfirm');
+        if (btnTransferConfirm && btnTransferConfirm.disabled) {
+          setButtonProcessingState(btnTransferConfirm, false);
+        }
+      } else if (modalId === 'signatureModal') {
+        const btnConfirmSignature = document.getElementById('btnConfirmSignature');
+        if (btnConfirmSignature && btnConfirmSignature.disabled) {
+          setButtonProcessingState(btnConfirmSignature, false);
+        }
+      }
+    });
+  });
+  
+  // معالجة إضافية لأزرار الإغلاق (×)
+  const closeButtons = document.querySelectorAll('.close-btn, .modal-close');
+  closeButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      // إعادة تعيين حالة جميع الأزرار في جميع المودالز المفتوحة
+      resetAllModalButtons();
+      
+      // إعادة تعيين حالة جميع الأزرار في البوب أبز
+      resetAllPopupButtons();
+      
+      // إعادة تفعيل أزرار البطاقة إذا كان هناك contentId محدد
+      if (selectedContentId) {
+        const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
+        if (card && card.dataset.status === 'pending') {
+          enableCardActions(selectedContentId);
+        }
+      }
+    });
+  });
+  
+  // معالجة إغلاق النافذة أو تغيير الصفحة
+  window.addEventListener('beforeunload', function() {
+    resetAllModalButtons();
+    resetAllPopupButtons();
+  });
+  
+  // معالجة النقر خارج المودال
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay') || e.target.classList.contains('modal')) {
+      const modalId = e.target.id;
+      if (modalId) {
+        resetModalButtons(modalId);
+        if (selectedContentId) {
+          const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
+          if (card && card.dataset.status === 'pending') {
+            enableCardActions(selectedContentId);
+          }
+        }
+      }
+    }
+  });
+});

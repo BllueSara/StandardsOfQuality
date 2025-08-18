@@ -53,14 +53,20 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchApprovalSequence(departmentId) {
         const res = await fetch(`${apiBase}/departments/${departmentId}/approval-sequence`);
         const data = await res.json();
-        return data.approval_sequence || [];
+        return {
+            approval_sequence: data.approval_sequence || [],
+            approval_roles: data.approval_roles || []
+        };
     }
 
-    async function saveApprovalSequence(departmentId, sequence) {
+    async function saveApprovalSequence(departmentId, sequence, roles) {
         await fetch(`${apiBase}/departments/${departmentId}/approval-sequence`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approval_sequence: sequence })
+            body: JSON.stringify({ 
+                approval_sequence: sequence,
+                approval_roles: roles 
+            })
         });
     }
 
@@ -85,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
             departmentUsers = [];
         }
         // جلب التسلسل المحفوظ
-        const sequence = await fetchApprovalSequence(deptId);
+        const { approval_sequence, approval_roles } = await fetchApprovalSequence(deptId);
         // جلب مستخدمي الجودة ومدير المستشفى
         const qualityUsers = await fetchQualityUsers();
         window.qualityUsers = qualityUsers;
@@ -103,12 +109,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch {}
         window.managerObj = managerObj;
-        if (sequence.length) {
+        if (approval_sequence.length) {
             // استخرج الأشخاص العاديين والجودة والمدير من sequence
             let normalIds = [];
             let qualityIds = [];
             let managerInSeq = false;
-            sequence.forEach(id => {
+            approval_sequence.forEach(id => {
                 if (managerId && id == managerId) managerInSeq = true;
                 else if (qualityUsers.find(u => u.id == id)) qualityIds.push(id);
                 else normalIds.push(id);
@@ -126,7 +132,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const select = document.getElementById(`qualityUserSelect${i}`);
                 if (select && qualityIds[i-1]) select.value = qualityIds[i-1];
             }
-            renderPersonsChain(sequence, departmentUsers, qualityUsers, managerObj);
+            // عيّن الأدوار للأشخاص العاديين
+            document.querySelectorAll('.person-select').forEach((select, idx) => {
+                if (normalIds[idx] && approval_roles[idx]) {
+                    const roleSelect = document.querySelector(`select[name="person${idx + 1}Role"]`);
+                    if (roleSelect) roleSelect.value = approval_roles[idx];
+                }
+            });
+            // عيّن الأدوار لأشخاص الجودة
+            for (let i = 1; i <= qualityPersonCount; i++) {
+                const select = document.getElementById(`qualityUserSelect${i}`);
+                if (select && qualityIds[i-1]) {
+                    const roleIndex = approval_sequence.indexOf(qualityIds[i-1]);
+                    if (roleIndex !== -1 && approval_roles[roleIndex]) {
+                        const roleSelect = document.getElementById(`qualityUserRole${i}`);
+                        if (roleSelect) roleSelect.value = approval_roles[roleIndex];
+                    }
+                }
+            }
+            renderPersonsChain(approval_sequence, approval_roles, departmentUsers, qualityUsers, managerObj);
         } else {
             // إذا لا يوجد تسلسل، أبقِ السلوك كما هو
             const count = parseInt(personCount.value);
@@ -142,12 +166,16 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = 1; i <= count; i++) {
             const group = document.createElement('div');
             group.className = 'form-group';
+            group.style.marginBottom = '15px';
+            
             const label = document.createElement('label');
             label.textContent = `${getTranslation('select-person')} ${i}`;
+            
             const select = document.createElement('select');
             select.name = `person${i}`;
             select.className = 'person-select';
             select.innerHTML = `<option value="">${getTranslation('select-person')}</option>`;
+            
             // عبئ الخيارات من departmentUsers
             departmentUsers.forEach(user => {
                 const opt = document.createElement('option');
@@ -155,28 +183,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 opt.textContent = user.name;
                 select.appendChild(opt);
             });
+            
+            // إضافة اختيار الدور
+            const roleSelect = document.createElement('select');
+            roleSelect.name = `person${i}Role`;
+            roleSelect.className = 'person-role-select';
+            roleSelect.style.marginTop = '8px';
+            roleSelect.style.width = '100%';
+            roleSelect.innerHTML = `
+                <option value="">${getTranslation('select-role') || 'اختر الدور'}</option>
+                <option value="prepared">${getTranslation('prepared') || 'Prepared'}</option>
+                <option value="updated">${getTranslation('updated') || 'Updated'}</option>
+                <option value="reviewed">${getTranslation('reviewed') || 'Reviewed'}</option>
+                <option value="approved">${getTranslation('approved') || 'Approved'}</option>
+            `;
+            
             group.appendChild(label);
             group.appendChild(select);
+            group.appendChild(roleSelect);
             personsFields.appendChild(group);
         }
+        
         // عند كل تغيير، أعد بناء السلسلة من القيم المختارة
         function updateChain() {
             const currentSequence = [];
-            document.querySelectorAll('.person-select').forEach(select => {
-                if (select.value) currentSequence.push(select.value);
+            const currentRoles = [];
+            
+            document.querySelectorAll('.person-select').forEach((select, index) => {
+                if (select.value) {
+                    currentSequence.push(select.value);
+                    const roleSelect = document.querySelector(`select[name="person${index + 1}Role"]`);
+                    currentRoles.push(roleSelect ? roleSelect.value : '');
+                }
             });
+            
             for (let i = 1; i <= qualityPersonCount; i++) {
                 const select = document.getElementById(`qualityUserSelect${i}`);
-                if (select && select.value) currentSequence.push(select.value);
+                if (select && select.value) {
+                    currentSequence.push(select.value);
+                    const roleSelect = document.getElementById(`qualityUserRole${i}`);
+                    currentRoles.push(roleSelect ? roleSelect.value : '');
+                }
             }
+            
             if (window.managerObj && window.managerObj.id && !currentSequence.includes(window.managerObj.id)) {
                 currentSequence.push(window.managerObj.id);
+                currentRoles.push('approved'); // المدير دائماً approved
             }
-            renderPersonsChain(currentSequence, departmentUsers, window.qualityUsers, window.managerObj);
+            
+            renderPersonsChain(currentSequence, currentRoles, departmentUsers, window.qualityUsers, window.managerObj);
         }
-        document.querySelectorAll('.person-select').forEach(sel => {
+        
+        document.querySelectorAll('.person-select, .person-role-select').forEach(sel => {
             sel.addEventListener('change', updateChain);
         });
+        
         updateChain();
     }
 
@@ -238,8 +299,11 @@ document.addEventListener('DOMContentLoaded', function() {
             for (let i = 1; i <= count; i++) {
                 const group = document.createElement('div');
                 group.className = 'form-group';
+                group.style.marginBottom = '15px';
+                
                 const label = document.createElement('label');
                 label.textContent = `${getTranslation('select-quality-person')} ${i}`;
+                
                 const select = document.createElement('select');
                 select.name = `qualityPerson${i}`;
                 select.className = 'person-select-quality';
@@ -247,29 +311,66 @@ document.addEventListener('DOMContentLoaded', function() {
                 select.style = 'width:100%;max-width:300px;';
                 select.required = true;
                 select.innerHTML = `<option value="">${getTranslation('select-person')}</option>`;
+                
                 qualityUsers.forEach(user => {
                     const opt = document.createElement('option');
                     opt.value = user.id;
                     opt.textContent = user.name;
                     select.appendChild(opt);
                 });
+                
+                // إضافة اختيار الدور لأشخاص الجودة
+                const roleSelect = document.createElement('select');
+                roleSelect.name = `qualityPerson${i}Role`;
+                roleSelect.className = 'person-role-select';
+                roleSelect.id = `qualityUserRole${i}`;
+                roleSelect.style.marginTop = '8px';
+                roleSelect.style.width = '100%';
+                roleSelect.style.maxWidth = '300px';
+                roleSelect.innerHTML = `
+                    <option value="">${getTranslation('select-role') || 'اختر الدور'}</option>
+                    <option value="prepared">${getTranslation('prepared') || 'Prepared'}</option>
+                    <option value="updated">${getTranslation('updated') || 'Updated'}</option>
+                    <option value="reviewed">${getTranslation('reviewed') || 'Reviewed'}</option>
+                    <option value="approved">${getTranslation('approved') || 'Approved'}</option>
+                `;
+                
                 group.appendChild(label);
                 group.appendChild(select);
+                group.appendChild(roleSelect);
                 qualityUserSelectDiv.appendChild(group);
-                select.addEventListener('change', () => {
-                    // عند كل تغيير، أعد بناء السلسلة من القيم المختارة
-                    const currentSequence = [];
-                    document.querySelectorAll('.person-select').forEach(sel => {
-                        if (sel.value) currentSequence.push(sel.value);
+                
+                // إضافة event listeners لكل من الشخص والدور
+                [select, roleSelect].forEach(sel => {
+                    sel.addEventListener('change', () => {
+                        // عند كل تغيير، أعد بناء السلسلة من القيم المختارة
+                        const currentSequence = [];
+                        const currentRoles = [];
+                        
+                        document.querySelectorAll('.person-select').forEach((sel, idx) => {
+                            if (sel.value) {
+                                currentSequence.push(sel.value);
+                                const roleSelect = document.querySelector(`select[name="person${idx + 1}Role"]`);
+                                currentRoles.push(roleSelect ? roleSelect.value : '');
+                            }
+                        });
+                        
+                        for (let j = 1; j <= qualityPersonCount; j++) {
+                            const qSelect = document.getElementById(`qualityUserSelect${j}`);
+                            if (qSelect && qSelect.value) {
+                                currentSequence.push(qSelect.value);
+                                const roleSelect = document.getElementById(`qualityUserRole${j}`);
+                                currentRoles.push(roleSelect ? roleSelect.value : '');
+                            }
+                        }
+                        
+                        if (window.managerObj && window.managerObj.id && !currentSequence.includes(window.managerObj.id)) {
+                            currentSequence.push(window.managerObj.id);
+                            currentRoles.push('approved');
+                        }
+                        
+                        renderPersonsChain(currentSequence, currentRoles, departmentUsers, window.qualityUsers, window.managerObj);
                     });
-                    for (let j = 1; j <= qualityPersonCount; j++) {
-                        const qSelect = document.getElementById(`qualityUserSelect${j}`);
-                        if (qSelect && qSelect.value) currentSequence.push(qSelect.value);
-                    }
-                    if (window.managerObj && window.managerObj.id && !currentSequence.includes(window.managerObj.id)) {
-                        currentSequence.push(window.managerObj.id);
-                    }
-                    renderPersonsChain(currentSequence, departmentUsers, window.qualityUsers, window.managerObj);
                 });
             }
         }
@@ -279,23 +380,37 @@ document.addEventListener('DOMContentLoaded', function() {
         countSelect.addEventListener('change', function() {
             qualityPersonCount = parseInt(this.value);
             renderQualityDropdowns(qualityPersonCount);
-            renderPersonsChain(parseInt(personCount.value));
+            // تمرير مصفوفة فارغة للأدوار عند تغيير العدد
+            const currentSequence = [];
+            const currentRoles = [];
+            document.querySelectorAll('.person-select').forEach((select, index) => {
+                if (select.value) {
+                    currentSequence.push(select.value);
+                    const roleSelect = document.querySelector(`select[name="person${index + 1}Role"]`);
+                    currentRoles.push(roleSelect ? roleSelect.value : '');
+                }
+            });
+            renderPersonsChain(currentSequence, currentRoles, departmentUsers, window.qualityUsers, window.managerObj);
         });
         renderQualityDropdowns(qualityPersonCount);
     }
 
     // تعديل renderPersonsChain ليأخذ sequence ويعرضهم بالترتيب
-    function renderPersonsChain(sequence, departmentUsers, qualityUsers, managerObj) {
+    function renderPersonsChain(sequence, roles, departmentUsers, qualityUsers, managerObj) {
         personsChain.innerHTML = '';
         if (!sequence || !Array.isArray(sequence)) return;
-        // بناء مصفوفة الأشخاص
-        let nodes = sequence.map(id => {
+        
+        // بناء مصفوفة الأشخاص مع أدوارهم
+        let nodes = sequence.map((id, index) => {
             let userName = '';
             let icon = '<i class="fa fa-user"></i>';
             let isManager = false;
+            let role = roles[index] || '';
+            
             if (managerObj && id == managerObj.id) {
                 userName = managerObj.name || getTranslation('hospital-manager');
                 isManager = true;
+                role = 'approved'; // المدير دائماً approved
             } else if (qualityUsers && qualityUsers.find(u => u.id == id)) {
                 const qUser = qualityUsers.find(u => u.id == id);
                 userName = qUser ? qUser.name : getTranslation('unknown');
@@ -305,8 +420,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 userName = getTranslation('unknown');
             }
-            return { id, userName, icon, isManager };
+            
+            return { id, userName, icon, isManager, role };
         });
+        
         // إذا يوجد مدير، أزله مؤقتاً من السلسلة وأضفه في النهاية
         let managerNode = null;
         nodes = nodes.filter(n => {
@@ -316,6 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return true;
         });
+        
         // تقسيم إلى صفوف كل صف فيه 3 أشخاص
         function chunkArray(arr, size) {
             const result = [];
@@ -324,11 +442,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return result;
         }
+        
         const rows = chunkArray(nodes, 3);
+        
         // رسم كل صف
         rows.forEach((rowNodes, rowIdx) => {
             const rowDiv = document.createElement('div');
             rowDiv.className = 'persons-chain-row';
+            
             rowNodes.forEach((node, idx) => {
                 if (rowIdx > 0 && idx === 0) {
                     // سهم بين آخر عنصر في الصف السابق وأول عنصر في الصف الحالي
@@ -337,6 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     arrow.innerHTML = '<div class="dashed"></div><div class="arrow-head"></div>';
                     rowDiv.appendChild(arrow);
                 }
+                
                 if (idx > 0) {
                     // سهم بين الأشخاص في نفس الصف
                     const arrow = document.createElement('div');
@@ -344,16 +466,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     arrow.innerHTML = '<div class="dashed"></div><div class="arrow-head"></div>';
                     rowDiv.appendChild(arrow);
                 }
+                
                 const personNode = document.createElement('div');
                 personNode.className = 'person-node';
+                
+                // إضافة الدور تحت اسم الشخص
+                const roleBadge = node.role ? `<div class="role-badge role-${node.role}">${getRoleTranslation(node.role)}</div>` : '';
+                
                 personNode.innerHTML = `
                     <div class="person-circle">${node.icon}</div>
                     <div class="person-name">${node.userName}</div>
+                    ${roleBadge}
                 `;
+                
                 rowDiv.appendChild(personNode);
             });
+            
             personsChain.appendChild(rowDiv);
         });
+        
         // أضف المدير في النهاية (مع سهم إذا فيه أشخاص)
         if (managerNode) {
             if (rows.length > 0 && nodes.length > 0) {
@@ -362,11 +493,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 arrow.className = 'arrow-line';
                 arrow.innerHTML = '<div class="dashed"></div><div class="arrow-head"></div>';
                 lastRowDiv.appendChild(arrow);
+                
                 const managerDiv = document.createElement('div');
                 managerDiv.className = 'person-node';
+                const roleBadge = managerNode.role ? `<div class="role-badge role-${managerNode.role}">${getRoleTranslation(managerNode.role)}</div>` : '';
                 managerDiv.innerHTML = `
                     <div class="person-circle no-bg">${managerNode.icon}</div>
                     <div class="person-name">${managerNode.userName}</div>
+                    ${roleBadge}
                 `;
                 lastRowDiv.appendChild(managerDiv);
             } else {
@@ -375,19 +509,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 rowDiv.className = 'persons-chain-row';
                 const managerDiv = document.createElement('div');
                 managerDiv.className = 'person-node';
+                const roleBadge = managerNode.role ? `<div class="role-badge role-${managerNode.role}">${getRoleTranslation(managerNode.role)}</div>` : '';
                 managerDiv.innerHTML = `
                     <div class="person-circle no-bg">${managerNode.icon}</div>
-                    <div class="person-name">${managerNode.userName}</div>`;
+                    <div class="person-name">${managerNode.userName}</div>
+                    ${roleBadge}
+                `;
                 rowDiv.appendChild(managerDiv);
                 personsChain.appendChild(rowDiv);
             }
         }
+        
         // إذا أكثر من 4 أضف كلاس multi-line-chain
         if (nodes.length > 4) {
             personsChain.classList.add('multi-line-chain');
         } else {
             personsChain.classList.remove('multi-line-chain');
         }
+    }
+    
+    // دالة مساعدة لترجمة الأدوار
+    function getRoleTranslation(role) {
+        const roleTranslations = {
+            'prepared': getTranslation('prepared') || 'Prepared',
+            'updated': getTranslation('updated') || 'Updated',
+            'reviewed': getTranslation('reviewed') || 'Reviewed',
+            'approved': getTranslation('approved') || 'Approved'
+        };
+        return roleTranslations[role] || role;
     }
 
     async function fetchDepartments() {
@@ -452,14 +601,27 @@ document.addEventListener('DOMContentLoaded', function() {
     window.submitTransfer = async function() {
         const deptId = departmentSelect.value;
         const sequence = [];
-        document.querySelectorAll('.person-select').forEach(select => {
-            if (select.value) sequence.push(select.value);
+        const roles = [];
+        
+        // جمع الأشخاص العاديين مع أدوارهم
+        document.querySelectorAll('.person-select').forEach((select, index) => {
+            if (select.value) {
+                sequence.push(select.value);
+                const roleSelect = document.querySelector(`select[name="person${index + 1}Role"]`);
+                roles.push(roleSelect ? roleSelect.value : '');
+            }
         });
-        // أضف جميع الأشخاص المختارين من الجودة
+        
+        // أضف جميع الأشخاص المختارين من الجودة مع أدوارهم
         for (let i = 1; i <= qualityPersonCount; i++) {
             const select = document.getElementById(`qualityUserSelect${i}`);
-            if (select && select.value) sequence.push(select.value);
+            if (select && select.value) {
+                sequence.push(select.value);
+                const roleSelect = document.getElementById(`qualityUserRole${i}`);
+                roles.push(roleSelect ? roleSelect.value : '');
+            }
         }
+        
         // جلب مدير المستشفى من الباكند وإضافته للسلسلة فقط إذا لم يكن موجود
         let managerId = null;
         try {
@@ -472,10 +634,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 managerId = data.data.id;
             }
         } catch {}
+        
         if (managerId && !sequence.includes(managerId)) {
             sequence.push(managerId);
+            roles.push('approved'); // المدير دائماً approved
         }
-        await saveApprovalSequence(deptId, sequence);
+        
+        // حفظ التسلسل مع الأدوار
+        await saveApprovalSequence(deptId, sequence, roles);
         showToast(getTranslation('transfer-confirmed'), 'success');
         // أكمل منطق التحويل الحالي إذا لزم...
     }

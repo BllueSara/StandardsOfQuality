@@ -69,6 +69,7 @@ app.use('/api/contents', contentRouter);
 // approval
 app.use('/api/approvals', approvalRouter);
 app.put('/api/contents/:id/approval-sequence', contentController.updateContentApprovalSequence);
+app.get('/api/contents/:id/approval-sequence', contentController.getContentApprovalSequence);
 app.use('/api/job-titles', jobTitlesRoutes);
 app.use('/api/job-names', jobNamesRoutes);
 app.use('/api/deleted-items', deletedItemsRoutes);
@@ -98,6 +99,7 @@ app.listen(PORT, async () => {
     try {
     await initializeJobNames();
     await initializeSoftDelete();
+    await initializeApprovalRoles();
   } catch (error) {
     console.error('خطأ في تهيئة الجداول:', error);
   }
@@ -112,6 +114,17 @@ const initializeSoftDelete = async () => {
   } catch (error) {
     console.error('❌ خطأ في تهيئة حقول soft delete:', error);
     console.log('سيستمر الخادم في العمل رغم خطأ تهيئة soft delete');
+  }
+};
+
+// تهيئة عمود الأدوار عند بدء التطبيق
+const initializeApprovalRoles = async () => {
+  try {
+    const { initializeApprovalRoles } = require('./utils/initializeApprovalRoles');
+    await initializeApprovalRoles();
+  } catch (error) {
+    console.error('❌ خطأ في تهيئة عمود الأدوار:', error);
+    console.log('سيستمر الخادم في العمل رغم خطأ تهيئة عمود الأدوار');
   }
 };
 

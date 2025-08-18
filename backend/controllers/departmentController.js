@@ -1082,24 +1082,44 @@ const deleteDepartment = async (req, res) => {
 const getApprovalSequence = async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await db.query('SELECT approval_sequence FROM departments WHERE id = ? AND deleted_at IS NULL', [id]);
+    const [rows] = await db.query('SELECT approval_sequence, approval_roles FROM departments WHERE id = ? AND deleted_at IS NULL', [id]);
     if (!rows.length) return res.status(404).json({ message: 'Department not found' });
 
-    let approvalSequence2 = [];
+    let approvalSequence = [];
+    let approvalRoles = [];
+    
+    // معالجة تسلسل الموافقة
     const rawSeq = rows[0].approval_sequence;
     if (Array.isArray(rawSeq)) {
-      approvalSequence2 = rawSeq;
+      approvalSequence = rawSeq;
     } else if (typeof rawSeq === 'string') {
       try {
-        approvalSequence2 = JSON.parse(rawSeq);
+        approvalSequence = JSON.parse(rawSeq);
       } catch {
-        approvalSequence2 = [];
+        approvalSequence = [];
       }
     } else {
-      approvalSequence2 = [];
+      approvalSequence = [];
+    }
+    
+    // معالجة الأدوار
+    const rawRoles = rows[0].approval_roles;
+    if (Array.isArray(rawRoles)) {
+      approvalRoles = rawRoles;
+    } else if (typeof rawRoles === 'string') {
+      try {
+        approvalRoles = JSON.parse(rawRoles);
+      } catch {
+        approvalRoles = [];
+      }
+    } else {
+      approvalRoles = [];
     }
 
-    res.json({ approval_sequence: approvalSequence2 });
+    res.json({ 
+      approval_sequence: approvalSequence,
+      approval_roles: approvalRoles
+    });
   } catch (err) {
     console.error('getApprovalSequence error:', err);
     res.status(500).json({ message: 'Internal server error' });
@@ -1110,13 +1130,39 @@ const getApprovalSequence = async (req, res) => {
 const updateApprovalSequence = async (req, res) => {
   try {
     const { id } = req.params;
-    const { approval_sequence } = req.body;
-    if (!Array.isArray(approval_sequence)) return res.status(400).json({ message: 'approval_sequence must be array' });
+    const { approval_sequence, approval_roles } = req.body;
+    
+    if (!Array.isArray(approval_sequence)) {
+      return res.status(400).json({ message: 'approval_sequence must be array' });
+    }
+    
+    if (!Array.isArray(approval_roles)) {
+      return res.status(400).json({ message: 'approval_roles must be array' });
+    }
+    
+    // التحقق من أن عدد الأدوار يساوي عدد الأشخاص في التسلسل
+    if (approval_sequence.length !== approval_roles.length) {
+      return res.status(400).json({ 
+        message: 'Number of roles must match number of people in sequence' 
+      });
+    }
+    
     const [rows] = await db.query('SELECT id FROM departments WHERE id = ? AND deleted_at IS NULL', [id]);
     if (!rows.length) return res.status(404).json({ message: 'Department not found' });
-    await db.query('UPDATE departments SET approval_sequence = ? WHERE id = ?', [JSON.stringify(approval_sequence), id]);
-    res.json({ message: 'Approval sequence updated' });
+    
+    // تحديث كل من التسلسل والأدوار
+    await db.query(
+      'UPDATE departments SET approval_sequence = ?, approval_roles = ? WHERE id = ?', 
+      [JSON.stringify(approval_sequence), JSON.stringify(approval_roles), id]
+    );
+    
+    res.json({ 
+      message: 'Approval sequence and roles updated successfully',
+      approval_sequence: approval_sequence,
+      approval_roles: approval_roles
+    });
   } catch (err) {
+    console.error('updateApprovalSequence error:', err);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
