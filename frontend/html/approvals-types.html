@@ -109,7 +109,7 @@
 
     // إذا أدمن، نعطي كل الصلاحيات
     let perms = [];
-    if (role !== 'admin') {
+    if (role !== 'admin' && role !== 'super_admin') {
       try {
         const res = await fetch(`${apiBase}/users/${userId}/permissions`, {
           headers: { 'Authorization': `Bearer ${token}` }

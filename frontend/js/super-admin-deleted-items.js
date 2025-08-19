@@ -585,7 +585,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Check if user is admin
     try {
         const payload = await safeGetUserInfo(token);
-        if (payload.role !== 'admin') {
+        if (payload.role !== 'admin' && payload.role !== 'super-admin') {
             showAlert('error', 'غير مسموح - يتطلب صلاحيات السوبر أدمن');
             setTimeout(() => {
                 window.location.href = '/html/dashboard.html';

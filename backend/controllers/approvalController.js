@@ -106,7 +106,7 @@ const getUserPendingApprovals = async (req, res) => {
     const userRole = decoded.role;
 
     // إذا كان المستخدم admin، اعرض جميع الملفات المعلقة
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || userRole === 'super_admin') {
       const [rows] = await db.execute(`
         SELECT 
           CONCAT('dept-', c.id) AS id, 
@@ -268,7 +268,7 @@ const handleApproval = async (req, res) => {
     const userRole = decoded.role;
     
     // تحقق من دور المدير فقط
-    const canViewAll = userRole === 'admin';
+    const canViewAll = userRole === 'admin' || userRole === 'super_admin';
 
     // تمييز نوع الاعتماد بناءً على on_behalf_of أو وجود تفويض في قاعدة البيانات
     let isProxy = false;
@@ -1569,7 +1569,7 @@ const getAssignedApprovals = async (req, res) => {
     const userRole = decoded.role;
 
     const permsSet = await getUserPermissions(userId);
-    const canViewAll = userRole === 'admin';
+    const canViewAll = userRole === 'admin'|| userRole === 'super_admin';
 
     // جلب كل الملفات (حسب الصلاحية)
     const departmentContentQuery = `
@@ -3548,14 +3548,6 @@ const getDelegationConfirmations = async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ status: 'error', message: 'لا يوجد توكن' });
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const currentUserId = decoded.id;
-    const userRole = decoded.role;
-    
-    // التحقق من أن المستخدم مدير
-    if (userRole !== 'admin') {
-      return res.status(403).json({ status: 'error', message: 'ليس لديك صلاحية الوصول لهذه البيانات' });
-    }
     
     // جلب جميع اقرارات التفويض من approval_logs
     const [delegationRows] = await db.execute(`

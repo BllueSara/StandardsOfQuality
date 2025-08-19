@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const userRes = await fetch(`${apiBase}/users/${userId}`, { headers });
         const { data: user } = await userRes.json();
         const role = user.role;
-        if (role === 'admin') {
+        if (role === 'admin' || role === 'super_admin') {
             permissions.canAdd = permissions.canEdit = permissions.canDelete = true;
         }
 

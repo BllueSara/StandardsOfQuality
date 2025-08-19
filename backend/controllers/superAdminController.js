@@ -28,7 +28,7 @@ const checkSuperAdminAuth = (req, res, next) => {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        if (decoded.role !== 'admin') {
+        if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
             return res.status(403).json({ 
                 status: 'error', 
                 message: 'غير مسموح - يتطلب صلاحيات السوبر أدمن' 

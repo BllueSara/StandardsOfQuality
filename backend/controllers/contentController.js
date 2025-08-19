@@ -314,12 +314,12 @@ const getContentsByFolderId = async (req, res) => {
         const now = new Date();
         const nowMs = now.getTime();
         const oneDayMs = 24 * 60 * 60 * 1000;
-        const isAdmin = decodedToken.role === 'admin';
+        const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'super_admin';
         const userId = Number(decodedToken.id);
 
         // فلترة النتائج حسب الصلاحية
         const filtered = contents.filter(item => {
-            const isAdmin = decodedToken.role === 'admin';
+            const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'super_admin';
             const userId = Number(decodedToken.id);
             if (isAdmin) return true; // الأدمن يرى كل شيء
 
@@ -871,7 +871,7 @@ const deleteContent = async (req, res) => {
         }
 
         // فقط منشئ المحتوى أو المشرف يمكنه حذف المحتوى
-        if (content[0].created_by !== decodedToken.id && decodedToken.role !== 'admin') {
+        if (content[0].created_by !== decodedToken.id && decodedToken.role !== 'admin' && decodedToken.role !== 'super_admin') {
             connection.release();
             return res.status(403).json({ 
                 status: 'error',
@@ -880,7 +880,7 @@ const deleteContent = async (req, res) => {
         }
 
         // لا يمكن حذف محتوى معتمد
-        if (content[0].is_approved && decodedToken.role !== 'admin') {
+        if (content[0].is_approved && decodedToken.role !== 'admin' && decodedToken.role !== 'super_admin') {
             connection.release();
             return res.status(403).json({ 
                 status: 'error',
@@ -1699,7 +1699,7 @@ const getRejectedContents = async (req, res) => {
         let params = [];
 
         // إذا لم يكن المستخدم admin، أضف شرط الملكية أو الرفض
-        if (decodedToken.role !== 'admin') {
+        if (decodedToken.role !== 'admin' || decodedToken.role !== 'super_admin') {
             query += ' AND (c.created_by = ? OR al.approver_id = ?)';
             params.push(decodedToken.id, decodedToken.id);
         }

@@ -176,7 +176,7 @@ const getDepartments = async (req, res) => {
 
         if (hasParentIdColumn) {
             // النظام الجديد - مع parent_id: دائماً جلب الأقسام الرئيسية فقط (parent_id IS NULL)
-            if (userRole === 'admin' || !canViewOwnDepartment) {
+            if (userRole === 'admin' || userRole === 'super_admin' || !canViewOwnDepartment) {
                 query = 'SELECT * FROM departments WHERE parent_id IS NULL AND deleted_at IS NULL ORDER BY type, name';
                 params = [];
                 console.log('🔍 Fetching main departments only (parent_id IS NULL)');
@@ -194,7 +194,7 @@ const getDepartments = async (req, res) => {
             }
         } else {
             // النظام القديم - بدون parent_id
-            if (userRole === 'admin' || !canViewOwnDepartment) {
+            if (userRole === 'admin' || userRole === 'super_admin' || !canViewOwnDepartment) {
                 query = 'SELECT * FROM departments WHERE deleted_at IS NULL';
                 params = [];
                 console.log('🔍 Fetching all departments (old system)');
@@ -278,7 +278,7 @@ const getAllDepartments = async (req, res) => {
 
         if (hasParentIdColumn) {
             // النظام الجديد - مع parent_id: جلب جميع الأقسام (الرئيسية والفرعية)
-            if (userRole === 'admin' || !canViewOwnDepartment) {
+            if (userRole === 'admin' || userRole === 'super_admin' || !canViewOwnDepartment) {
                 query = 'SELECT * FROM departments WHERE deleted_at IS NULL ORDER BY parent_id ASC, type, name';
                 params = [];
                 console.log('🔍 Fetching all departments (main and sub) for admin/all users');
@@ -296,7 +296,7 @@ const getAllDepartments = async (req, res) => {
             }
         } else {
             // النظام القديم - بدون parent_id: جلب جميع الأقسام (للتوافق مع الأنظمة القديمة)
-            if (userRole === 'admin' || !canViewOwnDepartment) {
+            if (userRole === 'admin' || userRole === 'super_admin' || !canViewOwnDepartment) {
                 query = 'SELECT * FROM departments WHERE deleted_at IS NULL';
                 params = [];
                 console.log('🔍 Fetching all departments (old system)');

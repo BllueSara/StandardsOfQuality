@@ -2556,7 +2556,10 @@ const translations = {
             rejected: 'مرفوض'
         },
                 'delegate-all': 'توقيع بالنيابة لجميع الملفات',
-                'revoke_files': 'سحب الملفات',
+'revoke_files': 'سحب الملفات',
+'clear_cache': 'مسح الكاش ميموري',
+'view_delegation_confirmations': 'عرض اقرارات التفويض',
+
 
         'accept-all-proxy': 'قبول جميع التفويضات بالنيابة عن الشخص',
                 'delegate_all' : 'تفويض جميع الملفات بالنيابة',
@@ -2765,6 +2768,8 @@ const translations = {
 
         'by-person': 'By Person',
         'revoke_files': 'Revoke Files',
+                'clear_cache': 'Clear Cache Memory',
+        'view_delegation_confirmations': 'View Delegation Confirmations',
         'no-active-delegations': 'No active delegations for this user.',
         'file-delegations': 'File Delegations',
         'committee-delegations': 'Committee Delegations',

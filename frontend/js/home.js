@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const payload = await safeGetUserInfo(token);
   const userId  = payload.id;
   const role    = payload.role;
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'super_admin';
 
   // 1) جلب الصلاحيات
   let permissionsKeys = [];

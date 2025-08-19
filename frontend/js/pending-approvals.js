@@ -319,7 +319,7 @@ async function fetchPermissions() {
   if (!token) return;
   const payload = await safeGetUserInfo(token);
   const userId = payload.id, role = payload.role;
-  if (role === 'admin') {
+  if (role === 'admin' || role === 'super_admin') {
     permissionsKeys = ['*'];
     addBulkDelegateButton(); // إضافة هذا السطر ليظهر الزر للمدير
     return;

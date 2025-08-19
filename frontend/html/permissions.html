@@ -84,7 +84,7 @@
     <span id="profile-status" class="status"></span>
     <span class="badge-pill dept-badge" id="profile-department"></span>
     <span class="badge-pill role-badge" id="profile-role"></span>
-    <span class="badge-pill job-badge" id="profile-job-name"></span>
+    <!-- <span class="badge-pill job-badge" id="profile-job-name"></span> -->
     <span class="badge-pill job-badge" id="profile-job-title"></span>
   </div>
 </div>
@@ -210,6 +210,17 @@
         <span class="slider round"></span>
       </label>
     </div>
+ <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="revoke_delegations"> الغاء تفويض بالنيابة عن جميع الملفات </div>
+        </div>
+      </div>
+      <label class="switch" data-key="revoke_delegations">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
     <div class="permission-item">
       <div class="permission-details">
         <div class="text-content">
@@ -217,6 +228,30 @@
         </div>
       </div>
       <label class="switch" data-key="revoke_files">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="clear_cache">مسح الكاش ميموري</div>
+        </div>
+      </div>
+      <label class="switch" data-key="clear_cache">
+        <input type="checkbox">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="permission-item">
+      <div class="permission-details">
+        <div class="text-content">
+          <div class="permission-title" data-translate="view_delegation_confirmations">عرض اقرارات التفويض</div>
+        </div>
+      </div>
+      <label class="switch" data-key="view_delegation_confirmations">
         <input type="checkbox">
         <span class="slider round"></span>
       </label>
@@ -465,17 +500,6 @@
         </div>
       </div>
       <label class="switch" data-key="delegate_all">
-        <input type="checkbox">
-        <span class="slider round"></span>
-      </label>
-    </div>
-    <div class="permission-item">
-      <div class="permission-details">
-        <div class="text-content">
-          <div class="permission-title" data-translate="revoke_delegations"> الغاء تفويض بالنيابة عن جميع الملفات </div>
-        </div>
-      </div>
-      <label class="switch" data-key="revoke_delegations">
         <input type="checkbox">
         <span class="slider round"></span>
       </label>

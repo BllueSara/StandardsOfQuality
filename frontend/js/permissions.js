@@ -69,7 +69,7 @@ const profileStatus = document.getElementById('profile-status');
 const profileDept   = document.getElementById('profile-department');
 const profileRoleEl = document.getElementById('profile-role');
 const profileJobTitle = document.getElementById('profile-job-title');
-const profileJobName = document.getElementById('profile-job-name');
+// const profileJobName = document.getElementById('profile-job-name');
 const permissionsSection = document.querySelector('.permission-section');
 const btnDeleteUser = document.getElementById('btn-delete-user');
 const btnResetPwd   = document.getElementById('btn-reset-password');
@@ -95,17 +95,20 @@ const btnViewDelegationConfirmations = document.getElementById('btn-view-delegat
 if (btnViewDelegationConfirmations) {
   btnViewDelegationConfirmations.onclick = openDelegationConfirmationsModal;
 }
-
 // زر مسح الكاش ميموري - للادمن فقط
 if (btnClearCache) {
   btnClearCache.onclick = async () => {
-    // تحقق من أن المستخدم admin
+    // تحقق من أن المستخدم admin أو لديه صلاحية clear_cache
     const authToken = localStorage.getItem('token') || '';
     const payload = await safeGetUserInfo(authToken);
+    if (!payload) {
+      showToast('خطأ في جلب معلومات المستخدم', 'error');
+      return;
+    }
     const myRole = payload.role;
     
-    if (myRole !== 'admin') {
-      showToast('هذا الزر متاح للادمن فقط', 'warning');
+    if (myRole !== 'super_admin' && !myPermsSet.has('clear_cache')) {
+      showToast('هذا الزر متاح للسوبر ادمن أو من لديه صلاحية مسح الكاش فقط', 'warning');
       return;
     }
     
@@ -155,25 +158,9 @@ if (btnClearCache) {
     }
   };
 }
+
 const btnRevokeFiles = document.getElementById('btn-revoke-files');
 if (btnRevokeFiles) {
-  // تحقق من الدور مباشرة من التوكن
-  let isAdmin = false;
-  
-  // دالة للتحقق من الدور
-  async function checkAdminRole() {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const payload = await safeGetUserInfo(token);
-        isAdmin = payload.role === 'admin';
-      }
-    } catch {}
-    btnRevokeFiles.style.display = (myPermsSet.has('revoke_files') || isAdmin) ? '' : 'none';
-  }
-  
-  // استدعاء الدالة
-  checkAdminRole();
   btnRevokeFiles.onclick = async () => {
     if (!selectedUserId) return showToast(getTranslation('please-select-user'));
     // جلب الملفات من API
@@ -306,33 +293,47 @@ async function fetchJSON(url, opts = {}) {
   return body.data ?? body;
 }
 // =====================
+// =====================
 // Load current user permissions
 // =====================
 async function loadMyPermissions() {
   if (!authToken) return;
   try {
     const payload = await safeGetUserInfo(authToken);
+    if (!payload) return;
     const myId = payload.id;
     const perms = await fetchJSON(`${apiBase}/users/${myId}/permissions`);
     myPermsSet = new Set(perms);
     
-    // تحديث متغير canGrantAll
-    canGrantAll = myPermsSet.has('grant_all_permissions');
-    
-    // أظهر زر إلغاء جميع التفويضات إذا كان لديك الصلاحية
+    // إظهار زر سحب الملفات إذا كان admin أو لديه صلاحية revoke_files
     const myRole = payload.role;
-    if (myRole === 'admin' || myPermsSet.has('grant_permissions') || myPermsSet.has('revoke_delegations')) {
-      btnRevokeDelegations.style.display = '';
-    } else {
-      btnRevokeDelegations.style.display = 'none';
+    if (btnRevokeFiles) {
+      if (myRole === 'super_admin' || myPermsSet.has('revoke_files')) {
+        // لا نعرض الزر هنا، سيتم عرضه عند اختيار مستخدم
+        // btnRevokeFiles.style.display = '';
+      } else {
+        btnRevokeFiles.style.display = 'none';
+      }
     }
     
-    // إظهار زر مسح الكاش ميموري للادمن فقط
+    // إظهار زر مسح الكاش ميموري للسوبر ادمن فقط أو من لديه صلاحية
     if (btnClearCache) {
-      btnClearCache.style.display = (myRole === 'admin') ? '' : 'none';
+      btnClearCache.style.display = (myRole === 'super_admin' || myPermsSet.has('clear_cache')) ? '' : 'none';
     }
+    
+    // إظهار زر إلغاء التفويضات إذا كان super_admin أو لديه صلاحية revoke_delegations
+    if (btnRevokeDelegations) {
+      btnRevokeDelegations.style.display = (myRole === 'super_admin' || myPermsSet.has('revoke_delegations')) ? '' : 'none';
+    }
+    
+    // إظهار زر عرض اقرارات التفويض إذا كان super_admin أو لديه صلاحية view_delegation_confirmations
+    const btnViewDelegationConfirmations = document.getElementById('btn-view-delegation-confirmations');
+    if (btnViewDelegationConfirmations) {
+      btnViewDelegationConfirmations.style.display = (myRole === 'super_admin' || myPermsSet.has('view_delegation_confirmations')) ? '' : 'none';
+    }
+
   } catch (e) {
-    showToast('فشل جلب صلاحياتي.');
+    showToast('فشل جلب صلاحياتي.', 'error');
   }
 }
 async function fetchDepartments() {
@@ -456,16 +457,15 @@ profileStatus.title = getTranslation(
 // 2) ربط حدث التغيير مع التأكيد المترجم
 profileStatus.onclick = async () => {
   // تحقق: لا يمكن تغيير حالة مستخدم admin
-  if (u.role === 'admin') {
+  if (u.role === 'admin' || u.role === 'super_admin') {
     return;
   }
   // تحقق: فقط admin أو من لديه change_status يمكنه التغيير
   const payload = await safeGetUserInfo(authToken);
-  const myRole = payload.role;
-  if (!(myRole === 'admin' || myPermsSet.has('change_status'))) {
+ const myRole = payload.role;
+    if (!(myRole === 'admin' || myRole === 'super_admin' || myPermsSet.has('change_status'))) {
     return;
   }
-
   const newStatus = profileStatus.classList.contains('active')
     ? 'inactive'
     : 'active';
@@ -516,7 +516,7 @@ try {
   profileDept.textContent = '—';
 }
   profileRoleEl.textContent = u.role           || '—';
-  profileJobName.textContent = u.job_name      || '—';
+  // profileJobName.textContent = u.job_name      || '—';
   profileJobTitle.textContent = u.job_title    || '—';
 document.querySelector('.user-profile-header')?.classList.add('active');
 
@@ -529,7 +529,7 @@ document.querySelector('.user-profile-header')?.classList.add('active');
   btnAddUser.style.display = (isAdmin || myPermsSet.has('add_user')) ? '' : 'none';
 
   // إذا الهدف Admin: أخفِ القسم كامل وأزرار الإدارة
-  if (u.role === 'admin') {
+  if (u.role === 'admin' || u.role === 'super_admin') {
     permissionsSection.style.display = 'none';
     btnDeleteUser.style.display = 'none';
     btnResetPwd.style.display   = 'none';
@@ -548,23 +548,45 @@ document.querySelector('.user-profile-header')?.classList.add('active');
   btnResetPwd.style.display   = (isAdmin || myPermsSet.has('change_password')) ? '' : 'none';
   btnChangeRole.style.display = (isAdmin || myPermsSet.has('change_role')) ? '' : 'none';
   
-  // إظهار زر سحب الملفات إذا كان admin أو لديه صلاحية revoke_files
-  if (btnRevokeFiles) {
-    btnRevokeFiles.style.display = (isAdmin || myPermsSet.has('revoke_delegations')) ? '' : 'none';
+ if (btnRevokeFiles) {
+    if (myRole === 'super_admin' || myPermsSet.has('revoke_files')) {
+      btnRevokeFiles.style.display = '';
+    } else {
+      btnRevokeFiles.style.display = 'none';
+    }
   }
   
   // جلب الأدوار للمستخدمين غير Admin
+// ... existing code ...
+
+  // جلب الأدوار للمستخدمين غير Admin
   if (roleSelect) {
     const roles = await fetchJSON(`${apiBase}/users/roles`);
+    
+    // إضافة دور hospital_manager إذا كان المستخدم admin
     if (isAdmin && !roles.includes('hospital_manager')) {
       roles.push('hospital_manager');
     }
-    roleSelect.innerHTML = roles.map(r => `
+    
+    // تصفية الأدوار حسب صلاحيات المستخدم الحالي
+    const filteredRoles = roles.filter(role => {
+      // إذا كان المستخدم الحالي super_admin، يعرض جميع الأدوار
+      if (myRole === 'super_admin') {
+        return true;
+      }
+      // إذا لم يكن super_admin، يخفي دور super_admin
+      return role !== 'super_admin';
+    });
+    
+    roleSelect.innerHTML = filteredRoles.map(r => `
       <option value="${r}" ${u.role===r?'selected':''}>
         ${r === 'hospital_manager' ? 'مدير المستشفى' : r}
       </option>
     `).join('');
+
   }
+
+// ... existing code ...
   
   if (btnChangeRole) {
     btnChangeRole.onclick = () => {
@@ -586,16 +608,27 @@ document.querySelector('.user-profile-header')?.classList.add('active');
     const key   = label.dataset.key;
 
     // إظهار البنود: Admin يرى الكل، ومُخول grant يرى فقط ما يملكه، ومُخول grant_all_permissions يرى الكل
-    if (!isAdmin && myRole !== 'admin' && !myPermsSet.has(key) && key !== 'grant_permissions' && key !== 'grant_all_permissions' && !canGrantAll) {
+    if (!isAdmin && myRole !== 'admin' && myRole !== 'super_admin' && !myPermsSet.has(key) && key !== 'grant_permissions' && key !== 'grant_all_permissions' && !canGrantAll) {
       item.style.display = 'none';
     } else {
       item.style.display = '';
     }
+    // إخفاء الصلاحيات الحساسة إذا لم يكن المستخدم يملكها (إلا إذا كان super_admin)
+    const sensitivePermissions = ['clear_cache', 'view_delegation_confirmations', 'revoke_files', 'revoke_delegations'];
+    if (sensitivePermissions.includes(key) && myRole !== 'super_admin' && !myPermsSet.has(key)) {
+      item.style.display = 'none';
+    }
 
     // تأشير الحالة
     input.checked = targetSet.has(key);
+    
     // تمكين الصلاحيات: Admin يمكنه منح الكل، ومُخول grant يمكنه منح ما يملكه، ومُخول grant_all_permissions يمكنه منح الكل
+    // للصلاحيات الحساسة: يجب أن يكون المستخدم super_admin أو لديه الصلاحية نفسها (لا يمكن منحها عبر grant_all_permissions)
+    if (sensitivePermissions.includes(key)) {
+      input.disabled = !(myRole === 'super_admin' || myPermsSet.has(key));
+    } else {
     input.disabled = !(isAdmin || myPermsSet.has(key) || canGrantAll);
+    }
     
     // معالجة خاصة لصلاحية "منح جميع الصلاحيات"
     if (key === 'grant_all_permissions') {
@@ -679,12 +712,11 @@ document.querySelector('.user-profile-header')?.classList.add('active');
   // إظهار الزر حسب الصلاحية عند اختيار المستخدم
   showEditUserInfoButton(u);
 
-  // إظهار زر إلغاء التفويضات فقط إذا كان admin أو لديه صلاحية grant_permissions
-  btnRevokeDelegations.style.display = (isAdmin || myPermsSet.has('grant_permissions')) ? '' : 'none';
+  btnRevokeDelegations.style.display = (myRole === 'super_admin' || myPermsSet.has('revoke_delegations')) ? '' : 'none';
   
-  // إظهار زر سحب الملفات إذا كان admin أو لديه صلاحية revoke_files
+  // إظهار زر سحب الملفات إذا كان super_admin أو لديه صلاحية revoke_files
   if (btnRevokeFiles) {
-    if (isAdmin || myPermsSet.has('revoke_delegations')) {
+    if (myRole === 'super_admin' || myPermsSet.has('revoke_files')) {
       btnRevokeFiles.style.display = '';
     } else {
       btnRevokeFiles.style.display = 'none';
@@ -952,9 +984,9 @@ async function showEditUserInfoButton(u) {
   const myId = payload.id;
   
   // إذا كان المستخدم المستهدف admin
-  if (u.role === 'admin') {
+  if (u.role === 'admin' || u.role === 'super_admin') {
     // فقط admin نفسه يمكنه تعديل معلوماته
-    if (myRole === 'admin' && Number(u.id) === Number(myId)) {
+    if ((myRole === 'admin' || myRole === 'super_admin') && Number(u.id) === Number(myId)) {
       btnEditUserInfo.style.display = '';
     } else {
       btnEditUserInfo.style.display = 'none';
@@ -963,7 +995,7 @@ async function showEditUserInfoButton(u) {
   }
   
   // للمستخدمين غير admin: admin أو من لديه الصلاحية يمكنه التعديل
-  if (myRole === 'admin' || myPermsSet.has('change_user_info')) {
+  if (myRole === 'admin' || myRole === 'super_admin' || myPermsSet.has('change_user_info')) {
     btnEditUserInfo.style.display = '';
   } else {
     btnEditUserInfo.style.display = 'none';
@@ -981,7 +1013,7 @@ if (btnEditUserInfo) {
     const payload = await safeGetUserInfo(authToken);
     
     // تحقق: إذا كان المستهدف admin، فقط admin نفسه يمكنه التعديل
-    if (u.role === 'admin' && !(payload.role === 'admin' && Number(u.id) === Number(payload.id))) {
+    if (u.role === 'admin' && !((payload.role === 'admin' || payload.role === 'super_admin') && Number(u.id) === Number(payload.id))) {
       showToast('لا يمكن تعديل معلومات admin آخر', 'warning');
       return;
     }
@@ -1243,7 +1275,7 @@ if (btnSaveEditUser) {
     // تحقق من الحقول المطلوبة
     // للادمن: فقط الاسم الأول واسم العائلة واسم المستخدم مطلوبة
     // للمستخدمين الآخرين: جميع الحقول مطلوبة
-    const isAdmin = editUserRole === 'admin';
+    const isAdmin = editUserRole === 'admin' || editUserRole === 'super_admin';
     
     if (isAdmin) {
       // للادمن: فقط الحقول الأساسية مطلوبة

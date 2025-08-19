@@ -632,7 +632,7 @@ const adminResetPassword = async (req, res) => {
 
 // 8) جلب الأدوار المتاحة
 const getRoles = async (req, res) => {
-  const roles = ['admin', 'sub-admin', 'user'];
+  const roles = ['admin', 'sub-admin', 'user','super_admin' ];
   return res.status(200).json({ 
     status: 'success', 
     data: roles 
@@ -883,7 +883,7 @@ const markAllAsRead = async (req, res) => {
     return res.status(401).json({ message: 'توكن غير صالح' });
   }
 
-  const isAdmin = decoded.role === 'admin';
+  const isAdmin = decoded.role === 'admin' || decoded.role === 'super_admin';
 
   try {
     await db.execute(
