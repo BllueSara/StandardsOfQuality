@@ -30,7 +30,7 @@ function initializeDeletedItemsButton() {
         deletedItemsBtn.style.cssText = 'background: red !important; color: white !important; padding: 10px 20px !important; border: none !important; border-radius: 5px !important; cursor: pointer !important; margin-left: 20px !important; display: inline-block !important;';
         deletedItemsBtn.innerHTML = `
             <i class="fas fa-trash-restore"></i>
-            <span data-translate="deleted-items">ما تم حذفه</span>
+            <span data-translate="deleted-items">${getTranslation('deleted-items')}</span>
         `;
         
         const title = pageHeader.querySelector('h1');

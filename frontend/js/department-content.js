@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         deletedItemsBtn.className = 'btn-primary deleted-items-btn';
         deletedItemsBtn.innerHTML = `
             <i class="fas fa-trash-restore"></i>
-            <span data-translate="deleted-items">ما تم حذفه</span>
+            <span data-translate="deleted-items">${getTranslation('deleted-items')}</span>
         `;
         
         const title = pageHeader.querySelector('h1');
