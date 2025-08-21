@@ -25,10 +25,11 @@
             visibility: visible;
         }
     </style>
+  
 </head>
 
-<body>
-    <header class="content-hidden">
+<body class="content-hidden">
+    <header>
         <div class="container">
             <div class="hospital-logo">
                 <img src="../images/hospital-logo.png" alt="شعار مستشفى الملك عبد العزيز">
@@ -39,17 +40,16 @@
            
         </div>
     </header>
-        <div class="header-actions content-hidden">
+        <div class="header-actions">
   <button class="home-btn" onclick="window.location.href='index.html'">
     <i class="fas fa-home"></i>
     <span data-translate="home">الرئيسية</span>
   </button>
 </div>
-    <main class="content-hidden">
+    <main>
         <div class="container">
-   <div class="page-header">
-                <h1 data-translate="department-content-title"></h1>
-            </div>
+            <h1 data-translate="department-content-title"></h1>
+
             <!-- زر رجوع واحد فقط في الأعلى -->
             <div class="back-button-container" id="mainBackBtnContainer">
                 <button class="back-button" id="mainBackBtn">
@@ -92,7 +92,7 @@
                          <input type="text" placeholder="ابحث عن محتوى" data-placeholder="search-content">
                          <img src="../images/serach.svg" alt="بحث" class="search-icon">
                      </div>
-                      <button class="btn-primary" id="addContentBtn" data-translate="add-content">إضافة محتوى +</button>
+                     <!-- Removed static add content button; now handled by JS -->
                  </div>
                  <!-- Container for File List -->
                  <div class="files-list">
@@ -102,7 +102,6 @@
 
         </div>
     </main>
-
 <!-- Add Folder Modal -->
 <div id="addFolderModal" class="modal-overlay">
   <div class="modal-content">
@@ -160,6 +159,7 @@
   </div>
 </div>
 
+          <div id="toast-container" class="toast-container"></div>
 
 
 
@@ -176,15 +176,28 @@
       <div class="modal-body">
         <input type="hidden" id="addContentFolderId" />
 
-        <!-- ✅ تاريخ البداية -->
+        <!-- ✅ اسم المحتوى Dropdown -->
         <div class="form-group">
-          <label for="contentStartDate" data-translate="start-date">تاريخ البداية</label>
-          <input type="date" id="contentStartDate" />
-        </div>
-        <!-- ✅ تاريخ النهاية -->
-        <div class="form-group">
-          <label for="contentEndDate" data-translate="end-date">تاريخ النهاية</label>
-          <input type="date" id="contentEndDate" />
+          <label data-translate="content-name">اسم المحتوى</label>
+          <div class="custom-dropdown" id="contentNameDropdown">
+            <button type="button" id="contentNameToggle" class="dropdown-toggle">
+              <span data-translate="choose-name">اختر اسماً…</span> <span class="arrow">▾</span>
+            </button>
+            <div id="contentNameMenu" class="dropdown-menu hidden">
+              <input
+                type="text"
+                id="contentNameSearch"
+                class="dropdown-search"
+                data-placeholder="search-content-name"
+                placeholder="ابحث عن اسم…"
+              />
+              <div id="addNewContentNameLink" class="add-folder-new" data-translate="add-content-name">
+                + إضافة اسم جديد
+              </div>
+              <div id="contentNamesContainer" class="dropdown-list"></div>
+            </div>
+          </div>
+          <input type="hidden" id="selectedContentNameId" />
         </div>
 
         <!-- ✅ اختيار الملف -->
@@ -213,11 +226,12 @@
 
     <!-- Modals for Edit Folder and Add Content will be added later -->
 
-          <div id="toast-container" class="toast-container"></div>
+    <div id="toast-container"></div>
     <script src="../js/language.js"></script>
     <script src="../js/department-content.js"></script>
-        <script src="../js/deleted-items-modal.js"></script>
-
+    <script src="/frontend/js/check-status.js"></script>
+            <script src="../js/deleted-items-modal.js"></script>
+            
 <script src="../js/check-status.js"></script>
 <script src="../js/utils.js"></script>    <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -231,6 +245,7 @@
             }, 100);
         });
     </script>
+
 
 </body>
 
@@ -309,15 +324,24 @@
       <input type="hidden" id="editContentId" />
       <input type="hidden" id="editSelectedContentNameId" />
 
-      <!-- ✅ تاريخ البداية (تعديل) -->
+      <!-- ✅ اسم المحتوى Dropdown -->
       <div class="form-group">
-        <label for="editContentStartDate" data-translate="start-date">تاريخ البداية</label>
-        <input type="date" id="editContentStartDate" />
-      </div>
-      <!-- ✅ تاريخ النهاية (تعديل) -->
-      <div class="form-group">
-        <label for="editContentEndDate" data-translate="end-date">تاريخ النهاية</label>
-        <input type="date" id="editContentEndDate" />
+        <label data-translate="content-name"><span class="required">*</span></label>
+        <div class="custom-dropdown" id="editContentNameDropdown">
+          <button type="button" id="editContentNameToggle" class="dropdown-toggle" data-translate="choose-from-list">
+            <span data-translate="choose-from-list"></span> <span class="arrow">▾</span>
+          </button>
+          <div id="editContentNameMenu" class="dropdown-menu hidden">
+            <input
+              type="text"
+              id="editContentNameSearch"
+              class="dropdown-search"
+              data-placeholder="search-content-name"
+            />
+            <div id="editAddNewContentNameLink" class="add-folder-new" data-translate="add-content-name"></div>
+            <div id="editContentNamesContainer" class="dropdown-list"></div>
+          </div>
+        </div>
       </div>
 
       <!-- ✅ اختيار الملف -->
@@ -511,5 +535,4 @@
         </div>
     </div>
 </div>
-
 </html> 
