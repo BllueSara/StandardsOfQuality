@@ -52,6 +52,7 @@ async function checkUserProfileCompletion() {
   // جلب معلومات المستخدم من الباك اند بدلاً من فك تشفير التوكن
   let myId = null;
   let username = null;
+  let userRole = null;
   
   try {
     const userInfoRes = await fetch('http://localhost:3006/api/auth/user-info', {
@@ -65,13 +66,15 @@ async function checkUserProfileCompletion() {
     const { data: userInfo } = await userInfoRes.json();
     myId = userInfo.id;
     username = userInfo.username;
+    userRole = userInfo.role;
   } catch (error) {
     console.error('خطأ في جلب معلومات المستخدم:', error);
     return;
   }
 
-  // إذا كان المستخدم admin، لا نحتاج للتحقق من اكتمال البيانات
-  if (username && username.toLowerCase() === 'admin') {
+  // إذا كان المستخدم admin أو super_admin أو اسمه admin، لا نحتاج للتحقق من اكتمال البيانات
+  if ((username && username.toLowerCase() === 'admin') || 
+      (userRole && (userRole === 'admin' || userRole === 'super_admin'))) {
     return;
   }
 

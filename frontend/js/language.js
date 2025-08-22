@@ -2316,6 +2316,15 @@ const translations = {
         'content-name-ar': 'اسم المحتوى (عربي)',
         'content-name-en': 'اسم المحتوى (انجليزي)',
         'enter-username-only': 'ادخل الاسم الاول والثاني ',
+                
+        // Folder Access Messages
+        'folder-access-private-message': 'هذا مجلد خاص. يمكنك رؤية المجلد لكن لا يمكنك الوصول لمحتوياته.',
+        'folder-access-shared-message': 'هذا مجلد مشترك. يمكنك رؤية المجلد لكن لا يمكنك الوصول لمحتوياته إلا إذا كنت معتمداً عليها.',
+        
+        // Content Messages
+        'contents-fetched-success': 'تم جلب المحتويات بنجاح',
+        'error-fetching-contents': 'خطأ في جلب المحتويات',
+        'error-fetching-user-contents': 'خطأ في جلب المحتويات التي رفعتها',
         // Permissions Page (Groups)
         'general-group': 'عامّ',
         'departments-group': 'الأقسام',
@@ -3195,6 +3204,14 @@ const translations = {
         'delete-department-title': 'Delete Department Confirmation',
         'delete-department-confirm': 'Are you sure you want to delete this department?',
 'delete-content-name': 'Delete Content Name',
+        // Folder Access Messages
+        'folder-access-private-message': 'This is a private folder. You can see the folder but cannot access its contents.',
+        'folder-access-shared-message': 'This is a shared folder. You can see the folder but cannot access its contents unless you are an approved approver.',
+        
+        // Content Messages
+        'contents-fetched-success': 'Contents fetched successfully',
+        'error-fetching-contents': 'Error fetching contents',
+        'error-fetching-user-contents': 'Error fetching contents you uploaded',
         // Committees
         'add-committee': 'Add New Committee',
         'edit-committee': 'Edit Committee',

@@ -724,7 +724,24 @@ async function fetchFolders(departmentId) {
 
         if (folderContentTitle) folderContentTitle.textContent = displayFolderName;
         currentFolderName = displayFolderName; // حفظ اسم المجلد الحالي
+           // عرض رسالة الوصول إذا وجدت
+if (data.accessMessageKey) {
+  console.log('🔍 Found accessMessageKey:', data.accessMessageKey);
+  const accessMessageDiv = document.createElement('div');
+  accessMessageDiv.className = 'access-message';
+  accessMessageDiv.style.cssText = 'background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; margin: 10px 0; border-radius: 4px; text-align: center;';
+  
+  // إضافة النص المترجم أولاً
+  const translatedText = getTranslation(data.accessMessageKey);
+  accessMessageDiv.textContent = translatedText;
+  
 
+  
+  // إضافة الرسالة للصفحة
+  filesList.appendChild(accessMessageDiv);
+} else {
+  console.log('❌ No accessMessageKey found in data:', data);
+}
         if (data.data && data.data.length > 0) {
           // --- تصنيف الملفات وتجميعها للعرض بستايل الكروت القديم مع تمييز المجموعات ---
           const allContents = data.data;
@@ -925,8 +942,11 @@ async function fetchFolders(departmentId) {
             return card;
           }
         } else {
-          if (filesList) filesList.innerHTML = `<div class="no-content" data-translate="no-contents">${getTranslation('no-contents')}</div>`;
-        }
+        const noContentDiv = document.createElement('div');
+                    noContentDiv.className = 'no-content';
+                    noContentDiv.setAttribute('data-translate', 'no-contents');
+                    noContentDiv.textContent = getTranslation('no-contents');
+                    filesList.appendChild(noContentDiv);        }
       } else {
         showToast(data.message || 'فشل جلب محتويات المجلد.', 'error');
       }
@@ -2680,8 +2700,12 @@ document.addEventListener('DOMContentLoaded', function () {
           });
         });
       } else {
-        filesList.innerHTML = `<div class="no-content" data-translate="no-contents">${getTranslation('no-contents')}</div>`;
-      }
+        // إضافة رسالة "لا يوجد محتوى" بدون استبدال الرسالة الموجودة
+        const noContentDiv = document.createElement('div');
+        noContentDiv.className = 'no-content';
+        noContentDiv.setAttribute('data-translate', 'no-contents');
+        noContentDiv.textContent = getTranslation('no-contents');
+        filesList.appendChild(noContentDiv);      }
     });
   }
 
@@ -2695,6 +2719,46 @@ window.translations = window.translations || {};
     window.translations[lang]['soon-expire'] = lang === 'ar' ? 'اقترب انتهاء الصلاحية' : 'Expiring soon';
   }
 });
+
+// إضافة CSS للرسائل التوضيحية
+const style = document.createElement('style');
+style.textContent = `
+  .access-message {
+    background: #fff3cd !important;
+    border: 1px solid #ffeaa7 !important;
+    color: #856404 !important;
+    padding: 12px !important;
+    margin: 10px 0 !important;
+    border-radius: 4px !important;
+    text-align: center !important;
+    font-weight: 500 !important;
+  }
+  
+  .folder-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-right: 8px;
+  }
+  
+  .folder-type-badge.public {
+    background: #d4edda;
+    color: #155724;
+  }
+  
+  .folder-type-badge.private {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  
+  .folder-type-badge.shared {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+`;
+document.head.appendChild(style);
 
 // دالة للتحقق من الوصول للمجلدات المشتركة
 async function checkSharedFolderAccess(folderId, userId) {
@@ -2714,51 +2778,11 @@ async function checkSharedFolderAccess(folderId, userId) {
 
 // دالة لتصفية المجلدات حسب نوعها
 async function filterFoldersByType(folders, userRole, userDepartmentId) {
-  if (userRole === 'admin' || userRole === 'super_admin') {
-    return folders; // المسؤول يرى كل المجلدات
-  }
-
-  // احصل على معرف المستخدم الحالي
-  const token = getToken();
-  if (!token) return folders;
-  
-  try {
-    const payload = await safeGetUserInfo(token);
-    if (!payload) return folders;
-    const userId = payload.id;
-    
-    const filteredFolders = [];
-    
-    for (const folder of folders) {
-      const folderType = folder.type || 'public';
-      
-      switch (folderType) {
-        case 'public':
-          filteredFolders.push(folder); // المجلدات العامة يراها الجميع
-          break;
-        case 'private':
-          if (folder.department_id === userDepartmentId) {
-            filteredFolders.push(folder); // المجلدات الخاصة فقط لأعضاء القسم
-          }
-          break;
-        case 'shared':
-          // المجلدات المشتركة للأشخاص المرسل لهم ملفات للاعتماد
-          const hasAccess = await checkSharedFolderAccess(folder.id, userId);
-          if (hasAccess) {
-            filteredFolders.push(folder);
-          }
-          break;
-        default:
-          filteredFolders.push(folder);
-      }
-    }
-    
-    return filteredFolders;
-  } catch (error) {
-    console.error('Error filtering folders by type:', error);
+  // ✅ كل المستخدمين يرون كل المجلدات
+  // لكن المحتوى سيتم فلترته عند فتح المجلد
     return folders;
-  }
 }
+
 
 // أضف الدالة بعد closeAddContentModal
 function openAddContentModal() {

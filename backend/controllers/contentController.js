@@ -242,6 +242,7 @@ const getContentsByFolderId = async (req, res) => {
                 f.id,
                 f.name,
                 f.department_id,
+                f.type,
                 d.name as department_name,
                 d.approval_sequence as department_approval_sequence,
                 f.created_by,
@@ -310,31 +311,83 @@ const getContentsByFolderId = async (req, res) => {
 
         const [contents] = await connection.execute(query, params);
         connection.release();
-        // منطق الفلترة حسب الصلاحية
+        // منطق الفلترة حسب نوع المجلد وصلاحيات المستخدم
         const now = new Date();
         const nowMs = now.getTime();
         const oneDayMs = 24 * 60 * 60 * 1000;
         const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'super_admin';
         const userId = Number(decodedToken.id);
+        const userDepartmentId = folder[0].department_id;
+        const folderType = folder[0].type || 'public';
 
-        // فلترة النتائج حسب الصلاحية
         const filtered = contents.filter(item => {
-            const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'super_admin';
-            const userId = Number(decodedToken.id);
-            if (isAdmin) return true; // الأدمن يرى كل شيء
-
-            // تحقق من تاريخ الانتهاء
+            // 1) فلترة حسب انتهاء الصلاحية
             if (item.end_date) {
                 const endDate = new Date(item.end_date);
                 if (!isNaN(endDate.getTime())) {
                     const diffDays = Math.ceil((endDate.getTime() - nowMs) / (1000 * 60 * 60 * 24));
-                    if (diffDays < 0) {
-                        // إذا انتهى المحتوى، لا يظهر للمستخدم العادي
-                        return false;
+                    
+                    if (!isAdmin) {
+                        // المستخدم العادي لا يرى المحتوى المنتهي
+                        if (diffDays < 0) return false;
                     }
                 }
             }
 
+            // 2) فلترة حسب نوع المجلد
+            let hasFolderAccess = false;
+            switch (folderType) {
+                case 'public':
+                    // المجلدات العامة: يراها الجميع
+                    hasFolderAccess = true;
+                    break;
+                    
+                case 'private':
+                    // المجلدات الخاصة: فقط لأعضاء القسم
+                    hasFolderAccess = isAdmin || decodedToken.department_id === userDepartmentId;
+                    break;
+                    
+                case 'shared':
+                    // المجلدات المشتركة: للمعتمدين فقط
+                    hasFolderAccess = isAdmin || (() => {
+                        try {
+                            // تحقق من approvers_required
+                            const approversRequired = JSON.parse(item.approvers_required || '[]');
+                            if (approversRequired.includes(decodedToken.id)) return true;
+                            
+                            // تحقق من custom_approval_sequence
+                            let customSeq = [];
+                            if (item.custom_approval_sequence) {
+                                if (Array.isArray(item.custom_approval_sequence)) {
+                                    customSeq = item.custom_approval_sequence;
+                                } else if (typeof item.custom_approval_sequence === 'string') {
+                                    try {
+                                        customSeq = JSON.parse(item.custom_approval_sequence);
+                                    } catch {
+                                        customSeq = [];
+                                    }
+                                }
+                                customSeq = (customSeq || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+                            }
+                            if (customSeq.includes(decodedToken.id)) return true;
+                            
+                            // تحقق من department approval_sequence
+                            return approvalSequence.includes(decodedToken.id);
+                        } catch (e) {
+                            return false;
+                        }
+                    })();
+                    break;
+
+                default:
+                    hasFolderAccess = true;
+                    break;
+            }
+
+            // إذا لم يكن لديه صلاحية الوصول للمجلد، لا يظهر له المحتوى
+            if (!hasFolderAccess) return false;
+
+            // 3) فلترة إضافية للملفات غير المعتمدة
             // الملفات المعتمدة تظهر للجميع
             if (item.is_approved) return true;
 
@@ -354,11 +407,80 @@ const getContentsByFolderId = async (req, res) => {
             }
             if (customSeq.includes(userId)) return true;
             return approvalSequence.includes(userId);
+        }).map(item => {
+            let extra = {};
+            if (item.end_date) {
+                const endDate = new Date(item.end_date);
+                if (!isNaN(endDate.getTime()) && nowMs > endDate.getTime() + oneDayMs) {
+                    extra.expired = true;
+                }
+            }
+            return { ...item, extra };
         });
+
+        // إضافة رسالة توضيحية حسب نوع المجلد
+        let accessMessage = '';
+        let accessMessageKey = '';
+        console.log('🔍 Debug folder access:', {
+            folderType,
+            isAdmin,
+            userDepartmentId: decodedToken.department_id,
+            folderDepartmentId: userDepartmentId
+        });
+        
+        // تحقق من إمكانية الوصول للمحتوى
+        let hasAccess = false;
+        if (folderType === 'public') {
+            hasAccess = true;
+        } else if (folderType === 'private') {
+            hasAccess = isAdmin || decodedToken.department_id === userDepartmentId;
+        } else if (folderType === 'shared') {
+            hasAccess = isAdmin || filtered.some(item => {
+                try {
+                    // تحقق من approvers_required
+                    const approversRequired = JSON.parse(item.approvers_required || '[]');
+                    if (approversRequired.includes(decodedToken.id)) return true;
+                    
+                    // تحقق من custom_approval_sequence
+                    let customSeq = [];
+                    if (item.custom_approval_sequence) {
+                        if (Array.isArray(item.custom_approval_sequence)) {
+                            customSeq = item.custom_approval_sequence;
+                        } else if (typeof item.custom_approval_sequence === 'string') {
+                            try {
+                                customSeq = JSON.parse(item.custom_approval_sequence);
+                            } catch {
+                                customSeq = [];
+                            }
+                        }
+                        customSeq = (customSeq || []).map(x => Number(String(x).trim())).filter(x => !isNaN(x));
+                    }
+                    if (customSeq.includes(decodedToken.id)) return true;
+                    
+                    // تحقق من department approval_sequence
+                    return approvalSequence.includes(decodedToken.id);
+                } catch (e) {
+                    return false;
+                }
+            });
+        }
+
+        // عرض الرسالة فقط إذا لم يكن لدى المستخدم صلاحية الوصول
+        if (!hasAccess) {
+            if (folderType === 'private') {
+                accessMessageKey = 'folder-access-private-message';
+                console.log('🔒 Setting private folder message - no access');
+            } else if (folderType === 'shared') {
+                accessMessageKey = 'folder-access-shared-message';
+                console.log('🔒 Setting shared folder message - no access');
+            }
+        }
+        
+        console.log('🔍 Final accessMessageKey:', accessMessageKey);
 
         res.json({
             status: 'success',
-            message: 'تم جلب المحتويات بنجاح',
+            message: 'contents-fetched-success',
             folderName: folder[0].name,
             folder: {
                 id: folder[0].id,
@@ -366,9 +488,12 @@ const getContentsByFolderId = async (req, res) => {
                 department_id: folder[0].department_id,
                 department_name: folder[0].department_name,
                 created_by: folder[0].created_by,
-                created_by_username: folder[0].created_by_username
+                created_by_username: folder[0].created_by_username,
+                type: folderType
             },
-            data: filtered
+            data: filtered,
+            accessMessage: accessMessage,
+            accessMessageKey: accessMessageKey
         });
     } catch (error) {
         console.error('getContentsByFolderId error:', error);
