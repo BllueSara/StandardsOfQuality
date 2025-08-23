@@ -1,5 +1,5 @@
 // sub-departments.js
-const apiBase = 'http://localhost:3006/api';
+const apiBase = 'http://localhost:3000/api';
 
 document.addEventListener('DOMContentLoaded', async function() {
     // دالة إظهار التوست
@@ -45,6 +45,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const addDepartmentNameArInput = document.getElementById('departmentNameAr');
     const addDepartmentNameEnInput = document.getElementById('departmentNameEn');
     const addDepartmentImageInput = document.getElementById('departmentImage');
+    const addDepartmentImagePreview = document.createElement('div');
+    addDepartmentImagePreview.className = 'image-preview';
+    addDepartmentImagePreview.id = 'addDepartmentImagePreview';
+    
     const cardsGrid = document.querySelector('.cards-grid');
     const searchInput = document.getElementById('searchInput');
 
@@ -56,6 +60,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     const editDepartmentNameArInput = document.getElementById('editDepartmentNameAr');
     const editDepartmentNameEnInput = document.getElementById('editDepartmentNameEn');
     const editDepartmentImageInput = document.getElementById('editDepartmentImage');
+    const editDepartmentImagePreview = document.createElement('div');
+    editDepartmentImagePreview.className = 'image-preview';
+    editDepartmentImagePreview.id = 'editDepartmentImagePreview';
 
     const deleteDepartmentModal = document.getElementById('deleteDepartmentModal');
     const deleteModalConfirmBtn = document.getElementById('confirmDeleteDepartment');
@@ -79,6 +86,340 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Utility to get token
     function getToken() { return localStorage.getItem('token'); }
+
+    // Utility function to clean image paths
+    function cleanImagePath(imagePath) {
+        if (!imagePath) return '';
+        if (imagePath.startsWith('http://localhost:3000/')) {
+            return imagePath.replace('http://localhost:3000/', '');
+        }
+        if (imagePath.startsWith('/')) {
+            return imagePath.substring(1);
+        }
+        return imagePath;
+    }
+
+    // Available images list (from frontend/images folder)
+    const availableImagesList = [
+    'health information.png',
+        'wheat allergy centre.png',
+        'blood bank.png',
+        'patient experience.png',
+        'family management.png',
+        'admissions management and access support.png',
+        'oral and maxillofacial surgery.png',
+        'ophthalmology unit.png',
+        'vascular surgery.png',
+        'internal medicine rheumatology.png',
+        'internal medicine endocrinology.png',
+        'internal medicine palliative care.png',
+        'internal medicine neurology.png',
+        'internal medicine nephrology.png',
+        'internal medicine infectious diseases.png',
+        'internal medicine pulmonary.png',
+        'internal medicine cardiology.png',
+        'internal medicine hematology.png',
+        'digital health.png',
+        'cybersecurity.png',
+        'admissions office.png',
+        'patient affairs.png',
+        'medical services office.png',
+        'surgery.png',
+        'Virtual Clinics.png',
+        'Strategic and Transformation Management.png',
+        'Social Care Services.png',
+        'Self Resources.png',
+        'Respiratory Care Services.png',
+        'research and innovation.png',
+        'Rehabilitation.png',
+        'Radiology.png',
+        'quality and patient safety.png',
+        'QPS KPIs.png',
+        'Public Health.png',
+        'Provision of Care.png',
+        'Procurement.png',
+        'privileges and competencies.png',
+        'Pharmacy.png',
+        'Patient and Family Rights.png',
+        'Outpatient.png',
+        'Occupational Health.png',
+        'Nursing.png',
+        'Neurosurgery.png',
+        'Medical Statistics.png',
+        'Manual.png',
+        'Management of Information.png',
+        'Legal Affairs.png',
+        'Laboratory.png',
+        'internal control and audit.png',
+        'intensive care unit.png',
+        'Improvement Projects.png',
+        'Human Resources.png',
+        'Home Care Services.png',
+        'Hemodialysis.png',
+        'health informatics.png',
+        'Guest Services.png',
+        'Geriatric Medicine.png',
+        'financial management.png',
+        'finance.png',
+        'ent.png',
+        'Endoscopy.png',
+        'Emergency.png',
+        'Emergency Medicine.png',
+        'Dermatology.png',
+        'Dental Services.png',
+        'Day Procedure Unit.png',
+        'CSSD.png',
+        'Communications.png',
+        'Commitment.png',
+        'Clinics.png',
+        'Clinical Audit.png',
+        'CEO Office.png',
+        'Capacity Management.png',
+        'Anesthesia Care.png',
+        'ADAA KPIs.png',
+        'Urology.png',
+        'Supply Chain.png',
+        'Supervisor of Managers on Duty.png',
+        'Religious Awareness.png',
+        'Psychiatric Medical Care.png',
+        'Patient Safety KPIs.png',
+        'Orthopedic.png',
+        'Optometry Clinic.png',
+        'Operation Room.png',
+        'Mortuary.png',
+        'Medical Staff.png',
+        'Medical Coordinator.png',
+        'Leadership.png',
+        'Investment.png',
+        'Inventory Control.png',
+        'Internal Medicine.png',
+        'Infection Prevention andControl.png',
+        'Infection Prevention and Control.png',
+        'Health Education.png',
+        'General Services.png',
+        'Facilities Management and Safety.png',
+        'esr.png',
+        'Emergency Planning and Preparedness.png',
+        'Education and Academic Affairs.png'
+    ];
+
+    // Fetch available images (returns from local list instead of API)
+    function fetchAvailableImages() {
+        return availableImagesList.map(imageName => ({
+            name: imageName,
+            path: `frontend/images/${imageName}`
+        }));
+    }
+
+    // Open image selector modal
+    function openImageSelector(currentImage, onImageSelect) {
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.zIndex = '9999';
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.maxWidth = '800px';
+        modalContent.style.maxHeight = '80vh';
+        modalContent.style.overflow = 'auto';
+        
+        // Create modal header
+        const modalHeader = document.createElement('div');
+        modalHeader.style.borderBottom = '1px solid #ddd';
+        modalHeader.style.paddingBottom = '15px';
+        modalHeader.style.marginBottom = '20px';
+        
+        const title = document.createElement('h3');
+        title.textContent = getTranslation('image-selection') || 'اختيار الصورة';
+        title.style.margin = '0 0 10px 0';
+        
+        const subtitle = document.createElement('p');
+        subtitle.textContent = getTranslation('select-existing-image') || 'اختر من الصور الموجودة أو ارفع صورة جديدة';
+        subtitle.style.margin = '0';
+        subtitle.style.color = '#666';
+        
+        modalHeader.appendChild(title);
+        modalHeader.appendChild(subtitle);
+        
+        // Create image grid
+        const imageGrid = document.createElement('div');
+        imageGrid.style.display = 'grid';
+        imageGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(120px, 1fr))';
+        imageGrid.style.gap = '15px';
+        imageGrid.style.marginBottom = '20px';
+        
+        // Get available images
+        const availableImages = fetchAvailableImages();
+        
+        // Check which images are already in use
+        availableImages.forEach(image => {
+            const imageContainer = document.createElement('div');
+            imageContainer.style.position = 'relative';
+            imageContainer.style.cursor = 'pointer';
+            imageContainer.style.border = '2px solid transparent';
+            imageContainer.style.borderRadius = '8px';
+            imageContainer.style.overflow = 'hidden';
+            imageContainer.style.transition = 'all 0.3s ease';
+            
+            // Check if image is already in use
+            const isUsed = allDepartments.some(dept => dept.image === image.path);
+            
+            if (isUsed) {
+                imageContainer.style.opacity = '0.5';
+                imageContainer.style.cursor = 'not-allowed';
+                imageContainer.title = getTranslation('image-already-in-use') || 'هذه الصورة مستخدمة بالفعل';
+            }
+            
+            const img = document.createElement('img');
+            img.src = `../${image.path}`;
+            img.style.width = '100%';
+            img.style.height = '100px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '6px';
+            
+            const imageName = document.createElement('div');
+            imageName.textContent = image.name.replace('.png', '');
+            imageName.style.fontSize = '11px';
+            imageName.style.textAlign = 'center';
+            imageName.style.padding = '5px';
+            imageName.style.background = '#f8f9fa';
+            imageName.style.borderTop = '1px solid #eee';
+            
+            imageContainer.appendChild(img);
+            imageContainer.appendChild(imageName);
+            
+            if (!isUsed) {
+                imageContainer.addEventListener('click', () => {
+                    onImageSelect(image);
+                    modal.remove();
+                });
+                
+                imageContainer.addEventListener('mouseenter', () => {
+                    imageContainer.style.borderColor = '#007bff';
+                    imageContainer.style.transform = 'scale(1.05)';
+                });
+                
+                imageContainer.addEventListener('mouseleave', () => {
+                    imageContainer.style.borderColor = 'transparent';
+                    imageContainer.style.transform = 'scale(1)';
+                });
+            }
+            
+            imageGrid.appendChild(imageContainer);
+        });
+        
+        // Create upload section
+        const uploadSection = document.createElement('div');
+        uploadSection.style.borderTop = '1px solid #ddd';
+        uploadSection.style.paddingTop = '20px';
+        uploadSection.style.marginTop = '20px';
+        
+        const uploadTitle = document.createElement('h4');
+        uploadTitle.textContent = getTranslation('upload-new-image') || 'رفع صورة جديدة';
+        uploadTitle.style.margin = '0 0 15px 0';
+        
+        const uploadInput = document.createElement('input');
+        uploadInput.type = 'file';
+        uploadInput.accept = 'image/*';
+        uploadInput.style.width = '100%';
+        uploadInput.style.padding = '10px';
+        uploadInput.style.border = '2px dashed #ddd';
+        uploadInput.style.borderRadius = '8px';
+        uploadInput.style.background = '#f8f9fa';
+        
+        uploadInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                const file = e.target.files[0];
+                const newImage = {
+                    name: file.name,
+                    path: URL.createObjectURL(file),
+                    isNew: true,
+                    file: file
+                };
+                onImageSelect(newImage);
+                modal.remove();
+            }
+        });
+        
+        uploadSection.appendChild(uploadTitle);
+        uploadSection.appendChild(uploadInput);
+        
+        // Create modal footer
+        const modalFooter = document.createElement('div');
+        modalFooter.style.borderTop = '1px solid #ddd';
+        modalFooter.style.paddingTop = '20px';
+        modalFooter.style.marginTop = '20px';
+        modalFooter.style.textAlign = 'center';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn-secondary';
+        cancelBtn.textContent = getTranslation('cancel-image-selection') || 'إلغاء';
+        cancelBtn.addEventListener('click', () => modal.remove());
+        
+        modalFooter.appendChild(cancelBtn);
+        
+        // Assemble modal
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(imageGrid);
+        modalContent.appendChild(uploadSection);
+        modalContent.appendChild(modalFooter);
+        modal.appendChild(modalContent);
+        
+        // Add to body and show
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+        
+        // Close on overlay click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+        
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') modal.remove();
+        });
+    }
+
+    // Handle image selection
+    function handleImageSelection(selectedImage, imageInput, imagePreview, isEdit) {
+        if (selectedImage.isNew) {
+            // New image uploaded
+            imageInput.files = selectedImage.file;
+            imagePreview.innerHTML = `
+                <img src="${selectedImage.path}" alt="Preview" style="width: 100%; height: 100px; object-fit: cover; border-radius: 8px;">
+                <div style="font-size: 12px; text-align: center; margin-top: 5px; color: #666;">
+                    ${selectedImage.name}
+                </div>
+            `;
+            imagePreview.style.display = 'block';
+            
+            // Clear any existing image selection
+            if (isEdit) {
+                editDepartmentModal.dataset.selectedExistingImage = '';
+            } else {
+                addDepartmentModal.dataset.selectedExistingImage = '';
+            }
+        } else {
+            // Existing image selected
+            imageInput.value = '';
+            imagePreview.innerHTML = `
+                <img src="../${selectedImage.path}" alt="Preview" style="width: 100%; height: 100px; object-fit: cover; border-radius: 8px;">
+                <div style="font-size: 12px; text-align: center; margin-top: 5px; color: #666;">
+                    ${selectedImage.name}
+                </div>
+            `;
+            imagePreview.style.display = 'block';
+            
+            // Store selected existing image path
+            if (isEdit) {
+                editDepartmentModal.dataset.selectedExistingImage = selectedImage.path;
+            } else {
+                addDepartmentModal.dataset.selectedExistingImage = selectedImage.path;
+            }
+        }
+    }
 
     // Decode JWT to extract user ID
     async function getUserId() {
@@ -328,6 +669,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (addDepartmentNameArInput) addDepartmentNameArInput.value = '';
             if (addDepartmentNameEnInput) addDepartmentNameEnInput.value = '';
             if (addDepartmentImageInput) addDepartmentImageInput.value = '';
+            if (addDepartmentImagePreview) addDepartmentImagePreview.style.display = 'none';
+            if (addDepartmentModal.dataset.selectedExistingImage) {
+                addDepartmentModal.dataset.selectedExistingImage = '';
+            }
             console.log('🔍 closeModal: add modal form cleared');
         } else if (modal === editDepartmentModal) {
             if (editDepartmentIdInput) {
@@ -339,6 +684,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (editDepartmentNameArInput) editDepartmentNameArInput.value = '';
             if (editDepartmentNameEnInput) editDepartmentNameEnInput.value = '';
             if (editDepartmentImageInput) editDepartmentImageInput.value = '';
+            if (editDepartmentImagePreview) editDepartmentImagePreview.style.display = 'none';
+            if (editDepartmentModal.dataset.selectedExistingImage) {
+                editDepartmentModal.dataset.selectedExistingImage = '';
+            }
             console.log('🔍 closeModal: edit modal form cleared');
         } else if (modal === deleteDepartmentModal) {
             if (deleteModalConfirmBtn) {
@@ -351,6 +700,51 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Show/hide Add button
     function updateAddButtonVisibility() {
         if (addDepartmentBtn) addDepartmentBtn.style.display = permissions.canAdd ? '' : 'none';
+    }
+
+    // Add image selection buttons
+    function addImageSelectionButtons() {
+        // Add button for add modal
+        const addImageButton = document.createElement('button');
+        addImageButton.type = 'button';
+        addImageButton.className = 'btn-secondary';
+        addImageButton.style.marginTop = '10px';
+        addImageButton.innerHTML = `
+            <i class="fas fa-images" style="margin-left: 8px;"></i>
+            ${getTranslation('choose-image') || 'اختر صورة'}
+        `;
+        
+        addImageButton.addEventListener('click', () => {
+            openImageSelector(null, (selectedImage) => {
+                handleImageSelection(selectedImage, addDepartmentImageInput, addDepartmentImagePreview, false);
+            });
+        });
+        
+        // Insert button after the hidden file input
+        const addImageContainer = addDepartmentImageInput.parentNode;
+        addImageContainer.appendChild(addImageButton);
+        addImageContainer.appendChild(addDepartmentImagePreview);
+        
+        // Add button for edit modal
+        const editImageButton = document.createElement('button');
+        editImageButton.type = 'button';
+        editImageButton.className = 'btn-secondary';
+        editImageButton.style.marginTop = '10px';
+        editImageButton.innerHTML = `
+            <i class="fas fa-images" style="margin-left: 8px;"></i>
+            ${getTranslation('choose-image') || 'اختر صورة'}
+        `;
+        
+        editImageButton.addEventListener('click', () => {
+            openImageSelector(null, (selectedImage) => {
+                handleImageSelection(selectedImage, editDepartmentImageInput, editDepartmentImagePreview, true);
+            });
+        });
+        
+        // Insert button after the hidden file input
+        const editImageContainer = editDepartmentImageInput.parentNode;
+        editImageContainer.appendChild(editImageButton);
+        editImageContainer.appendChild(editDepartmentImagePreview);
     }
 
     // Render departments to the grid
@@ -416,7 +810,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // إنشاء عنصر الصورة مع التعامل مع الحالات التي لا توجد فيها صورة
             const imageElement = dept.image ? 
-                `<img src="http://localhost:3006/${dept.image}" alt="${deptName}">` :
+                `<img src="../${cleanImagePath(dept.image)}" alt="${deptName}" onerror="this.parentNode.innerHTML='<div style=\\'font-size: 24px; color: #fff;\\'>${deptName.charAt(0).toUpperCase()}</div>'">` :
                 `<div style="font-size: 24px; color: #fff;">${deptName.charAt(0).toUpperCase()}</div>`;
 
             card.innerHTML = icons +
@@ -581,6 +975,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         editDepartmentIdInput.dataset.level = level;
         editDepartmentIdInput.dataset.parentId = parentId;
 
+        // Display current image if exists
+        if (dept.image) {
+            const cleanPath = cleanImagePath(dept.image);
+            editDepartmentImagePreview.innerHTML = `
+                <img src="../${cleanPath}" alt="Current Image" style="width: 100%; height: 100px; object-fit: cover; border-radius: 8px;">
+                <div style="font-size: 12px; text-align: center; margin-top: 5px; color: #666;">
+                    الصورة الحالية
+                </div>
+            `;
+            editDepartmentImagePreview.style.display = 'block';
+        } else {
+            editDepartmentImagePreview.style.display = 'none';
+        }
+
         openModal(editDepartmentModal);
     }
 
@@ -621,6 +1029,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         fd.append('name', JSON.stringify({ ar: nameAr, en: nameEn }));
         if (imageFile) {
             fd.append('image', imageFile);
+        } else if (addDepartmentModal.dataset.selectedExistingImage) {
+            // If no new file uploaded, use selected existing image
+            fd.append('existingImage', addDepartmentModal.dataset.selectedExistingImage);
         }
         fd.append('parentId', currentParentId.toString());
 
@@ -681,6 +1092,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         fd.append('name', JSON.stringify({ ar: nameAr, en: nameEn }));
         if (imageFile) {
             fd.append('image', imageFile);
+        } else if (editDepartmentModal.dataset.selectedExistingImage) {
+            // If no new file uploaded, use selected existing image
+            fd.append('existingImage', editDepartmentModal.dataset.selectedExistingImage);
         }
         
         // Preserve level and parent_id
@@ -846,6 +1260,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchPermissions();
     updateAddButtonVisibility();
     updateSearchPlaceholder();
+    addImageSelectionButtons();
     await fetchSubDepartments();
 
     window.goBack = () => window.history.back();
