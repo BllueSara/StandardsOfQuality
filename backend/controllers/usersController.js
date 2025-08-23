@@ -1059,20 +1059,27 @@ const updateUserStatus = async (req, res) => {
   }
 };
 
+
 // جلب مدير المستشفى فقط
 const getHospitalManager = async (req, res) => {
   try {
     const [rows] = await db.execute(
-      `SELECT u.id, ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} AS name, u.email, u.role 
+      `SELECT u.id, ${getFullNameWithJobNameSQLWithAlias('u', 'jn')} AS name, u.email, u.role, u.national_id, u.employee_number, u.department_id
        FROM users u
        LEFT JOIN job_names jn ON u.job_name_id = jn.id
-       WHERE u.role = 'hospital_manager' LIMIT 1`
+       WHERE u.role = 'hospital_manager' AND u.status = 'active' LIMIT 1`
     );
     if (!rows.length) {
-      return res.status(404).json({ status: 'error', message: 'مدير المستشفى غير موجود' });
+      // إذا لم يوجد مدير مستشفى، ارجع رسالة مناسبة بدلاً من خطأ 404
+      return res.json({ 
+        status: 'success', 
+        data: null,
+        message: 'لم يتم العثور على مدير مستشفى نشط'
+      });
     }
     res.status(200).json({ status: 'success', data: rows[0] });
   } catch (error) {
+    console.error('Error fetching hospital manager:', error);
     res.status(500).json({ status: 'error', message: 'خطأ في جلب مدير المستشفى' });
   }
 };

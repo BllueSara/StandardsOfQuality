@@ -2324,7 +2324,8 @@ const translations = {
         'user-info': 'معلومات المستخدم',
         'user-name-label': 'اسم المستخدم',
         'user-name-placeholder': 'أدخل الاسم الاول والثاني',
-  
+          'transfer-file-1' : 'تحويل الملف',
+
         'department-label': 'القسم',
         'select-department': 'اختر القسم',
         'email-label': 'البريد الإلكتروني',
@@ -3384,6 +3385,8 @@ const translations = {
         'pdf-only': 'PDF files only',
         'add': 'Add',
         'update': 'Update',
+                'transfer-file-1' : 'Transfer file',
+
         'edit-folder': 'Edit Folder',
         'reports': 'Reports',
         'edit-content': 'Edit Folder Content',

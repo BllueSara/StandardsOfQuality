@@ -678,7 +678,7 @@ function renderApprovals(items) {
       actions += `<button class="btn-preview">${getTranslation('preview')}</button>`;
       actions += `<button class="btn-track">${getTranslation('track-file')}</button>`;
       if (canTransfer) {
-        actions += `<button class="btn-transfer-file">${getTranslation('transfer-file')}</button>`;
+        actions += `<button class="btn-transfer-file">${getTranslation('transfer-file-1')}</button>`;
       }
     } else if (item.approval_status === 'approved') {
       // للملفات المعتمدة، نعرض فقط زر المعاينة والتتبع
