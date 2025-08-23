@@ -17,6 +17,7 @@ const translations = {
         'folder-type-private': 'خاص',
         'folder-type-private-desc': 'فقط لأعضاء القسم',
         'folder-type-shared': 'مشترك',
+        'protocol': 'محضر',
         'folder-type-shared-desc': 'للأشخاص المرسل لهم ملفات للاعتماد',
         'job-name-label': 'المسمى',
         'full-name-label': 'الاسم الكامل',
@@ -2682,7 +2683,82 @@ const translations = {
         'committee-content': 'محتوى اللجنة',
         'no-deleted-items': 'لا توجد عناصر محذوفة',
         'error-loading': 'حدث خطأ أثناء تحميل البيانات',
+        'close': 'إغلاق',
+        'loading': 'جاري التحميل...',
+        'department': 'قسم',
+        'committee': 'لجنة',
+        'protocol': 'محضر',
+        'ticket': 'تذكرة',
+        'file': 'ملف',
+        'item': 'عنصر',
+        'error-loading-data': 'حدث خطأ أثناء تحميل البيانات',
+        'manage-deleted-items': 'إدارة العناصر المحذوفة',
+        'all-items': 'جميع العناصر',
+        'folders': 'المجلدات',
+        'contents': 'المحتويات',
+        'folder-names': 'اسماء المجلدات',
+        'show-all-deleted-items': 'عرض جميع العناصر المحذوفة',
+        'restore-all': 'استرجاع الكل',
+        'delete-all-permanently': 'حذف الكل نهائياً',
+        'loading-all-deleted-items': 'جارٍ تحميل جميع العناصر المحذوفة...',
+        'loading-all-deleted-items-desc': 'سيتم عرض جميع العناصر المحذوفة من جميع الجداول تلقائياً',
+        'confirm-operation': 'تأكيد العملية',
+        'confirm-operation-message': 'هل أنت متأكد من تنفيذ هذه العملية؟',
+        'confirm': 'تأكيد',
+        'back': 'رجوع',
+        'home': 'الرئيسية',
+        'manage-deleted-items-super-admin': 'إدارة العناصر المحذوفة - السوبر أدمن',
                 'created': 'تاريخ الإنشاء',
+        
+        // File Transfer
+        'transfer-from-project': 'نقل إلى مشروع آخر',
+        'transfer-file': 'نقل ملف من مشروع آخر',
+        'step-1-title': 'الخطوة الأولى: اختر من المشروع الحالي',
+        'step-2-title': 'الخطوة الثانية: اختر الهدف في المشروع الآخر',
+        'current-department': 'القسم في المشروع الحالي:',
+        'current-folder': 'المجلد في المشروع الحالي:',
+        'current-file': 'الملف في المشروع الحالي:',
+        'target-project': 'المشروع الهدف:',
+        'target-department': 'القسم الهدف:',
+        'target-folder': 'المجلد الهدف:',
+        'choose-department': 'اختر القسم',
+        'choose-department-first': 'اختر القسم أولاً',
+        'choose-folder': 'اختر المجلد',
+        'choose-folder-first': 'اختر المجلد أولاً',
+        'choose-file': 'اختر الملف',
+        'choose-target-project': 'اختر المشروع الهدف',
+        'choose-project-first': 'اختر المشروع أولاً',
+        'choose-target-department': 'اختر القسم الهدف',
+        'choose-target-folder': 'اختر المجلد الهدف',
+        'quality-management': 'إدارة الجودة',
+        'quality-standards': 'معايير الجودة',
+        'transfer': 'نقل الملف',
+        'loading-folders': 'جاري جلب المجلدات...',
+        'loading-files': 'جاري جلب الملفات...',
+        'loading-target-departments': 'جاري جلب أقسام المشروع الهدف...',
+        'loading-target-folders': 'جاري جلب مجلدات القسم الهدف...',
+        'transferring-file': 'جاري نقل الملف...',
+        'no-approved-files': 'لا توجد ملفات معتمدة في هذا المجلد',
+        'no-target-departments': 'لا توجد أقسام في المشروع الهدف',
+        'no-target-folders': 'لا توجد مجلدات في القسم الهدف',
+        'error-loading-departments': 'خطأ في جلب الأقسام',
+        'error-loading-folders': 'خطأ في جلب المجلدات',
+        'complete-all-selections': 'يرجى إكمال جميع الاختيارات',
+        'file-transferred-success': 'تم نقل الملف بنجاح!',
+        'file-transfer-failed': 'فشل نقل الملف',
+        'file-transfer-error': 'خطأ في نقل الملف',
+        'failed-to-fetch-departments': 'فشل جلب الأقسام',
+        'failed-to-fetch-folders': 'فشل جلب المجلدات',
+        'failed-to-fetch-files': 'فشل جلب الملفات',
+        'failed-to-fetch-target-departments': 'فشل جلب أقسام المشروع الهدف',
+        'failed-to-fetch-target-folders': 'فشل جلب مجلدات القسم الهدف',
+        'error-fetching-departments': 'خطأ في جلب الأقسام',
+        'error-fetching-folders': 'خطأ في جلب المجلدات',
+        'error-fetching-files': 'خطأ في جلب الملفات',
+        'error-fetching-target-departments': 'خطأ في جلب أقسام المشروع الهدف',
+        'error-fetching-target-folders': 'خطأ في جلب مجلدات القسم الهدف',
+        'select-folder-first': 'يجب اختيار مجلد أولاً',
+        'file-preview': 'معاينة الملف:',
        
     },
     en: {
@@ -2711,6 +2787,31 @@ const translations = {
       'committee-content': 'Committee Content',
       'no-deleted-items': 'No deleted items',
       'error-loading': 'Error occurred while loading data',
+      'close': 'Close',
+      'loading': 'Loading...',
+      'department': 'Department',
+      'committee': 'Committee',
+      'protocol': 'Protocol',
+      'ticket': 'Ticket',
+      'file': 'File',
+      'item': 'Item',
+      'error-loading-data': 'Error occurred while loading data',
+      'manage-deleted-items': 'Manage Deleted Items',
+      'all-items': 'All Items',
+      'folders': 'Folders',
+      'contents': 'Contents',
+      'folder-names': 'Folder Names',
+      'show-all-deleted-items': 'Show All Deleted Items',
+      'restore-all': 'Restore All',
+      'delete-all-permanently': 'Delete All Permanently',
+      'loading-all-deleted-items': 'Loading all deleted items...',
+      'loading-all-deleted-items-desc': 'All deleted items from all tables will be displayed automatically',
+      'confirm-operation': 'Confirm Operation',
+      'confirm-operation-message': 'Are you sure you want to perform this operation?',
+      'confirm': 'Confirm',
+      'back': 'Back',
+      'home': 'Home',
+      'manage-deleted-items-super-admin': 'Manage Deleted Items - Super Admin',
       'total-files': 'Total Files', 
       'track-file' : 'Track File',
       'approved-files': 'Approved Files',
@@ -4569,7 +4670,7 @@ const translations = {
     'deadline-select-time': 'Please set time for at least one approver',
     'deadline-expired': 'Approval deadline expired',
     'deadline-expired-message': 'Approval deadline for content "{title}" from {source} has expired. Please review and approve the content as soon as possible.',
-    
+    'protocol': 'Protocol',
     // Protocol Form
     'protocol-form-page-title': 'Quality and Safety Management System - Protocol Form',
     'protocol-form': 'Protocol Form',
@@ -5407,6 +5508,56 @@ const translations = {
         'department-type-administration': 'Administration',
         'department-type-executive_administration': 'Executive Administration',
         'created': 'Created Date',
+        
+        // File Transfer
+        'transfer-from-project': 'Transfer To Another Project',
+        'transfer-file': 'Transfer File from Another Project',
+        'step-1-title': 'Step 1: Select from Current Project',
+        'step-2-title': 'Step 2: Select Target in Another Project',
+        'current-department': 'Department in Current Project:',
+        'current-folder': 'Folder in Current Project:',
+        'current-file': 'File in Current Project:',
+        'target-project': 'Target Project:',
+        'target-department': 'Target Department:',
+        'target-folder': 'Target Folder:',
+        'choose-department': 'Choose Department',
+        'choose-department-first': 'Choose Department First',
+        'choose-folder': 'Choose Folder',
+        'choose-folder-first': 'Choose Folder First',
+        'choose-file': 'Choose File',
+        'choose-target-project': 'Choose Target Project',
+        'choose-project-first': 'Choose Project First',
+        'choose-target-department': 'Choose Target Department',
+        'choose-target-folder': 'Choose Target Folder',
+        'quality-management': 'Quality Management',
+        'quality-standards': 'Quality Standards',
+        'transfer': 'Transfer File',
+        'loading-folders': 'Loading folders...',
+        'loading-files': 'Loading files...',
+        'loading-target-departments': 'Loading target project departments...',
+        'loading-target-folders': 'Loading target department folders...',
+        'transferring-file': 'Transferring file...',
+        'no-approved-files': 'No approved files in this folder',
+        'no-target-departments': 'No departments in target project',
+        'no-target-folders': 'No folders in target department',
+        'error-loading-departments': 'Error loading departments',
+        'error-loading-folders': 'Error loading folders',
+        'complete-all-selections': 'Please complete all selections',
+        'file-transferred-success': 'File transferred successfully!',
+        'file-transfer-failed': 'File transfer failed',
+        'file-transfer-error': 'Error transferring file',
+        'failed-to-fetch-departments': 'Failed to fetch departments',
+        'failed-to-fetch-folders': 'Failed to fetch folders',
+        'failed-to-fetch-files': 'Failed to fetch files',
+        'failed-to-fetch-target-departments': 'Failed to fetch target project departments',
+        'failed-to-fetch-target-folders': 'Failed to fetch target department folders',
+        'error-fetching-departments': 'Error fetching departments',
+        'error-fetching-folders': 'Error fetching folders',
+        'error-fetching-files': 'Error fetching files',
+        'error-fetching-target-departments': 'Error fetching target departments',
+        'error-fetching-target-folders': 'Error fetching target folders',
+        'select-folder-first': 'Must select a folder first',
+        'file-preview': 'File Preview:',
     }
 };
 window.translations = translations;
@@ -5793,5 +5944,132 @@ function getTranslation(key) {
     return window.translations[lang][key];
   }
   return key;
-} 
+}
+
+// إضافة الترجمات الجديدة للعناصر المحذوفة
+translations.ar['show-items-of'] = 'عرض عناصر';
+translations.en['show-items-of'] = 'Show items of';
+
+translations.ar['failed-to-load-statistics'] = 'فشل في جلب الإحصائيات';
+translations.en['failed-to-load-statistics'] = 'Failed to load statistics';
+
+translations.ar['total-deleted-items'] = 'إجمالي العناصر المحذوفة';
+translations.en['total-deleted-items'] = 'Total Deleted Items';
+
+translations.ar['deleted-item-from-all-tables'] = 'عنصر محذوف من جميع الجداول';
+translations.en['deleted-item-from-all-tables'] = 'deleted item from all tables';
+
+translations.ar['deleted-item'] = 'عنصر محذوف';
+translations.en['deleted-item'] = 'deleted item';
+
+translations.ar['no-deleted-items'] = 'لا توجد عناصر محذوفة';
+translations.en['no-deleted-items'] = 'No deleted items';
+
+translations.ar['all-items-active'] = 'جميع العناصر في حالة نشطة';
+translations.en['all-items-active'] = 'All items active';
+
+translations.ar['please-select-item-type-first'] = 'يرجى اختيار نوع العناصر أولاً';
+translations.en['please-select-item-type-first'] = 'Please select item type first';
+
+translations.ar['failed-to-load-deleted-items'] = 'فشل في جلب العناصر المحذوفة';
+translations.en['failed-to-load-deleted-items'] = 'Failed to load deleted items';
+
+translations.ar['tables'] = 'الجداول';
+translations.en['tables'] = 'tables';
+
+translations.ar['id'] = 'المعرف';
+translations.en['id'] = 'ID';
+
+translations.ar['table-type'] = 'نوع الجدول';
+translations.en['table-type'] = 'Table Type';
+
+translations.ar['name-title'] = 'الاسم/العنوان';
+translations.en['name-title'] = 'Name/Title';
+
+translations.ar['deletion-date'] = 'تاريخ الحذف';
+translations.en['deletion-date'] = 'Deletion Date';
+
+translations.ar['deleted-by'] = 'حذف بواسطة';
+translations.en['deleted-by'] = 'Deleted By';
+
+translations.ar['actions'] = 'الإجراءات';
+translations.en['actions'] = 'Actions';
+
+translations.ar['restore'] = 'استرجاع';
+translations.en['restore'] = 'Restore';
+
+translations.ar['permanent-delete'] = 'حذف نهائي';
+translations.en['permanent-delete'] = 'Permanent Delete';
+
+translations.ar['item-number'] = 'العنصر رقم';
+translations.en['item-number'] = 'Item number';
+
+translations.ar['from'] = 'من';
+translations.en['from'] = 'from';
+
+translations.ar['previous'] = 'السابق';
+translations.en['previous'] = 'Previous';
+
+translations.ar['page'] = 'صفحة';
+translations.en['page'] = 'Page';
+
+translations.ar['of'] = 'من';
+translations.en['of'] = 'of';
+
+translations.ar['next'] = 'التالي';
+translations.en['next'] = 'Next';
+
+translations.ar['restore-item'] = 'استرجاع العنصر';
+translations.en['restore-item'] = 'Restore Item';
+
+translations.ar['confirm-restore-item'] = 'هل أنت متأكد من استرجاع هذا العنصر؟';
+translations.en['confirm-restore-item'] = 'Are you sure you want to restore this item?';
+
+translations.ar['failed-to-restore-item'] = 'فشل في استرجاع العنصر';
+translations.en['failed-to-restore-item'] = 'Failed to restore item';
+
+translations.ar['item-restored-successfully'] = 'تم استرجاع العنصر بنجاح';
+translations.en['item-restored-successfully'] = 'Item restored successfully';
+
+translations.ar['confirm-permanent-delete-item'] = 'هل أنت متأكد من حذف هذا العنصر نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!';
+translations.en['confirm-permanent-delete-item'] = 'Are you sure you want to delete this item permanently? This action cannot be undone!';
+
+translations.ar['failed-to-delete-item-permanently'] = 'فشل في حذف العنصر نهائياً';
+translations.en['failed-to-delete-item-permanently'] = 'Failed to delete item permanently';
+
+translations.ar['item-deleted-permanently'] = 'تم حذف العنصر نهائياً';
+translations.en['item-deleted-permanently'] = 'Item deleted permanently';
+
+translations.ar['failed-to-delete-permanently'] = 'فشل في الحذف النهائي';
+translations.en['failed-to-delete-permanently'] = 'Failed to delete permanently';
+
+translations.ar['restore-all-items'] = 'استرجاع جميع العناصر';
+translations.en['restore-all-items'] = 'Restore All Items';
+
+translations.ar['delete-all-items-permanently'] = 'حذف جميع العناصر نهائياً';
+translations.en['delete-all-items-permanently'] = 'Delete All Items Permanently';
+
+translations.ar['confirm-restore-all-items-from-all-tables'] = 'هل أنت متأكد من استرجاع جميع العناصر المحذوفة من جميع الجداول؟';
+translations.en['confirm-restore-all-items-from-all-tables'] = 'Are you sure you want to restore all deleted items from all tables?';
+
+translations.ar['confirm-delete-all-items-from-all-tables'] = 'هل أنت متأكد من حذف جميع العناصر المحذوفة من جميع الجداول نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!';
+translations.en['confirm-delete-all-items-from-all-tables'] = 'Are you sure you want to delete all deleted items from all tables permanently? This action cannot be undone!';
+
+translations.ar['confirm-restore-all-items-of'] = 'هل أنت متأكد من استرجاع جميع عناصر';
+translations.en['confirm-restore-all-items-of'] = 'Are you sure you want to restore all items of';
+
+translations.ar['confirm-delete-all-items-of'] = 'هل أنت متأكد من حذف جميع عناصر';
+translations.en['confirm-delete-all-items-of'] = 'Are you sure you want to delete all items of';
+
+translations.ar['permanently-this-action-cannot-be-undone'] = 'نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!';
+translations.en['permanently-this-action-cannot-be-undone'] = 'permanently? This action cannot be undone!';
+
+translations.ar['failed-to-restore-all-items'] = 'فشل في استرجاع جميع العناصر';
+translations.en['failed-to-restore-all-items'] = 'Failed to restore all items';
+
+translations.ar['failed-to-delete-all-items-permanently'] = 'فشل في حذف جميع العناصر نهائياً';
+translations.en['failed-to-delete-all-items-permanently'] = 'Failed to delete all items permanently';
+
+translations.ar['folder-names'] = 'اسماء المجلدات';
+translations.en['folder-names'] = 'Folder Names'; 
 

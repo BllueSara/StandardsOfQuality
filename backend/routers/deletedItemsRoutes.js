@@ -34,27 +34,19 @@ router.get('/:table', authenticateToken, async (req, res) => {
         
         switch (table) {
             case 'departments':
-                // جلب الأقسام المحذوفة - لا يوجد created_by في جدول departments
-                deletedItems = await getDeletedItemsByUser(table, userId, null);
+                // جلب الأقسام المحذوفة - نعرض فقط الأقسام التي حذفها المستخدم
+                deletedItems = await getDeletedItemsByUser(table, userId, 'deleted_by');
                 break;
                 
-                
-            // case 'protocols':
-            //     // جلب البروتوكولات المحذوفة التي أنشأها المستخدم
-            //     deletedItems = await getDeletedItemsByUser(table, userId, 'created_by');
-            //     break;
-                
-                
             case 'folders':
-                // جلب المجلدات المحذوفة في الأقسام التي ينتمي إليها المستخدم
-                deletedItems = await getDepartmentDeletedItemsByUser(table, userId);
+                // جلب المجلدات المحذوفة التي حذفها المستخدم
+                deletedItems = await getDeletedItemsByUser(table, userId, 'deleted_by');
                 break;
                 
             case 'contents':
-                // جلب المحتويات المحذوفة في الأقسام التي ينتمي إليها المستخدم
-                deletedItems = await getDepartmentDeletedItemsByUser(table, userId);
+                // جلب المحتويات المحذوفة التي حذفها المستخدم
+                deletedItems = await getDeletedItemsByUser(table, userId, 'deleted_by');
                 break;
-                
                 
             default:
                 deletedItems = [];

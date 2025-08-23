@@ -8,7 +8,7 @@ class DeletedItemsModal {
     constructor() {
         this.modal = null;
         this.currentPageType = null;
-        this.apiBase = 'http://localhost:3006/api'; // Backend API base URL
+        this.apiBase = 'http://localhost:3000/api'; // Backend API base URL
         this.init();
     }
 
@@ -107,7 +107,7 @@ class DeletedItemsModal {
             }
         } catch (error) {
             console.error('Error loading deleted items:', error);
-            this.showError();
+            this.showError('error-loading-data');
         }
     }
 
@@ -249,6 +249,11 @@ class DeletedItemsModal {
                 ${itemsHTML}
             </ul>
         `;
+        
+        // Apply translations if available
+        if (typeof applyTranslations === 'function') {
+            applyTranslations();
+        }
     }
 
     getItemTypeText(item, pageType) {
@@ -286,16 +291,26 @@ class DeletedItemsModal {
                 <p data-translate="no-deleted-items">لا توجد عناصر محذوفة</p>
             </div>
         `;
+        
+        // Apply translations if available
+        if (typeof applyTranslations === 'function') {
+            applyTranslations();
+        }
     }
 
-    showError() {
+    showError(translationKey = 'error-loading-data') {
         const modalBody = this.modal.querySelector('.modal-body');
         modalBody.innerHTML = `
             <div class="no-deleted-items">
                 <i class="fas fa-exclamation-triangle"></i>
-                <p data-translate="error-loading">حدث خطأ أثناء تحميل البيانات</p>
+                <p data-translate="${translationKey}">حدث خطأ أثناء تحميل البيانات</p>
             </div>
         `;
+        
+        // Apply translations if available
+        if (typeof applyTranslations === 'function') {
+            applyTranslations();
+        }
     }
 
     formatDate(dateString) {
@@ -317,13 +332,18 @@ class DeletedItemsModal {
     }
 
     translate(key) {
-        // Simple translation function - you can integrate with your existing translation system
+        // Use the global translation system if available
+        if (typeof getTranslation === 'function') {
+            return getTranslation(key);
+        }
+        
+        // Fallback to simple translations if global system is not available
         const translations = {
             'loading': 'جاري التحميل...',
             'close': 'إغلاق',
             'department': 'قسم',
             'committee': 'لجنة',
-            'protocol': 'بروتوكول',
+            'protocol': 'محضر',
             'ticket': 'تذكرة',
             'file': 'ملف',
             'item': 'عنصر',
@@ -338,3 +358,10 @@ class DeletedItemsModal {
 
 // Export for use in other files
 window.DeletedItemsModal = DeletedItemsModal;
+
+// Apply translations when the modal is created
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof applyTranslations === 'function') {
+        applyTranslations();
+    }
+});

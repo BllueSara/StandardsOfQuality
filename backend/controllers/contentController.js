@@ -321,6 +321,9 @@ const getContentsByFolderId = async (req, res) => {
         const folderType = folder[0].type || 'public';
 
         const filtered = contents.filter(item => {
+                      const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'super_admin';
+            const userId = Number(decodedToken.id);
+            if (isAdmin) return true; // الأدمن يرى كل شيء
             // 1) فلترة حسب انتهاء الصلاحية
             if (item.end_date) {
                 const endDate = new Date(item.end_date);

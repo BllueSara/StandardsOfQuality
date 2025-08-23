@@ -3,7 +3,7 @@ let currentTable = '';
 let currentPage = 1;
 let totalPages = 1;
 const itemsPerPage = 20;
-const apiBase = 'http://localhost:3006';
+const apiBase = 'http://localhost:3000';
 
 // DOM elements
 const tableSelect = document.getElementById('tableSelect');
@@ -28,12 +28,12 @@ if (!tableSelect || !loadItemsBtn || !restoreAllBtn || !deleteAllBtn ||
 
 // Table name mappings
 const tableNames = {
-    'all': 'جميع العناصر',
-    'users': 'المستخدمون',
-    'departments': 'الأقسام',
-    'folders': 'المجلدات',
-    'contents': 'المحتويات',
-    'folder_names': 'اسماء المجلدات'
+    'all': getTranslation('all-items') || 'جميع العناصر',
+    'users': getTranslation('users') || 'المستخدمون',
+    'departments': getTranslation('departments') || 'الأقسام',
+    'folders': getTranslation('folders') || 'المجلدات',
+    'contents': getTranslation('contents') || 'المحتويات',
+    'folder_names': getTranslation('folder-names') || 'اسماء المجلدات'
 };
 
 // Initialize the page
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set "all" as default selection and load all items automatically
     tableSelect.value = 'all';
     currentTable = 'all';
-    loadItemsBtn.textContent = 'عرض جميع العناصر المحذوفة';
+    loadItemsBtn.textContent = getTranslation('show-all-deleted-items') || 'عرض جميع العناصر المحذوفة';
     
     // Automatically load all deleted items
     loadDeletedItems();
@@ -61,9 +61,9 @@ function setupEventListeners() {
     tableSelect.addEventListener('change', function() {
         const selectedTable = this.value;
         if (selectedTable === 'all') {
-            loadItemsBtn.textContent = 'عرض جميع العناصر المحذوفة';
+            loadItemsBtn.textContent = getTranslation('show-all-deleted-items') || 'عرض جميع العناصر المحذوفة';
         } else if (selectedTable) {
-            loadItemsBtn.textContent = `عرض عناصر ${tableNames[selectedTable]}`;
+            loadItemsBtn.textContent = `${getTranslation('show-items-of') || 'عرض عناصر'} ${tableNames[selectedTable]}`;
         }
         
         // Update current table and reload items
@@ -92,7 +92,7 @@ async function loadStatistics() {
         });
         
         if (!response.ok) {
-            throw new Error('فشل في جلب الإحصائيات');
+            throw new Error(getTranslation('failed-to-load-statistics') || 'فشل في جلب الإحصائيات');
         }
         
         const result = await response.json();
@@ -100,8 +100,8 @@ async function loadStatistics() {
         
     } catch (error) {
         console.error('Error loading statistics:', error);
-        showAlert('error', 'فشل في جلب الإحصائيات: ' + error.message);
-        statsGrid.innerHTML = '<div class="error">فشل في جلب الإحصائيات</div>';
+        showAlert('error', (getTranslation('failed-to-load-statistics') || 'فشل في جلب الإحصائيات') + ': ' + error.message);
+        statsGrid.innerHTML = `<div class="error">${getTranslation('failed-to-load-statistics') || 'فشل في جلب الإحصائيات'}</div>`;
     }
 }
 
@@ -117,9 +117,9 @@ function displayStatistics(stats) {
         const totalCard = document.createElement('div');
         totalCard.className = 'stat-card total-card';
         totalCard.innerHTML = `
-            <h3>إجمالي العناصر المحذوفة</h3>
+            <h3>${getTranslation('total-deleted-items') || 'إجمالي العناصر المحذوفة'}</h3>
             <div class="count">${totalDeleted}</div>
-            <p>عنصر محذوف من جميع الجداول</p>
+            <p>${getTranslation('deleted-item-from-all-tables') || 'عنصر محذوف من جميع الجداول'}</p>
         `;
         statsGrid.appendChild(totalCard);
     }
@@ -131,7 +131,7 @@ function displayStatistics(stats) {
             statCard.innerHTML = `
                 <h3>${tableNames[table] || table}</h3>
                 <div class="count">${count}</div>
-                <p>عنصر محذوف</p>
+                <p>${getTranslation('deleted-item') || 'عنصر محذوف'}</p>
             `;
             statsGrid.appendChild(statCard);
         }
@@ -141,8 +141,8 @@ function displayStatistics(stats) {
         statsGrid.innerHTML = `
             <div class="stat-card" style="grid-column: 1 / -1; text-align: center; color: #28a745;">
                 <i class="fas fa-check-circle" style="font-size: 3rem; margin-bottom: 10px;"></i>
-                <h3>لا توجد عناصر محذوفة</h3>
-                <p>جميع العناصر في حالة نشطة</p>
+                <h3>${getTranslation('no-deleted-items') || 'لا توجد عناصر محذوفة'}</h3>
+                <p>${getTranslation('all-items-active') || 'جميع العناصر في حالة نشطة'}</p>
             </div>
         `;
     }
@@ -152,15 +152,15 @@ function displayStatistics(stats) {
 function handleLoadItems() {
     const selectedTable = tableSelect.value;
     if (!selectedTable) {
-        showAlert('warning', 'يرجى اختيار نوع العناصر أولاً');
+        showAlert('warning', getTranslation('please-select-item-type-first') || 'يرجى اختيار نوع العناصر أولاً');
         return;
     }
     
     // Update button text based on selection
     if (selectedTable === 'all') {
-        loadItemsBtn.textContent = 'عرض جميع العناصر المحذوفة';
+        loadItemsBtn.textContent = getTranslation('show-all-deleted-items') || 'عرض جميع العناصر المحذوفة';
     } else {
-        loadItemsBtn.textContent = `عرض عناصر ${tableNames[selectedTable]}`;
+        loadItemsBtn.textContent = `${getTranslation('show-items-of') || 'عرض عناصر'} ${tableNames[selectedTable]}`;
     }
     
     // Refresh the current view
@@ -191,7 +191,7 @@ async function loadDeletedItems() {
         }
         
         if (!response.ok) {
-            throw new Error('فشل في جلب العناصر المحذوفة');
+            throw new Error(getTranslation('failed-to-load-deleted-items') || 'فشل في جلب العناصر المحذوفة');
         }
         
         const result = await response.json();
@@ -204,8 +204,8 @@ async function loadDeletedItems() {
         
     } catch (error) {
         console.error('Error loading deleted items:', error);
-        showAlert('error', 'فشل في جلب العناصر المحذوفة: ' + error.message);
-        tableContent.innerHTML = '<div class="error">فشل في جلب العناصر المحذوفة</div>';
+        showAlert('error', (getTranslation('failed-to-load-deleted-items') || 'فشل في جلب العناصر المحذوفة') + ': ' + error.message);
+        tableContent.innerHTML = `<div class="error">${getTranslation('failed-to-load-deleted-items') || 'فشل في جلب العناصر المحذوفة'}</div>`;
     }
 }
 
@@ -217,8 +217,8 @@ function displayDeletedItems(data) {
         tableContent.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-smile"></i>
-                <h3>لا توجد عناصر محذوفة</h3>
-                <p>جميع عناصر ${currentTable === 'all' ? 'الجداول' : tableNames[currentTable]} في حالة نشطة</p>
+                <h3>${getTranslation('no-deleted-items') || 'لا توجد عناصر محذوفة'}</h3>
+                <p>${getTranslation('all-items-active') || 'جميع العناصر في حالة نشطة'} ${currentTable === 'all' ? (getTranslation('tables') || 'الجداول') : tableNames[currentTable]}</p>
             </div>
         `;
         return;
@@ -229,12 +229,12 @@ function displayDeletedItems(data) {
         <table class="deleted-items-table">
             <thead>
                 <tr>
-                    <th>المعرف</th>
-                    ${currentTable === 'all' ? '<th>نوع الجدول</th>' : ''}
-                    <th>الاسم/العنوان</th>
-                    <th>تاريخ الحذف</th>
-                    <th>حذف بواسطة</th>
-                    <th>الإجراءات</th>
+                    <th>${getTranslation('id') || 'المعرف'}</th>
+                    ${currentTable === 'all' ? `<th>${getTranslation('table-type') || 'نوع الجدول'}</th>` : ''}
+                    <th>${getTranslation('name-title') || 'الاسم/العنوان'}</th>
+                    <th>${getTranslation('deletion-date') || 'تاريخ الحذف'}</th>
+                    <th>${getTranslation('deleted-by') || 'حذف بواسطة'}</th>
+                    <th>${getTranslation('actions') || 'الإجراءات'}</th>
                 </tr>
             </thead>
             <tbody>
@@ -255,10 +255,10 @@ function displayDeletedItems(data) {
                 <td>${deletedBy}</td>
                 <td>
                     <div class="item-actions">
-                        <button type="button" class="btn btn-success" onclick="restoreItem(${item.id}, '${item.table_name || currentTable}')" title="استرجاع">
+                        <button type="button" class="btn btn-success" onclick="restoreItem(${item.id}, '${item.table_name || currentTable}')" title="${getTranslation('restore') || 'استرجاع'}">
                             <i class="fas fa-undo"></i>
                         </button>
-                        <button type="button" class="btn btn-danger" onclick="permanentDeleteItem(${item.id}, '${item.table_name || currentTable}')" title="حذف نهائي">
+                        <button type="button" class="btn btn-danger" onclick="permanentDeleteItem(${item.id}, '${item.table_name || currentTable}')" title="${getTranslation('permanent-delete') || 'حذف نهائي'}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -308,10 +308,10 @@ function getItemDisplayName(item) {
     
     // If we have table name info, show it in the fallback
     if (item.table_name) {
-        return `العنصر رقم ${item.id} من ${tableNames[item.table_name] || item.table_name}`;
+        return `${getTranslation('item-number') || 'العنصر رقم'} ${item.id} ${getTranslation('from') || 'من'} ${tableNames[item.table_name] || item.table_name}`;
     }
     
-    return `العنصر رقم ${item.id}`;
+    return `${getTranslation('item-number') || 'العنصر رقم'} ${item.id}`;
 }
 
 // Build pagination HTML
@@ -321,21 +321,21 @@ function buildPagination(pagination) {
     // Previous button
     paginationHTML += `
         <button ${currentPage <= 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">
-            <i class="fas fa-chevron-right"></i> السابق
+            <i class="fas fa-chevron-right"></i> ${getTranslation('previous') || 'السابق'}
         </button>
     `;
     
     // Page info
     paginationHTML += `
         <span class="current-page">
-            صفحة ${currentPage} من ${pagination.total_pages}
+            ${getTranslation('page') || 'صفحة'} ${currentPage} ${getTranslation('of') || 'من'} ${pagination.total_pages}
         </span>
     `;
     
     // Next button
     paginationHTML += `
         <button ${currentPage >= pagination.total_pages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">
-            التالي <i class="fas fa-chevron-left"></i>
+            ${getTranslation('next') || 'التالي'} <i class="fas fa-chevron-left"></i>
         </button>
     `;
     
@@ -353,8 +353,8 @@ function changePage(page) {
 // Restore single item
 async function restoreItem(itemId, tableType) {
     showConfirmModal(
-        'استرجاع العنصر',
-        'هل أنت متأكد من استرجاع هذا العنصر؟',
+        getTranslation('restore-item') || 'استرجاع العنصر',
+        getTranslation('confirm-restore-item') || 'هل أنت متأكد من استرجاع هذا العنصر؟',
         async () => {
             try {
                 const response = await fetch(`${apiBase}/api/super-admin/restore/${tableType}/${itemId}`, {
@@ -365,16 +365,16 @@ async function restoreItem(itemId, tableType) {
                 });
                 
                 if (!response.ok) {
-                    throw new Error('فشل في استرجاع العنصر');
+                    throw new Error(getTranslation('failed-to-restore-item') || 'فشل في استرجاع العنصر');
                 }
                 
-                showAlert('success', 'تم استرجاع العنصر بنجاح');
+                showAlert('success', getTranslation('item-restored-successfully') || 'تم استرجاع العنصر بنجاح');
                 loadDeletedItems();
                 loadStatistics(); // Refresh stats
                 
             } catch (error) {
                 console.error('Error restoring item:', error);
-                showAlert('error', 'فشل في استرجاع العنصر: ' + error.message);
+                showAlert('error', (getTranslation('failed-to-restore-item') || 'فشل في استرجاع العنصر') + ': ' + error.message);
             }
         }
     );
@@ -383,8 +383,8 @@ async function restoreItem(itemId, tableType) {
 // Permanent delete single item
 async function permanentDeleteItem(itemId, tableType) {
     showConfirmModal(
-        'حذف نهائي',
-        'هل أنت متأكد من حذف هذا العنصر نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!',
+        getTranslation('permanent-delete') || 'حذف نهائي',
+        getTranslation('confirm-permanent-delete-item') || 'هل أنت متأكد من حذف هذا العنصر نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!',
         async () => {
             try {
                 const response = await fetch(`${apiBase}/api/super-admin/permanent-delete/${tableType}/${itemId}`, {
@@ -395,16 +395,16 @@ async function permanentDeleteItem(itemId, tableType) {
                 });
                 
                 if (!response.ok) {
-                    throw new Error('فشل في حذف العنصر نهائياً');
+                    throw new Error(getTranslation('failed-to-delete-item-permanently') || 'فشل في حذف العنصر نهائياً');
                 }
                 
-                showAlert('success', 'تم حذف العنصر نهائياً');
+                showAlert('success', getTranslation('item-deleted-permanently') || 'تم حذف العنصر نهائياً');
                 loadDeletedItems();
                 loadStatistics(); // Refresh stats
                 
             } catch (error) {
                 console.error('Error deleting item permanently:', error);
-                showAlert('error', 'فشل في الحذف النهائي: ' + error.message);
+                showAlert('error', (getTranslation('failed-to-delete-permanently') || 'فشل في الحذف النهائي') + ': ' + error.message);
             }
         }
     );
@@ -413,17 +413,17 @@ async function permanentDeleteItem(itemId, tableType) {
 // Handle bulk actions
 function handleBulkAction(action) {
     const isRestore = action === 'restore';
-    const title = isRestore ? 'استرجاع جميع العناصر' : 'حذف جميع العناصر نهائياً';
+    const title = isRestore ? (getTranslation('restore-all-items') || 'استرجاع جميع العناصر') : (getTranslation('delete-all-items-permanently') || 'حذف جميع العناصر نهائياً');
     
     let message;
     if (currentTable === 'all') {
         message = isRestore 
-            ? 'هل أنت متأكد من استرجاع جميع العناصر المحذوفة من جميع الجداول؟'
-            : 'هل أنت متأكد من حذف جميع العناصر المحذوفة من جميع الجداول نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!';
+            ? (getTranslation('confirm-restore-all-items-from-all-tables') || 'هل أنت متأكد من استرجاع جميع العناصر المحذوفة من جميع الجداول؟')
+            : (getTranslation('confirm-delete-all-items-from-all-tables') || 'هل أنت متأكد من حذف جميع العناصر المحذوفة من جميع الجداول نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!');
     } else {
         message = isRestore 
-            ? `هل أنت متأكد من استرجاع جميع عناصر ${tableNames[currentTable]}؟`
-            : `هل أنت متأكد من حذف جميع عناصر ${tableNames[currentTable]} نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!`;
+            ? `${getTranslation('confirm-restore-all-items-of') || 'هل أنت متأكد من استرجاع جميع عناصر'} ${tableNames[currentTable]}؟`
+            : `${getTranslation('confirm-delete-all-items-of') || 'هل أنت متأكد من حذف جميع عناصر'} ${tableNames[currentTable]} ${getTranslation('permanently-this-action-cannot-be-undone') || 'نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!'}`;
     }
     
     showConfirmModal(title, message, () => {
@@ -453,7 +453,7 @@ async function restoreAllItems() {
         });
         
         if (!response.ok) {
-            throw new Error('فشل في استرجاع جميع العناصر');
+            throw new Error(getTranslation('failed-to-restore-all-items') || 'فشل في استرجاع جميع العناصر');
         }
         
         const result = await response.json();
@@ -463,7 +463,7 @@ async function restoreAllItems() {
         
     } catch (error) {
         console.error('Error restoring all items:', error);
-        showAlert('error', 'فشل في استرجاع جميع العناصر: ' + error.message);
+        showAlert('error', (getTranslation('failed-to-restore-all-items') || 'فشل في استرجاع جميع العناصر') + ': ' + error.message);
     }
 }
 
@@ -485,7 +485,7 @@ async function deleteAllItems() {
         });
         
         if (!response.ok) {
-            throw new Error('فشل في حذف جميع العناصر نهائياً');
+            throw new Error(getTranslation('failed-to-delete-all-items-permanently') || 'فشل في حذف جميع العناصر نهائياً');
         }
         
         const result = await response.json();
@@ -578,7 +578,7 @@ function getToken() {
 document.addEventListener('DOMContentLoaded', async function() {
     const token = getToken();
     if (!token) {
-        window.location.href = '/html/login.html';
+        window.location.href = '../html/login.html';
         return;
     }
     
@@ -588,13 +588,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (payload.role !== 'admin' && payload.role !== 'super-admin') {
             showAlert('error', 'غير مسموح - يتطلب صلاحيات السوبر أدمن');
             setTimeout(() => {
-                window.location.href = '/html/dashboard.html';
+                window.location.href = '../html/dashboard.html';
             }, 2000);
             return;
         }
     } catch (error) {
         console.error('Invalid token:', error);
-        window.location.href = '/html/login.html';
+        window.location.href = '../html/login.html';
         return;
     }
 });

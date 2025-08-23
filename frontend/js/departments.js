@@ -30,7 +30,7 @@ function initializeDeletedItemsButton() {
         deletedItemsBtn.style.cssText = 'background: red !important; color: white !important; padding: 10px 20px !important; border: none !important; border-radius: 5px !important; cursor: pointer !important; margin-left: 20px !important; display: inline-block !important;';
         deletedItemsBtn.innerHTML = `
             <i class="fas fa-trash-restore"></i>
-            <span data-translate="deleted-items">${getTranslation('deleted-items')}</span>
+            <span data-translate="deleted-items">ما تم حذفه</span>
         `;
         
         const title = pageHeader.querySelector('h1');
@@ -146,6 +146,23 @@ async function initializeDepartmentsPage() {
 
     // Utility to get token
     function getToken() { return localStorage.getItem('token'); }
+
+    // Utility to clean image path
+    function cleanImagePath(imagePath) {
+        if (!imagePath) return '';
+        
+        // إزالة http://localhost:3006/ من بداية المسار إذا كان موجوداً
+        if (imagePath.startsWith('http://localhost:3006/')) {
+            return imagePath.replace('http://localhost:3006/', '');
+        }
+        
+        // إزالة / من بداية المسار إذا كان موجوداً
+        if (imagePath.startsWith('/')) {
+            return imagePath.substring(1);
+        }
+        
+        return imagePath;
+    }
 
     // Decode JWT to extract user ID
     async function getUserId() {
@@ -429,14 +446,37 @@ function closeModal(modal) {
             }
 
             // إنشاء عنصر الصورة مع التعامل مع الحالات التي لا توجد فيها صورة
-            const imageElement = dept.image ? 
-                `<img src="http://localhost:3006/${dept.image}" alt="${deptName}">` :
-                `<div style="font-size: 24px; color: #fff;">${deptName.charAt(0).toUpperCase()}</div>`;
+            let imageElement;
+            if (dept.image && dept.image.trim() !== '') {
+                // تنظيف مسار الصورة وإضافة localhost إذا لم يكن موجوداً
+                const cleanPath = cleanImagePath(dept.image);
+                const fullPath = cleanPath.startsWith('http') ? cleanPath : `http://localhost:3006/${cleanPath}`;
+                imageElement = `<img src="${fullPath}" alt="${deptName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" onload="this.nextElementSibling.style.display='none';">`;
+            } else {
+                imageElement = `<div style="font-size: 24px; color: #fff; display: block;">${deptName.charAt(0).toUpperCase()}</div>`;
+            }
 
             card.innerHTML = icons +
-                `<div class="card-icon bg-blue">${imageElement}</div>` +
+                `<div class="card-icon bg-blue">${imageElement}<div style="font-size: 24px; color: #fff; display: none;">${deptName.charAt(0).toUpperCase()}</div></div>` +
                 `<div class="card-title">${deptName}</div>` +
                 `<div class="card-subtitle"><span class="type-badge ${typeClass}">${typeText}</span></div>`;
+            
+            // إضافة معالج الأحداث للصورة
+            const imgElement = card.querySelector('img');
+            if (imgElement) {
+                imgElement.addEventListener('error', function() {
+                    console.warn('فشل تحميل الصورة:', this.src);
+                    this.style.display = 'none';
+                    const fallback = this.nextElementSibling;
+                    if (fallback) fallback.style.display = 'block';
+                });
+                
+                imgElement.addEventListener('load', function() {
+                    console.log('تم تحميل الصورة بنجاح:', this.src);
+                    const fallback = this.nextElementSibling;
+                    if (fallback) fallback.style.display = 'none';
+                });
+            }
 
             cardsGrid.appendChild(card);
 
@@ -526,12 +566,25 @@ function handleEdit(e) {
   }
 
   // حفظ الصورة الحالية في dataset
-  const currentImage = el.closest('.card').querySelector('.card-icon img');
-  if (currentImage && currentImage.src) {
-    editDepartmentModal.dataset.currentImage = currentImage.src;
+  const cardIcon = el.closest('.card').querySelector('.card-icon');
+  let currentImage = '';
+  
+  // البحث عن الصورة في card-icon
+  const imgElement = cardIcon.querySelector('img');
+  if (imgElement && imgElement.src) {
+    currentImage = imgElement.src;
   } else {
-    editDepartmentModal.dataset.currentImage = '';
+    // إذا لم توجد صورة، استخدم الصورة من البيانات الأصلية
+    const card = el.closest('.card');
+    const deptId = card.dataset.id;
+    const originalDept = allDepartments.find(d => d.id == deptId);
+    if (originalDept && originalDept.image) {
+      currentImage = `http://localhost:3006/${originalDept.image}`;
+    }
   }
+  
+  // تنظيف مسار الصورة وحفظه
+  editDepartmentModal.dataset.currentImage = cleanImagePath(currentImage);
 
   openModal(editDepartmentModal);
 }
@@ -622,7 +675,17 @@ editModalSaveBtn.addEventListener('click', async () => {
   fd.append('type', type);
   fd.append('parentId', null); // الأقسام الرئيسية ليس لها أب
   fd.append('hasSubDepartments', hasSubDepartments);
-  if (file) fd.append('image', file);
+  if (file) {
+    fd.append('image', file);
+    console.log('تم رفع صورة جديدة:', file.name);
+  } else {
+    // إذا لم يتم رفع صورة جديدة، أرسل الصورة الحالية كمسار نصي
+    const currentImage = editDepartmentModal.dataset.currentImage;
+    if (currentImage && currentImage.trim() !== '') {
+      fd.append('currentImage', currentImage);
+      console.log('تم حفظ الصورة الحالية:', currentImage);
+    }
+  }
 
   try {
     const res = await fetch(`${apiBase}/departments/${id}`, {
@@ -632,17 +695,68 @@ editModalSaveBtn.addEventListener('click', async () => {
     });
     const r = await res.json();
     if (!res.ok) throw new Error(r.message);
+    
+    console.log('استجابة الخادم:', r);
     showToast(getTranslation('department-updated-success'), 'success');
     closeModal(editDepartmentModal);
     
     // تحديث القسم في المصفوفات
-    const updatedDepartment = r.department || r.data || {
+    let updatedImage = '';
+    if (file) {
+      // إذا تم رفع صورة جديدة
+      updatedImage = `backend/uploads/images/${file.name}`;
+    } else {
+      // إذا لم يتم رفع صورة جديدة، استخدم الصورة الحالية
+      const currentImage = editDepartmentModal.dataset.currentImage;
+      updatedImage = cleanImagePath(currentImage);
+    }
+    
+    // استخدام البيانات من الخادم إذا كانت متوفرة، وإلا استخدم البيانات المحلية
+    let updatedDepartment = r.department || r.data || {
         id: id,
         name: name,
         type: type,
         has_sub_departments: hasSubDepartments,
-        image: file ? `backend/uploads/images/${file.name}` : editDepartmentModal.dataset.currentImage || ''
+        image: updatedImage
     };
+    
+    // إذا كان الخادم لم يُرجع صورة، استخدم الصورة المحلية
+    if (!updatedDepartment.image && updatedImage) {
+        updatedDepartment.image = updatedImage;
+    }
+    
+    // تأكد من أن جميع الحقول موجودة
+    if (!updatedDepartment.id) updatedDepartment.id = id;
+    if (!updatedDepartment.name) updatedDepartment.name = name;
+    if (!updatedDepartment.type) updatedDepartment.type = type;
+    if (updatedDepartment.has_sub_departments === undefined) updatedDepartment.has_sub_departments = hasSubDepartments;
+    
+    // تأكد من أن الصورة موجودة
+    if (!updatedDepartment.image && updatedImage) {
+        updatedDepartment.image = updatedImage;
+    }
+    
+    // تنظيف مسار الصورة
+    if (updatedDepartment.image) {
+        updatedDepartment.image = cleanImagePath(updatedDepartment.image);
+    }
+    
+    // تأكد من أن الصورة صالحة
+    if (updatedDepartment.image && updatedDepartment.image.trim() === '') {
+        updatedDepartment.image = '';
+    }
+    
+    // تأكد من أن الصورة تحتوي على مسار صحيح
+    if (updatedDepartment.image && !updatedDepartment.image.includes('uploads/')) {
+        console.warn('مسار الصورة غير صحيح:', updatedDepartment.image);
+    }
+    
+    // تأكد من أن الصورة تحتوي على امتداد صحيح
+    if (updatedDepartment.image && !updatedDepartment.image.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+        console.warn('امتداد الصورة غير صحيح:', updatedDepartment.image);
+    }
+    
+    console.log('القسم المُحدث:', updatedDepartment);
     
     const allIndex = allDepartments.findIndex(d => d.id == id);
     const filteredIndex = filteredDepartments.findIndex(d => d.id == id);
