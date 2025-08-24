@@ -75,7 +75,7 @@ function getRoleTranslation(role) {
 
 let filteredItems = [];
 
-const apiBase = 'http://localhost:3006/api';
+const apiBase = 'http://localhost:3000/api';
 const token = localStorage.getItem('token');
 let permissionsKeys = [];
 let selectedContentId = null;
@@ -96,6 +96,228 @@ let isProcessingApproval = false;
 let isProcessingSignature = false;
 let isProcessingDelegation = false;
 let processingTimeout = null;
+
+// دوال جديدة للمعالجة في الخلفية
+let pendingSignatureData = null;
+let pendingRejectionData = null;
+let pendingElectronicData = null;
+let pendingDelegationData = null;
+
+// دالة جديدة لحماية الأزرار من النقر المتكرر
+function preventDuplicateSignatures() {
+  try {
+    console.log('🔍 preventDuplicateSignatures called...');
+    
+    // تعطيل جميع أزرار التوقيع والتفويض والرفض في جميع البطاقات
+    const allCards = document.querySelectorAll('.approval-card');
+    console.log('🔍 Found cards in preventDuplicateSignatures:', allCards.length);
+    
+    if (allCards.length === 0) {
+      console.warn('🔍 No cards found in preventDuplicateSignatures!');
+      return;
+    }
+    
+    allCards.forEach((card, index) => {
+      console.log(`🔍 Processing card ${index + 1} in preventDuplicateSignatures:`, card);
+      
+      const actionButtons = card.querySelectorAll('.btn-sign, .btn-delegate, .btn-qr, .btn-reject');
+      console.log(`🔍 Card ${index + 1}: Found ${actionButtons.length} action buttons in preventDuplicateSignatures`);
+      
+      if (actionButtons.length === 0) {
+        console.warn(`🔍 Card ${index + 1}: No action buttons found in preventDuplicateSignatures!`);
+        return;
+      }
+      
+      actionButtons.forEach((button, btnIndex) => {
+        if (!button.disabled) {
+          console.log(`🔍 Processing button ${btnIndex + 1} (${button.className}) in preventDuplicateSignatures`);
+          
+          // حفظ النص الأصلي
+          if (!button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+            console.log(`🔍 Saved original text for ${button.className}:`, button.innerHTML);
+          }
+          
+          // تعطيل الزر وإظهار حالة المعالجة
+          button.disabled = true;
+          button.style.opacity = '0.5';
+          button.style.cursor = 'not-allowed';
+          button.style.pointerEvents = 'none';
+          button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...`;
+          
+          // إضافة مؤشر بصري
+          button.classList.add('processing');
+          
+          // إضافة CSS إضافي لتحسين المظهر
+          button.style.transition = 'all 0.3s ease';
+          button.style.transform = 'scale(0.98)';
+          button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+          
+          // إضافة aria-disabled و tabindex للوصول
+          button.setAttribute('aria-disabled', 'true');
+          button.setAttribute('tabindex', '-1');
+          
+          console.log(`🔍 Button ${button.className} disabled in preventDuplicateSignatures, new text:`, button.innerHTML);
+        } else {
+          console.log(`🔍 Button ${button.className} already disabled in preventDuplicateSignatures`);
+        }
+      });
+    });
+    
+    console.log('🔍 All action buttons disabled for processing in preventDuplicateSignatures');
+  } catch (error) {
+    console.error('🔍 Error in preventDuplicateSignatures:', error);
+  }
+}
+
+// دالة لتعطيل جميع أزرار البطاقات
+function disableAllCardActions() {
+  try {
+    // مسح أي timeouts موجودة لمنع التعارض
+    if (processingTimeout) {
+      clearTimeout(processingTimeout);
+      processingTimeout = null;
+      console.log('🔍 Cleared existing processing timeout');
+    }
+    
+    console.log('🔍 Starting disableAllCardActions...');
+    
+    const allCards = document.querySelectorAll('.approval-card');
+    console.log('🔍 Found cards:', allCards.length);
+    
+    if (allCards.length === 0) {
+      console.warn('🔍 No cards found! This might be the issue.');
+      return;
+    }
+    
+    allCards.forEach((card, index) => {
+      console.log(`🔍 Processing card ${index + 1}:`, card);
+      
+      const actionButtons = card.querySelectorAll('.btn-sign, .btn-delegate, .btn-qr, .btn-reject');
+      console.log(`🔍 Card ${index + 1}: Found ${actionButtons.length} action buttons`);
+      
+      if (actionButtons.length === 0) {
+        console.warn(`🔍 Card ${index + 1}: No action buttons found!`);
+        return;
+      }
+      
+      actionButtons.forEach((button, btnIndex) => {
+        console.log(`🔍 Button ${btnIndex + 1}:`, button.className, button.innerHTML, 'disabled:', button.disabled);
+        
+        if (!button.disabled) {
+          // حفظ النص الأصلي
+          if (!button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+            console.log(`🔍 Saved original text for ${button.className}:`, button.innerHTML);
+          }
+          
+          // تعطيل الزر وإظهار حالة المعالجة
+          button.disabled = true;
+          button.style.opacity = '0.5';
+          button.style.cursor = 'not-allowed';
+          button.style.pointerEvents = 'none';
+          button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...`;
+          
+          // إضافة مؤشر بصري
+          button.classList.add('processing');
+          
+          // إضافة CSS إضافي
+          button.style.transition = 'all 0.3s ease';
+          button.style.transform = 'scale(0.98)';
+          button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+          
+          // إضافة aria-disabled و tabindex للوصول
+          button.setAttribute('aria-disabled', 'true');
+          button.setAttribute('tabindex', '-1');
+          
+          console.log(`🔍 Disabled button ${button.className}, new text:`, button.innerHTML);
+        } else {
+          console.log(`🔍 Button ${button.className} already disabled`);
+        }
+      });
+    });
+    
+    console.log('🔍 All card actions disabled for processing');
+  } catch (error) {
+    console.error('🔍 Error in disableAllCardActions:', error);
+  }
+}
+
+// دالة لإعادة تفعيل جميع أزرار البطاقات
+function enableAllCardActions() {
+  try {
+    // مسح أي timeouts موجودة لمنع التعارض
+    if (processingTimeout) {
+      clearTimeout(processingTimeout);
+      processingTimeout = null;
+      console.log('🔍 Cleared existing processing timeout in enableAllCardActions');
+    }
+    
+    const allCards = document.querySelectorAll('.approval-card');
+    allCards.forEach(card => {
+      const actionButtons = card.querySelectorAll('.btn-sign, .btn-delegate, .btn-qr, .btn-reject');
+      actionButtons.forEach(button => {
+        // إعادة تفعيل الزر
+        button.disabled = false;
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
+        button.style.pointerEvents = 'auto';
+        
+        // إزالة المؤشر البصري
+        button.classList.remove('processing');
+        
+        // إعادة النص الأصلي
+        if (button.dataset.originalText) {
+          button.innerHTML = button.dataset.originalText;
+        }
+        
+        // إعادة تعيين CSS
+        button.style.transform = 'scale(1)';
+        button.style.boxShadow = '';
+        
+        // إزالة aria-disabled و tabindex
+        button.removeAttribute('aria-disabled');
+        button.removeAttribute('tabindex');
+      });
+    });
+    
+    console.log('🔍 All card actions re-enabled');
+  } catch (error) {
+    console.error('🔍 Error in enableAllCardActions:', error);
+  }
+}
+
+// دالة لإغلاق جميع النوافذ المنبثقة
+function forceCloseAllPopups() {
+  try {
+    const modalIds = ['rejectModal', 'qrModal', 'delegateModal', 'fileTransferModal', 'signatureModal'];
+    
+    modalIds.forEach(modalId => {
+      const modal = document.getElementById(modalId);
+      if (modal && modal.style.display !== 'none') {
+        modal.style.display = 'none';
+        console.log(`🔍 Closed modal: ${modalId}`);
+      }
+    });
+    
+    // إغلاق بوب أب التفويض إذا كان مفتوحاً
+    const delegationPopup = document.getElementById('delegationConfirmationPopup');
+    if (delegationPopup) {
+      delegationPopup.remove();
+      console.log('🔍 Closed delegation confirmation popup');
+    }
+    
+    // إعادة تعيين متغيرات البيانات المؤقتة
+    pendingSignatureData = null;
+    pendingRejectionData = null;
+    pendingElectronicData = null;
+    pendingDelegationData = null;
+    
+    console.log('🔍 All popups closed and data reset');
+  } catch (error) {
+    console.error('🔍 Error in forceCloseAllPopups:', error);
+  }
+}
 
 // Toast notification function
 function showToast(message, type = 'info', duration = 3000) {
@@ -174,16 +396,19 @@ function protectFromDoubleClick(button, processingText = 'جاري المعال�
   // تعطيل الزر فوراً
   setButtonProcessingState(button, true, processingText);
   
-  // إعادة تفعيل الزر بعد 5 ثواني كحد أقصى
+  // إعادة تفعيل الزر بعد 15 ثانية كحد أقصى
   if (processingTimeout) {
     clearTimeout(processingTimeout);
   }
   
   processingTimeout = setTimeout(() => {
-    if (button) {
+    if (button && !button.classList.contains('processing')) { // التحقق من عدم وجود class 'processing'
       setButtonProcessingState(button, false);
+      console.log('🔍 Button re-enabled after timeout (not in global processing state)');
+    } else {
+      console.log('🔍 Button still in global processing state, not re-enabling automatically');
     }
-  }, 5000);
+  }, 15000);
   
   return true;
 }
@@ -406,7 +631,7 @@ function closeModal(modalId) {
   if ((modalId === 'rejectModal' || modalId === 'qrModal' || modalId === 'delegateModal' || modalId === 'fileTransferModal') && selectedContentId) {
     const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
     if (card && card.dataset.status === 'pending') {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
   }
   
@@ -482,6 +707,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnSendReason = document.getElementById('btnSendReason');
   if (btnSendReason) {
     btnSendReason.addEventListener('click', async () => {
+      console.log('🔍 btnSendReason clicked!');
+      
       const reason = document.getElementById('rejectReason').value.trim();
       if (!reason) return showToast(getTranslation('please-enter-reason'), 'warning');
       
@@ -490,23 +717,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
       
-      try {
-        await fetchJSON(`${apiBase}/contents/rejections/${selectedContentId}`, {
-          method: 'POST',
-          body: JSON.stringify({ reason })
-        });
-        showToast(getTranslation('success-rejected'), 'success');
+      console.log('🔍 Calling preventDuplicateSignatures...');
+      // حماية فورية من النقر المتكرر
+      preventDuplicateSignatures();
+      
+      console.log('🔍 Calling disableAllCardActions...');
+      // تعطيل جميع أزرار البطاقات
+      disableAllCardActions();
+      
+      // إغلاق النافذة المنبثقة فوراً
         closeModal('rejectModal');
-        updateApprovalStatusInUI(selectedContentId, 'rejected');
-        disableActionsFor(selectedContentId);
-      } catch (e) {
-        console.error('Failed to send rejection:', e);
-        showToast(getTranslation('error-sending'), 'error');
-        // إعادة تفعيل الزر في حالة الخطأ
-        setButtonProcessingState(btnSendReason, false);
-        // إعادة تفعيل أزرار البطاقة في حالة الخطأ
-        enableCardActions(selectedContentId);
-      }
+      
+      // معالجة الرفض في الخلفية
+      const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
+      const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
+      
+      processRejectionInBackground(selectedContentId, endpoint, reason);
     });
   }
 
@@ -516,7 +742,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnCancelReject.addEventListener('click', () => {
       // إعادة تفعيل أزرار البطاقة عند الإلغاء
       if (selectedContentId) {
-        enableCardActions(selectedContentId);
+        enableAllCardActions();
       }
       
       // إعادة تفعيل زر الإرسال إذا كان معطلاً
@@ -534,7 +760,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => {
       // إعادة تفعيل أزرار البطاقة عند الإغلاق
       if (selectedContentId) {
-        enableCardActions(selectedContentId);
+        enableAllCardActions();
       }
       
       // إعادة تفعيل زر الإرسال إذا كان معطلاً
@@ -876,8 +1102,7 @@ function initActions() {
   document.querySelectorAll('.approval-card .btn-sign').forEach(btn => {
     btn.addEventListener('click', e => {
       const id = e.target.closest('.approval-card').dataset.id;
-      // تعطيل جميع أزرار البطاقة فوراً
-      disableCardActions(id);
+      selectedContentId = id;
       openSignatureModal(id);
     });
   });
@@ -885,8 +1110,6 @@ function initActions() {
   document.querySelectorAll('.approval-card .btn-delegate').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const id = e.target.closest('.approval-card').dataset.id;
-      // تعطيل جميع أزرار البطاقة فوراً
-      disableCardActions(id);
       selectedContentId = id;
       // فتح مودال اختيار المستخدم أولاً
       openModal('delegateModal');
@@ -897,8 +1120,6 @@ function initActions() {
   document.querySelectorAll('.approval-card .btn-qr').forEach(btn => {
     btn.addEventListener('click', e => {
       const id = e.target.closest('.approval-card').dataset.id;
-      // تعطيل جميع أزرار البطاقة فوراً
-      disableCardActions(id);
       selectedContentId = id;
       openModal('qrModal');
     });
@@ -907,8 +1128,7 @@ function initActions() {
   document.querySelectorAll('.approval-card .btn-reject').forEach(btn => {
     btn.addEventListener('click', e => {
       const id = e.target.closest('.approval-card').dataset.id;
-      // تعطيل جميع أزرار البطاقة فوراً
-      disableCardActions(id);
+      const card = e.target.closest('.approval-card');
       selectedContentId = id;
       openModal('rejectModal');
     });
@@ -1017,6 +1237,8 @@ else {
 }
 
 document.getElementById('btnElectronicApprove')?.addEventListener('click', async () => {
+  console.log('🔍 btnElectronicApprove clicked!');
+  
   if (!selectedContentId) return alert(getTranslation('please-select-user'));
 
   // حماية من النقر المتكرر
@@ -1025,31 +1247,22 @@ document.getElementById('btnElectronicApprove')?.addEventListener('click', async
     return;
   }
 
+  console.log('🔍 Calling preventDuplicateSignatures...');
+  // حماية فورية من النقر المتكرر
+  preventDuplicateSignatures();
+
+  console.log('🔍 Calling disableAllCardActions...');
+  // تعطيل جميع أزرار البطاقات
+  disableAllCardActions();
+
+  // إغلاق النافذة المنبثقة فوراً
+  closeModal('qrModal');
+
+  // معالجة التوقيع الإلكتروني في الخلفية
   const contentType = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`).dataset.type;
   const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
 
-  try {
-    await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/approve`, {
-      method: 'POST',
-      body: JSON.stringify({
-        approved: true,
-        signature: null,
-        electronic_signature: true,
-        notes: ''
-      })
-    });
-    showToast(getTranslation('success-approved'), 'success');
-    closeModal('qrModal');
-    updateApprovalStatusInUI(selectedContentId, 'approved');
-    disableActionsFor(selectedContentId);
-  } catch (err) {
-    console.error('Failed to electronically approve:', err);
-    showToast(getTranslation('error-sending'), 'error');
-    // إعادة تفعيل الزر في حالة الخطأ
-    setButtonProcessingState(btnElectronicApprove, false);
-    // إعادة تفعيل أزرار البطاقة في حالة الخطأ
-    enableCardActions(selectedContentId);
-  }
+  processElectronicSignatureInBackground(selectedContentId, contentType, endpoint);
 });
 
 // إضافة معالجة للإلغاء في مودال التوقيع الإلكتروني
@@ -1058,7 +1271,7 @@ if (btnCancelQr) {
   btnCancelQr.addEventListener('click', () => {
     // إعادة تفعيل أزرار البطاقة عند الإلغاء
     if (selectedContentId) {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
     
     // إعادة تفعيل زر التوقيع إذا كان معطلاً
@@ -1076,7 +1289,7 @@ document.querySelectorAll('[data-modal="qrModal"]').forEach(btn => {
   btn.addEventListener('click', () => {
     // إعادة تفعيل أزرار البطاقة عند الإغلاق
     if (selectedContentId) {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
     
     // إعادة تفعيل زر التوقيع إذا كان معطلاً
@@ -1154,7 +1367,7 @@ function closeSignatureModal() {
   if (selectedContentId) {
     const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
     if (card && card.dataset.status === 'pending') {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
   }
 }
@@ -1251,7 +1464,7 @@ function setupSignatureModal() {
     btn.addEventListener('click', () => {
       // إعادة تفعيل أزرار البطاقة عند الإغلاق
       if (selectedContentId) {
-        enableCardActions(selectedContentId);
+        enableAllCardActions();
       }
       
       // إعادة تفعيل زر التأكيد إذا كان معطلاً
@@ -1265,13 +1478,15 @@ function setupSignatureModal() {
   function handleCancelClick() {
     // إعادة تفعيل أزرار البطاقة عند الإلغاء
     if (selectedContentId) {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
     
     closeSignatureModal();
   }
   
   document.getElementById('btnConfirmSignature').addEventListener('click', async () => {
+    console.log('🔍 btnConfirmSignature clicked!');
+    
     // التحقق من وجود توقيع
     if (!currentSignature) {
       showToast(getTranslation('no-signature') || 'يرجى إضافة توقيع أولاً', 'error');
@@ -1290,64 +1505,25 @@ function setupSignatureModal() {
       return;
     }
     
-    // استخراج معلومات المستخدم من JWT token
-    const tokenPayload = await safeGetUserInfo(token);
+    console.log('🔍 Calling preventDuplicateSignatures...');
+    // حماية فورية من النقر المتكرر
+    preventDuplicateSignatures();
     
+    // حفظ التوقيع في متغير محلي قبل إغلاق النافذة
+    const signatureToSend = currentSignature;
+    
+    console.log('🔍 Calling disableAllCardActions...');
+    // تعطيل جميع أزرار البطاقات
+    disableAllCardActions();
+    
+    // إغلاق النافذة المنبثقة فوراً
+    closeSignatureModal();
+    
+    // معالجة التوقيع في الخلفية
     const contentType = card.dataset.type;
     const endpoint = contentType === 'committee' ? 'committee-approvals' : 'approvals';
     
-    const payload = {
-      approved: true,
-      signature: currentSignature,
-      notes: ''
-    };
-    
-    // جلب معلومات التفويض من جدول active_delegations
-    try {
-      console.log('[SIGN] Fetching delegation status for user:', tokenPayload.id);
-      const delegationResponse = await fetch(`${apiBase}/approvals/delegation-status/${tokenPayload.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      console.log('[SIGN] Delegation response status:', delegationResponse.status);
-      
-      if (delegationResponse.ok) {
-        const delegationData = await delegationResponse.json();
-        console.log('[SIGN] Delegation data:', delegationData);
-        
-        if (delegationData.status === 'success' && delegationData.data && delegationData.data.delegated_by) {
-          payload.on_behalf_of = delegationData.data.delegated_by;
-          console.log('[SIGN] Found delegation, sending on_behalf_of:', delegationData.data.delegated_by);
-        } else {
-          console.log('[SIGN] No delegation found or invalid data structure');
-        }
-      } else {
-        console.log('[SIGN] Delegation response not ok:', delegationResponse.status);
-        const errorText = await delegationResponse.text();
-        console.log('[SIGN] Error response:', errorText);
-      }
-    } catch (err) {
-      console.error('[SIGN] Error fetching delegation status:', err);
-    }
-    
-    console.log('[SIGN] Final payload being sent:', payload);
-    try {
-      const response = await fetchJSON(`${apiBase}/${endpoint}/${selectedContentId}/approve`, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      console.log('[SIGN] response:', response);
-      showToast(getTranslation('success-sent'), 'success');
-      closeSignatureModal();
-      updateApprovalStatusInUI(selectedContentId, 'approved');
-      disableActionsFor(selectedContentId);
-    } catch (err) {
-      console.error('Failed to send signature:', err);
-      showToast(getTranslation('error-sending'), 'error');
-      // إعادة تفعيل الزر في حالة الخطأ
-      setButtonProcessingState(confirmButton, false);
-      // إعادة تفعيل أزرار البطاقة في حالة الخطأ
-      enableCardActions(selectedContentId);
-    }
+    processSignatureInBackground(selectedContentId, contentType, endpoint, signatureToSend);
   });
 }
 
@@ -1528,6 +1704,8 @@ document.getElementById('delegateDept').addEventListener('change', async (e) => 
 const btnDelegateConfirm = document.getElementById('btnDelegateConfirm');
 if (btnDelegateConfirm) {
   btnDelegateConfirm.addEventListener('click', async () => {
+    console.log('🔍 btnDelegateConfirm clicked!');
+    
     const userId = document.getElementById('delegateUser').value;
     const notes = document.getElementById('delegateNotes').value;
     if (!userId) return showToast(getTranslation('please-select-user'), 'warning');
@@ -1537,25 +1715,31 @@ if (btnDelegateConfirm) {
       return;
     }
     
+    console.log('🔍 Calling preventDuplicateSignatures...');
+    // حماية فورية من النقر المتكرر
+    preventDuplicateSignatures();
+    
+    console.log('🔍 Calling disableAllCardActions...');
+    // تعطيل جميع أزرار البطاقات
+    disableAllCardActions();
+    
     // إغلاق مودال التفويض
     closeModal('delegateModal');
     
     if (isBulkDelegation) {
-      // تفويض جماعي - عرض الإقرار والتوقيع أولاً
-      await showBulkDelegationConfirmation(userId, notes);
+      // تفويض جماعي - معالجة مباشرة في الخلفية
+      processDelegationInBackground(userId, null, null, notes, true);
     } else {
-      // تفويض فردي - عرض الإقرار والتوقيع أولاً
+      // تفويض فردي - معالجة مباشرة في الخلفية
       const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
       if (!card) {
         showToast(getTranslation('error-loading') || 'خطأ في تحميل البيانات', 'error');
-        // إعادة تفعيل الزر في حالة الخطأ
-        setButtonProcessingState(btnDelegateConfirm, false);
-        // إعادة تفعيل أزرار البطاقة في حالة الخطأ
-        enableCardActions(selectedContentId);
+        // إعادة تفعيل جميع الأزرار في حالة الخطأ
+        enableAllCardActions();
         return;
       }
       const contentType = card.dataset.type;
-      await showSingleDelegationConfirmation(userId, selectedContentId, contentType, notes);
+      processDelegationInBackground(userId, selectedContentId, contentType, notes, false);
     }
     
     isBulkDelegation = false;
@@ -1568,7 +1752,7 @@ if (btnCancelDelegate) {
   btnCancelDelegate.addEventListener('click', () => {
     // إعادة تفعيل أزرار البطاقة عند الإلغاء
     if (selectedContentId) {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
     
     // إعادة تفعيل زر التأكيد إذا كان معطلاً
@@ -1586,7 +1770,7 @@ document.querySelectorAll('[data-modal="delegateModal"]').forEach(btn => {
   btn.addEventListener('click', () => {
     // إعادة تفعيل أزرار البطاقة عند الإغلاق
     if (selectedContentId) {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
     
     // إعادة تفعيل زر التأكيد إذا كان معطلاً
@@ -1989,7 +2173,7 @@ document.querySelectorAll('[data-modal="fileTransferModal"]').forEach(btn => {
   btn.addEventListener('click', () => {
     // إعادة تفعيل أزرار البطاقة عند الإغلاق
     if (selectedContentId) {
-      enableCardActions(selectedContentId);
+      enableAllCardActions();
     }
     
     // إعادة تفعيل زر التأكيد إذا كان معطلاً
@@ -2350,13 +2534,13 @@ function closeDelegationConfirmationPopup() {
   if (selectedContentId) {
     const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
     if (card && card.dataset.status === 'pending') {
-      enableCardActions(selectedContentId);
+          enableAllCardActions();
     }
   }
   
   // إعادة تفعيل أزرار البطاقة إذا كان هناك contentId في بيانات التفويض
   if (currentDelegationData && currentDelegationData.contentId) {
-    enableCardActions(currentDelegationData.contentId);
+    enableAllCardActions();
   }
   
   // إعادة تعيين متغيرات التفويض
@@ -2677,7 +2861,7 @@ async function processSingleDelegation(data) {
       showToast(result.message || getTranslation('delegation-failed'), 'error');
       // إعادة تفعيل أزرار البطاقة في حالة الفشل
       if (data.contentId) {
-        enableCardActions(data.contentId);
+        enableAllCardActions();
       }
     }
   } catch (error) {
@@ -2685,7 +2869,7 @@ async function processSingleDelegation(data) {
     showToast('خطأ في إرسال طلب التفويض', 'error');
     // إعادة تفعيل أزرار البطاقة في حالة الخطأ
     if (data.contentId) {
-      enableCardActions(data.contentId);
+      enableAllCardActions();
     }
   } finally {
     // إعادة تفعيل جميع الأزرار في حالة النجاح أو الفشل
@@ -2736,7 +2920,7 @@ async function processBulkDelegation(data) {
       showToast(result.message || 'فشل إرسال طلب التفويض الشامل', 'error');
       // إعادة تفعيل أزرار البطاقة في حالة الفشل
       if (data.contentId) {
-        enableCardActions(data.contentId);
+        enableAllCardActions();
       }
     }
   } catch (error) {
@@ -2744,7 +2928,7 @@ async function processBulkDelegation(data) {
     showToast('خطأ في إرسال طلب التفويض الشامل', 'error');
     // إعادة تفعيل أزرار البطاقة في حالة الخطأ
     if (data.contentId) {
-      enableCardActions(data.contentId);
+      enableAllCardActions();
     }
   } finally {
     // إعادة تفعيل جميع الأزرار في حالة النجاح أو الفشل
@@ -3016,7 +3200,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (selectedContentId) {
         const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
         if (card && card.dataset.status === 'pending') {
-          enableCardActions(selectedContentId);
+          enableAllCardActions();
         }
       }
       
@@ -3064,7 +3248,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (selectedContentId) {
         const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
         if (card && card.dataset.status === 'pending') {
-          enableCardActions(selectedContentId);
+          enableAllCardActions();
         }
       }
     });
@@ -3074,6 +3258,8 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('beforeunload', function() {
     resetAllModalButtons();
     resetAllPopupButtons();
+    // لا نغلق النوافذ عند تغيير الصفحة - دع المستخدم يغلقها يدوياً
+    // forceCloseAllPopups();
   });
   
   // معالجة النقر خارج المودال
@@ -3085,10 +3271,218 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedContentId) {
           const card = document.querySelector(`.approval-card[data-id="${selectedContentId}"]`);
           if (card && card.dataset.status === 'pending') {
-            enableCardActions(selectedContentId);
+            enableAllCardActions();
           }
         }
       }
     }
   });
+  
+  // إضافة مستمعي أحداث عالمي للنقر خارج النوافذ المنبثقة
+  // تم تعطيل هذا المستمع لأنه يغلق النوافذ عند النقر في أي مكان
+  // document.addEventListener('click', function(e) {
+  //   if (!e.target.closest('.modal') && !e.target.closest('.delegation-confirmation-popup')) {
+  //     forceCloseAllPopups();
+  //   }
+  // });
 });
+
+// دوال المعالجة في الخلفية
+async function processSignatureInBackground(contentId, contentType, endpoint, signature) {
+  try {
+    console.log('🔍 Processing signature in background for:', contentId);
+    
+    const payload = {
+      approved: true,
+      signature: signature,
+      notes: ''
+    };
+    
+    // جلب معلومات التفويض من جدول active_delegations
+    try {
+      const tokenPayload = await safeGetUserInfo(token);
+      console.log('[SIGN] Fetching delegation status for user:', tokenPayload.id);
+      const delegationResponse = await fetch(`${apiBase}/approvals/delegation-status/${tokenPayload.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (delegationResponse.ok) {
+        const delegationData = await delegationResponse.json();
+        if (delegationData.status === 'success' && delegationData.data && delegationData.data.delegated_by) {
+          payload.on_behalf_of = delegationData.data.delegated_by;
+          console.log('[SIGN] Found delegation, sending on_behalf_of:', delegationData.data.delegated_by);
+        }
+      }
+    } catch (err) {
+      console.error('[SIGN] Error fetching delegation status:', err);
+    }
+    
+    const response = await fetchJSON(`${apiBase}/${endpoint}/${contentId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    
+    console.log('🔍 Signature processed successfully:', response);
+    showToast(getTranslation('success-sent'), 'success');
+    
+    // تحديث واجهة المستخدم
+    updateApprovalStatusInUI(contentId, 'approved');
+    disableActionsFor(contentId);
+    
+  } catch (error) {
+    console.error('🔍 Error processing signature in background:', error);
+    showToast(getTranslation('error-sending'), 'error');
+  } finally {
+    // إعادة تفعيل جميع الأزرار
+    enableAllCardActions();
+    
+    // إعادة تعيين المتغيرات
+    selectedContentId = null;
+    currentSignature = null;
+    
+    // لا نغلق النوافذ هنا - دع المستخدم يغلقها يدوياً
+    // forceCloseAllPopups();
+  }
+}
+
+async function processElectronicSignatureInBackground(contentId, contentType, endpoint) {
+  try {
+    console.log('🔍 Processing electronic signature in background for:', contentId);
+    
+    const response = await fetchJSON(`${apiBase}/${endpoint}/${contentId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({
+        approved: true,
+        signature: null,
+        electronic_signature: true,
+        notes: ''
+      })
+    });
+    
+    console.log('🔍 Electronic signature processed successfully:', response);
+    showToast(getTranslation('success-sent'), 'success');
+    
+    // تحديث واجهة المستخدم
+    updateApprovalStatusInUI(contentId, 'approved');
+    disableActionsFor(contentId);
+    
+  } catch (error) {
+    console.error('🔍 Error processing electronic signature in background:', error);
+    showToast(getTranslation('error-sending'), 'error');
+  } finally {
+    // إعادة تفعيل جميع الأزرار
+    enableAllCardActions();
+    
+    // إعادة تعيين المتغيرات
+    selectedContentId = null;
+    
+    // لا نغلق النوافذ هنا - دع المستخدم يغلقها يدوياً
+    // forceCloseAllPopups();
+  }
+}
+
+async function processRejectionInBackground(contentId, endpoint, reason) {
+  try {
+    console.log('🔍 Processing rejection in background for:', contentId);
+    
+    const response = await fetchJSON(`${apiBase}/contents/rejections/${contentId}`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    });
+    
+    console.log('🔍 Rejection processed successfully:', response);
+    showToast(getTranslation('success-rejected'), 'success');
+    
+    // تحديث واجهة المستخدم
+    updateApprovalStatusInUI(contentId, 'rejected');
+    disableActionsFor(contentId);
+    
+  } catch (error) {
+    console.error('🔍 Error processing rejection in background:', error);
+    showToast(getTranslation('error-sending'), 'error');
+  } finally {
+    // إعادة تفعيل جميع الأزرار
+    enableAllCardActions();
+    
+    // إعادة تعيين المتغيرات
+    selectedContentId = null;
+    
+    // لا نغلق النوافذ هنا - دع المستخدم يغلقها يدوياً
+    // forceCloseAllPopups();
+  }
+}
+
+async function processDelegationInBackground(delegateTo, contentId, contentType, notes, isBulk = false) {
+  try {
+    console.log('🔍 Processing delegation in background:', { delegateTo, contentId, contentType, notes, isBulk });
+    
+    let endpoint;
+    let requestBody;
+    
+    if (isBulk) {
+      endpoint = `${apiBase}/approvals/delegate-all`;
+      requestBody = {
+        delegateTo: delegateTo,
+        notes: notes
+      };
+    } else {
+      if (contentType === 'committee') {
+        endpoint = `${apiBase}/committee-approvals/committee-delegations/single`;
+      } else {
+        endpoint = `${apiBase}/approvals/${contentId}/delegate`;
+      }
+      requestBody = {
+        delegateTo: delegateTo,
+        notes: notes
+      };
+    }
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    const result = await response.json();
+    
+    if (result.status === 'success') {
+      let message;
+      if (isBulk) {
+        message = 'تم إرسال طلب التفويض الشامل بنجاح';
+      } else if (contentType === 'committee') {
+        message = getTranslation('delegation-committee-sent');
+      } else {
+        message = getTranslation('delegation-sent-success');
+      }
+      showToast(message, 'success');
+      
+      if (!isBulk) {
+        disableActionsFor(contentId);
+      }
+      
+      // إعادة تحميل الصفحة بعد فترة
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      showToast(result.message || getTranslation('delegation-failed'), 'error');
+    }
+    
+  } catch (error) {
+    console.error('🔍 Error processing delegation in background:', error);
+    showToast('خطأ في إرسال طلب التفويض', 'error');
+  } finally {
+    // إعادة تفعيل جميع الأزرار
+    enableAllCardActions();
+    
+    // إعادة تعيين المتغيرات
+    selectedContentId = null;
+    isBulkDelegation = false;
+    
+    // لا نغلق النوافذ هنا - دع المستخدم يغلقها يدوياً
+    // forceCloseAllPopups();
+  }
+}
