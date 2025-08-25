@@ -624,3 +624,61 @@ body[lang="en"] .toast-container,
     left: auto !important;
     right: 20px !important;
 }
+/* ===== Footer Styles ===== */
+.main-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 20px 0;
+    text-align: center;
+    direction: rtl;
+    font-family: 'Tajawal', sans-serif;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.copyright {
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 8px;
+    font-weight: 400;
+}
+
+.developers {
+    font-size: 13px;
+    color: #868e96;
+    font-weight: 300;
+    line-height: 1.4;
+}
+
+/* للغة الإنجليزية - تغيير اتجاه الفوتر */
+html[lang="en"] .main-footer,
+body[lang="en"] .main-footer,
+[dir="ltr"] .main-footer {
+    direction: ltr;
+}
+
+/* تحسينات للأجهزة المحمولة */
+@media (max-width: 768px) {
+    .main-footer {
+        padding: 15px 0;
+    }
+    
+    .footer-content {
+        padding: 0 15px;
+    }
+    
+    .copyright {
+        font-size: 13px;
+    }
+    
+    .developers {
+        font-size: 12px;
+    }
+}
