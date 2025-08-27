@@ -75,7 +75,7 @@ function getRoleTranslation(role) {
 
 let filteredItems = [];
 
-const apiBase = 'http://localhost:3000/api';
+const apiBase = 'http://localhost:3006/api';
 const token = localStorage.getItem('token');
 let permissionsKeys = [];
 let selectedContentId = null;
@@ -104,13 +104,61 @@ let pendingElectronicData = null;
 let pendingDelegationData = null;
 
 // دالة جديدة لحماية الأزرار من النقر المتكرر
-function preventDuplicateSignatures() {
+function preventDuplicateSignatures(contentId = null) {
   try {
-    console.log('🔍 preventDuplicateSignatures called...');
+    console.log('🔍 preventDuplicateSignatures called with contentId:', contentId);
     
-    // تعطيل جميع أزرار التوقيع والتفويض والرفض في جميع البطاقات
+    if (contentId) {
+      // تعطيل أزرار البطاقة المحددة فقط
+      const card = document.querySelector(`.approval-card[data-id="${contentId}"]`);
+      if (!card) {
+        console.warn('🔍 Card not found for contentId:', contentId);
+        return;
+      }
+      
+      const actionButtons = card.querySelectorAll('.btn-sign, .btn-delegate, .btn-qr, .btn-reject');
+      console.log(`🔍 Found ${actionButtons.length} action buttons for specific card:`, contentId);
+      
+      actionButtons.forEach((button, btnIndex) => {
+        if (!button.disabled) {
+          console.log(`🔍 Processing button ${btnIndex + 1} (${button.className}) for specific card`);
+          
+          // حفظ النص الأصلي
+          if (!button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+            console.log(`🔍 Saved original text for ${button.className}:`, button.innerHTML);
+          }
+          
+          // تعطيل الزر وإظهار حالة المعالجة
+          button.disabled = true;
+          button.style.opacity = '0.5';
+          button.style.cursor = 'not-allowed';
+          button.style.pointerEvents = 'none';
+          button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...`;
+          
+          // إضافة مؤشر بصري
+          button.classList.add('processing');
+          
+          // إضافة CSS إضافي لتحسين المظهر
+          button.style.transition = 'all 0.3s ease';
+          button.style.transform = 'scale(0.98)';
+          button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+          
+          // إضافة aria-disabled و tabindex للوصول
+          button.setAttribute('aria-disabled', 'true');
+          button.setAttribute('tabindex', '-1');
+          
+          console.log(`🔍 Button ${button.className} disabled for specific card, new text:`, button.innerHTML);
+        } else {
+          console.log(`🔍 Button ${button.className} already disabled for specific card`);
+        }
+      });
+      
+      console.log('🔍 Action buttons disabled for specific card:', contentId);
+    } else {
+      // Fallback: تعطيل جميع البطاقات (للتوافق مع الاستدعاءات القديمة)
     const allCards = document.querySelectorAll('.approval-card');
-    console.log('🔍 Found cards in preventDuplicateSignatures:', allCards.length);
+      console.log('🔍 Found cards in preventDuplicateSignatures (fallback):', allCards.length);
     
     if (allCards.length === 0) {
       console.warn('🔍 No cards found in preventDuplicateSignatures!');
@@ -118,7 +166,7 @@ function preventDuplicateSignatures() {
     }
     
     allCards.forEach((card, index) => {
-      console.log(`🔍 Processing card ${index + 1} in preventDuplicateSignatures:`, card);
+        console.log(`🔍 Processing card ${index + 1} in preventDuplicateSignatures (fallback):`, card);
       
       const actionButtons = card.querySelectorAll('.btn-sign, .btn-delegate, .btn-qr, .btn-reject');
       console.log(`🔍 Card ${index + 1}: Found ${actionButtons.length} action buttons in preventDuplicateSignatures`);
@@ -164,7 +212,8 @@ function preventDuplicateSignatures() {
       });
     });
     
-    console.log('🔍 All action buttons disabled for processing in preventDuplicateSignatures');
+      console.log('🔍 All action buttons disabled for processing in preventDuplicateSignatures (fallback)');
+    }
   } catch (error) {
     console.error('🔍 Error in preventDuplicateSignatures:', error);
   }
@@ -719,11 +768,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       console.log('🔍 Calling preventDuplicateSignatures...');
       // حماية فورية من النقر المتكرر
-      preventDuplicateSignatures();
+      preventDuplicateSignatures(selectedContentId);
       
-      console.log('🔍 Calling disableAllCardActions...');
-      // تعطيل جميع أزرار البطاقات
-      disableAllCardActions();
+      console.log('🔍 Calling disableCardActions...');
+      // تعطيل أزرار البطاقة المحددة فقط
+      disableCardActions(selectedContentId);
       
       // إغلاق النافذة المنبثقة فوراً
         closeModal('rejectModal');
@@ -1249,11 +1298,11 @@ document.getElementById('btnElectronicApprove')?.addEventListener('click', async
 
   console.log('🔍 Calling preventDuplicateSignatures...');
   // حماية فورية من النقر المتكرر
-  preventDuplicateSignatures();
+  preventDuplicateSignatures(selectedContentId);
 
-  console.log('🔍 Calling disableAllCardActions...');
-  // تعطيل جميع أزرار البطاقات
-  disableAllCardActions();
+  console.log('🔍 Calling disableCardActions...');
+  // تعطيل أزرار البطاقة المحددة فقط
+  disableCardActions(selectedContentId);
 
   // إغلاق النافذة المنبثقة فوراً
   closeModal('qrModal');
@@ -1507,14 +1556,14 @@ function setupSignatureModal() {
     
     console.log('🔍 Calling preventDuplicateSignatures...');
     // حماية فورية من النقر المتكرر
-    preventDuplicateSignatures();
+    preventDuplicateSignatures(selectedContentId);
     
     // حفظ التوقيع في متغير محلي قبل إغلاق النافذة
     const signatureToSend = currentSignature;
     
-    console.log('🔍 Calling disableAllCardActions...');
-    // تعطيل جميع أزرار البطاقات
-    disableAllCardActions();
+    console.log('🔍 Calling disableCardActions...');
+    // تعطيل أزرار البطاقة المحددة فقط
+    disableCardActions(selectedContentId);
     
     // إغلاق النافذة المنبثقة فوراً
     closeSignatureModal();
@@ -1717,11 +1766,11 @@ if (btnDelegateConfirm) {
     
     console.log('🔍 Calling preventDuplicateSignatures...');
     // حماية فورية من النقر المتكرر
-    preventDuplicateSignatures();
+    preventDuplicateSignatures(selectedContentId);
     
-    console.log('🔍 Calling disableAllCardActions...');
-    // تعطيل جميع أزرار البطاقات
-    disableAllCardActions();
+    console.log('🔍 Calling disableCardActions...');
+    // تعطيل أزرار البطاقة المحددة فقط
+    disableCardActions(selectedContentId);
     
     // إغلاق مودال التفويض
     closeModal('delegateModal');
@@ -3333,8 +3382,8 @@ async function processSignatureInBackground(contentId, contentType, endpoint, si
     console.error('🔍 Error processing signature in background:', error);
     showToast(getTranslation('error-sending'), 'error');
   } finally {
-    // إعادة تفعيل جميع الأزرار
-    enableAllCardActions();
+    // إعادة تفعيل أزرار البطاقة المحددة فقط
+    enableCardActions(contentId);
     
     // إعادة تعيين المتغيرات
     selectedContentId = null;
@@ -3370,8 +3419,8 @@ async function processElectronicSignatureInBackground(contentId, contentType, en
     console.error('🔍 Error processing electronic signature in background:', error);
     showToast(getTranslation('error-sending'), 'error');
   } finally {
-    // إعادة تفعيل جميع الأزرار
-    enableAllCardActions();
+    // إعادة تفعيل أزرار البطاقة المحددة فقط
+    enableCardActions(contentId);
     
     // إعادة تعيين المتغيرات
     selectedContentId = null;
@@ -3401,8 +3450,8 @@ async function processRejectionInBackground(contentId, endpoint, reason) {
     console.error('🔍 Error processing rejection in background:', error);
     showToast(getTranslation('error-sending'), 'error');
   } finally {
-    // إعادة تفعيل جميع الأزرار
-    enableAllCardActions();
+    // إعادة تفعيل أزرار البطاقة المحددة فقط
+    enableCardActions(contentId);
     
     // إعادة تعيين المتغيرات
     selectedContentId = null;
@@ -3475,8 +3524,12 @@ async function processDelegationInBackground(delegateTo, contentId, contentType,
     console.error('🔍 Error processing delegation in background:', error);
     showToast('خطأ في إرسال طلب التفويض', 'error');
   } finally {
-    // إعادة تفعيل جميع الأزرار
-    enableAllCardActions();
+    // إعادة تفعيل أزرار البطاقة المحددة فقط
+    if (contentId) {
+      enableCardActions(contentId);
+    } else {
+      enableAllCardActions(); // للتفويض الجماعي
+    }
     
     // إعادة تعيين المتغيرات
     selectedContentId = null;

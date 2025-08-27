@@ -129,7 +129,7 @@ const translations = {
         'placeholder-topic-end-date': 'yyyy/mm/dd',
         'file-types-allowed': 'الملفات المسموحة: PDF, DOC, DOCX, JPG, JPEG, PNG',
         'all-rights-reserved': 'جميع الحقوق محفوظة 2025 ©',
-        'developed-by': 'إعداد المهندس هاني مياجان | تنفيذ المهندسة سارا اللهيبي',
+        'developed-by': ' المهندس هاني مياجان |  المهندسة سارا اللهيبي',
         // قائمة المحاضر
         'protocol-list-page-title': 'نظام إدارة الجودة والسلامة - قائمة المحاضر',
         'protocol-list': 'قائمة المحاضر',
@@ -4148,7 +4148,7 @@ const translations = {
                               'accreditations': 'Accreditations',
                               'enter-system': 'Enter System',
                               'all-rights-reserved': 'All Rights Reserved 2025 ©',
-                              'developed-by': 'Prepared by Engineer Hani Miyajan | Implemented by Engineer Sara Alluhaibi',
+                              'developed-by': '  Engineer Hani Miyajan |   Engineer Sara Alluhaibi',
 
         'page': 'Page',
         'of': 'of',

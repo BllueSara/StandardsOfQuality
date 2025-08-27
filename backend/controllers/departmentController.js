@@ -402,10 +402,21 @@ const getSubDepartments = async (req, res) => {
 
 const addDepartment = async (req, res) => {
     try {
-        const { name, type, parentId, hasSubDepartments } = req.body;
-        const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : '';
+        const { name, type, parentId, hasSubDepartments, existingImage } = req.body;
+        let imagePath = '';
+        
+        // معالجة الصور
+        if (req.file) {
+            // صورة جديدة تم رفعها
+            imagePath = req.file.path.replace(/\\/g, '/');
+            console.log('🔍 New image uploaded:', imagePath);
+        } else if (existingImage) {
+            // صورة موجودة تم اختيارها
+            imagePath = existingImage;
+            console.log('🔍 Existing image selected:', imagePath);
+        }
 
-        console.log('🔍 Received data:', { name, type, parentId, hasSubDepartments, hasImage: !!imagePath });
+        console.log('🔍 Received data:', { name, type, parentId, hasSubDepartments, hasImage: !!imagePath, imagePath });
 
         if (!name || !type) {
             return res.status(400).json({
@@ -621,8 +632,25 @@ const addDepartment = async (req, res) => {
 const updateDepartment = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, type, parentId, hasSubDepartments } = req.body;
-        const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : '';
+        const { name, type, parentId, hasSubDepartments, existingImage, currentImage } = req.body;
+        let imagePath = '';
+        
+        // معالجة الصور
+        if (req.file) {
+            // صورة جديدة تم رفعها
+            imagePath = req.file.path.replace(/\\/g, '/');
+            console.log('🔍 New image uploaded:', imagePath);
+        } else if (existingImage) {
+            // صورة موجودة تم اختيارها
+            imagePath = existingImage;
+            console.log('🔍 Existing image selected:', imagePath);
+        } else if (currentImage) {
+            // الاحتفاظ بالصورة الحالية
+            imagePath = currentImage;
+            console.log('🔍 Keeping current image:', imagePath);
+        }
+
+        console.log('🔍 Update data:', { id, name, type, parentId, hasSubDepartments, hasImage: !!imagePath, imagePath });
 
         if (!name || !type) {
             return res.status(400).json({
