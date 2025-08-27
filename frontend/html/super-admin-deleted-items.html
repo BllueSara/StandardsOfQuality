@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة العناصر المحذوفة - السوبر أدمن</title>
+    <title data-translate="manage-deleted-items-super-admin">إدارة العناصر المحذوفة - السوبر أدمن</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
@@ -349,17 +349,17 @@
     <div class="header-actions content-hidden">
         <button class="back-btn" id="backBtn" onclick="window.location.href='index.html'" style="right: 50px; left: auto; display: flex; align-items: center; gap: 4px;">
             <i class="fas fa-arrow-right" id="backIcon"></i>
-            <span id="backBtnText">رجوع</span>
+            <span id="backBtnText" data-translate="back">رجوع</span>
         </button>
         <button class="home-btn" onclick="window.location.href='index.html'">
             <i class="fas fa-home"></i>
-            <span>الرئيسية</span>
+            <span data-translate="home">الرئيسية</span>
         </button>
     </div>
 
     <main class="content-hidden">
         <div class="container">
-            <h1>إدارة العناصر المحذوفة</h1>
+            <h1 data-translate="manage-deleted-items">إدارة العناصر المحذوفة</h1>
 
             <!-- Alert Container -->
             <div id="alertContainer"></div>
@@ -374,30 +374,30 @@
                 <div class="table-header">
                     <h2>
                         <i class="fas fa-list"></i>
-                        العناصر المحذوفة
+                        <span data-translate="deleted-items">العناصر المحذوفة</span>
                     </h2>
                     <div class="table-controls">
                         <select id="tableSelect" class="table-select">
-                            <option value="all" selected>جميع العناصر</option>
-                            <option value="departments">الأقسام</option>
-                            <option value="folders">المجلدات</option>
-                            <option value="contents">المحتويات</option>
-                            <option value="folder_names">اسماء المجلدات</option>
+                            <option value="all" selected data-translate="all-items">جميع العناصر</option>
+                            <option value="departments" data-translate="departments">الأقسام</option>
+                            <option value="folders" data-translate="folders">المجلدات</option>
+                            <option value="contents" data-translate="contents">المحتويات</option>
+                            <option value="folder_names" data-translate="folder-names">اسماء المجلدات</option>
                         </select>
                         
                         <button type="button" class="btn btn-primary" id="loadItemsBtn">
                             <i class="fas fa-search"></i>
-                            عرض جميع العناصر المحذوفة
+                            <span data-translate="show-all-deleted-items">عرض جميع العناصر المحذوفة</span>
                         </button>
                         
                         <button type="button" class="btn btn-warning" id="restoreAllBtn" style="display: none;">
                             <i class="fas fa-undo"></i>
-                            استرجاع الكل
+                            <span data-translate="restore-all">استرجاع الكل</span>
                         </button>
                         
                         <button type="button" class="btn btn-danger" id="deleteAllBtn" style="display: none;">
                             <i class="fas fa-trash"></i>
-                            حذف الكل نهائياً
+                            <span data-translate="delete-all-permanently">حذف الكل نهائياً</span>
                         </button>
                     </div>
                 </div>
@@ -405,8 +405,8 @@
                 <div id="tableContent">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <h3>جارٍ تحميل جميع العناصر المحذوفة...</h3>
-                        <p>سيتم عرض جميع العناصر المحذوفة من جميع الجداول تلقائياً</p>
+                        <h3 data-translate="loading-all-deleted-items">جارٍ تحميل جميع العناصر المحذوفة...</h3>
+                        <p data-translate="loading-all-deleted-items-desc">سيتم عرض جميع العناصر المحذوفة من جميع الجداول تلقائياً</p>
                     </div>
                 </div>
             </div>
@@ -416,15 +416,28 @@
     <!-- Confirmation Modal -->
     <div id="confirmModal" class="modal">
         <div class="modal-content">
-            <h3 id="modalTitle">تأكيد العملية</h3>
-            <p id="modalMessage">هل أنت متأكد من تنفيذ هذه العملية؟</p>
+            <h3 id="modalTitle" data-translate="confirm-operation">تأكيد العملية</h3>
+            <p id="modalMessage" data-translate="confirm-operation-message">هل أنت متأكد من تنفيذ هذه العملية؟</p>
             <div class="modal-actions">
-                <button type="button" class="btn btn-primary" id="confirmBtn">تأكيد</button>
-                <button type="button" class="btn btn-secondary" id="cancelBtn">إلغاء</button>
+                <button type="button" class="btn btn-primary" id="confirmBtn" data-translate="confirm">تأكيد</button>
+                <button type="button" class="btn btn-secondary" id="cancelBtn" data-translate="cancel">إلغاء</button>
             </div>
         </div>
     </div>
 
+    <!-- ===== الفوتر ===== -->
+    <footer class="main-footer">
+        <div class="footer-content">
+            <div class="copyright" data-translate="all-rights-reserved">
+                جميع الحقوق محفوظة 2025 ©
+            </div>
+            <div class="developers" data-translate="developed-by">
+                إعداد المهندس هاني مياجان | تنفيذ المهندسة سارا اللهيبي
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/language.js"></script>
 <script src="../js/check-status.js"></script>
 <script src="../js/utils.js"></script>
     <script src="../js/super-admin-deleted-items.js"></script>
@@ -439,20 +452,12 @@
                     element.classList.add('content-visible');
                 });
             }, 100);
+            
+            // تطبيق الترجمات إذا كانت متاحة
+            if (typeof applyTranslations === 'function') {
+                applyTranslations();
+            }
         });
     </script>
-
-    <!-- ===== الفوتر ===== -->
-    <footer class="main-footer">
-        <div class="footer-content">
-            <div class="copyright" data-translate="all-rights-reserved">
-                جميع الحقوق محفوظة 2025 ©
-            </div>
-            <div class="developers" data-translate="developed-by">
-                إعداد المهندس هاني مياجان | تنفيذ المهندسة سارا اللهيبي
-            </div>
-        </div>
-    </footer>
-
 </body>
 </html>

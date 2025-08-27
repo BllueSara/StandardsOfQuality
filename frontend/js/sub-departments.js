@@ -1,9 +1,9 @@
 // sub-departments.js
-const apiBase = 'http://localhost:3000/api';
+const apiBase = 'http://localhost:3006/api';
 
 document.addEventListener('DOMContentLoaded', async function() {
     // دالة إظهار التوست
-    function showToast(message, type = 'info', duration = 3000) {
+    function showToast(message, type = 'info', duration = 3006) {
         let toastContainer = document.getElementById('toast-container');
         if (!toastContainer) {
             toastContainer = document.createElement('div');
@@ -90,8 +90,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Utility function to clean image paths
     function cleanImagePath(imagePath) {
         if (!imagePath) return '';
-        if (imagePath.startsWith('http://localhost:3000/')) {
-            return imagePath.replace('http://localhost:3000/', '');
+        if (imagePath.startsWith('http://localhost:3006/')) {
+            return imagePath.replace('http://localhost:3006/', '');
         }
         if (imagePath.startsWith('/')) {
             return imagePath.substring(1);

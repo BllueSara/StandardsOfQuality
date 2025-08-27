@@ -8,7 +8,7 @@ class DeletedItemsModal {
     constructor() {
         this.modal = null;
         this.currentPageType = null;
-        this.apiBase = 'http://localhost:3000/api'; // Backend API base URL
+        this.apiBase = 'http://localhost:3006/api'; // Backend API base URL
         this.init();
     }
 

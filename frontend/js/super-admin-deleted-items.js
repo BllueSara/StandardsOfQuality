@@ -3,7 +3,7 @@ let currentTable = '';
 let currentPage = 1;
 let totalPages = 1;
 const itemsPerPage = 20;
-const apiBase = 'http://localhost:3000';
+const apiBase = 'http://localhost:3006';
 
 // DOM elements
 const tableSelect = document.getElementById('tableSelect');
