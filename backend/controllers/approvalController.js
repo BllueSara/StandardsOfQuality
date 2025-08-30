@@ -1326,10 +1326,10 @@ async function generateFinalSignedPDF(contentId) {
   const getSignatureCell = (log) => {
     if (log.signature && log.signature.startsWith('data:image')) {
       // صورة توقيع يدوي
-      return { image: log.signature, width: 40, height: 20, alignment: 'center' };
+      return { image: log.signature, width: 120, height: 60, alignment: 'center' };
     } else if (log.electronic_signature) {
       // اعتماد إلكتروني: دائماً صورة الختم
-      return { image: electronicSealDataUrl, width: 40, height: 20, alignment: 'center' };
+      return { image: electronicSealDataUrl, width: 120, height: 60, alignment: 'center' };
     } else {
       // لا يوجد توقيع
       return { text: '✓', style: 'tableCell' };
@@ -1422,38 +1422,40 @@ async function generateFinalSignedPDF(contentId) {
 
     rowIndex++;
   }
-
   // 7) إنشاء تعريف المستند باستخدام pdfmake
   const docDefinition = {
     pageSize: 'A4',
-    pageMargins: [40, 60, 40, 60],
+    pageMargins: [20, 30, 20, 30],
     defaultStyle: {
       font: 'Amiri',
-      fontSize: 10
+      fontSize: 12
     },
     styles: {
       title: {
-        fontSize: 18,
+        fontSize: 22,
         bold: true,
         alignment: 'center',
-        margin: [0, 0, 0, 20]
+        margin: [0, 0, 0, 25]
       },
       tableHeader: {
         bold: true,
-        fontSize: 9,
-        color: 'black',
+        fontSize: 12,
+        color: 'white',
         alignment: 'center',
-        fillColor: '#e6e6e6'
+        fillColor: '#428499',
+        margin: [3, 6, 3, 6]
       },
       tableCell: {
-        fontSize: 8,
-        alignment: 'center'
+        fontSize: 11,
+        alignment: 'center',
+        margin: [3, 6, 3, 6]
       },
       proxyCell: {
-        fontSize: 8,
+        fontSize: 10,
         alignment: 'center',
         color: '#666666',
-        fillColor: '#f9f9f9'
+        fillColor: '#f9f9f9',
+        margin: [3, 5, 3, 5]
       }
     },
     content: [
@@ -1466,7 +1468,7 @@ async function generateFinalSignedPDF(contentId) {
       {
         table: {
           headerRows: 1,
-          widths: ['15%', '20%', '20%', '20%', '10%', '15%'],
+          widths: ['12%', '16%', '16%', '16%', '22%', '18%'],
           body: approvalTableBody
         },
         layout: {
